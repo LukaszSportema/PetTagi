@@ -160,65 +160,65 @@ export default function Home() {
   );
 
   const ringsList = [
-    { id: 'złoty', title: 'Złoty', image: '/Rings/gold.jpg' },
-    { id: 'srebrny', title: 'Srebrny', image: '/Rings/silver.jpg' },
+    { id: 'złoty', title: 'Złoty', image: '/rings/gold.jpg' },
+    { id: 'srebrny', title: 'Srebrny', image: '/rings/silver.jpg' },
   ];
 
   const goldBases = Array.from({ length: 16 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Baza/${i + 1}.jpg`,
+    image: `/baza/${i + 1}.jpg`,
   }));
 
   const silverBases = Array.from({ length: 8 }, (_, i) => ({
     id: String(i + 17),
     title: `Podpis ${i + 17}`,
-    image: `/Baza/${i + 17}.jpg`,
+    image: `/baza/${i + 17}.jpg`,
   }));
 
   const charmsList = Array.from({ length: 53 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Charms/${i + 1}.jpg`,
+    image: `/charms/${i + 1}.jpg`,
   }));
 
   const karabinersList = Array.from({ length: 12 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Karabinczyk/${i + 1}.jpg`,
+    image: `/karabinczyk/${i + 1}.jpg`,
   }));
 
   const premiumStringsList = Array.from({ length: 8 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Sznurek/${i + 1}.jpg`,
+    image: `/sznurek/${i + 1}.jpg`,
   }));
 
   const stopersList = [
-    { id: '1', title: 'Złote', image: '/Stopery/1.png' },
-    { id: '2', title: 'Srebrne', image: '/Stopery/2.png' },
+    { id: '1', title: 'Złote', image: '/stopery/1.png' },
+    { id: '2', title: 'Srebrne', image: '/stopery/2.png' },
   ];
 
   const stickersList = [
-    { id: '1', title: 'Pies 1', image: '/Naklejki/1.png' },
-    { id: '2', title: 'Pies 2', image: '/Naklejki/2.png' },
-    { id: '3', title: 'Pies 3', image: '/Naklejki/3.png' },
-    { id: '4', title: 'Pies 4', image: '/Naklejki/4.png' },
-    { id: '5', title: 'Pies 5', image: '/Naklejki/5.png' },
-    { id: '6', title: 'Pies 6', image: '/Naklejki/6.png' },
+    { id: '1', title: 'Pies 1', image: '/naklejki/1.png' },
+    { id: '2', title: 'Pies 2', image: '/naklejki/2.png' },
+    { id: '3', title: 'Pies 3', image: '/naklejki/3.png' },
+    { id: '4', title: 'Pies 4', image: '/naklejki/4.png' },
+    { id: '5', title: 'Pies 5', image: '/naklejki/5.png' },
+    { id: '6', title: 'Pies 6', image: '/naklejki/6.png' },
   ];
 
   const classicStringsList = [
-    { id: '9', title: 'Podpis 1', image: '/Sznurek/9.jpg' },
-    { id: '10', title: 'Podpis 2', image: '/Sznurek/10.jpg' },
-    { id: '11', title: 'Podpis 3', image: '/Sznurek/11.jpg' },
-    { id: '12', title: 'Podpis 4', image: '/Sznurek/12.jpg' },
-    { id: '13', title: 'Podpis 5', image: '/Sznurek/13.jpg' },
-    { id: '14', title: 'Podpis 6', image: '/Sznurek/14.jpg' },
-    { id: '15', title: 'Podpis 7', image: '/Sznurek/15.jpg' },
-    { id: '16', title: 'Podpis 8', image: '/Sznurek/16.jpg' },
-    { id: '17', title: 'Podpis 9', image: '/Sznurek/17.jpg' },
-    { id: '18', title: 'Podpis 10', image: '/Sznurek/18.jpg' },
+    { id: '9', title: 'Podpis 1', image: '/sznurek/9.jpg' },
+    { id: '10', title: 'Podpis 2', image: '/sznurek/10.jpg' },
+    { id: '11', title: 'Podpis 3', image: '/sznurek/11.jpg' },
+    { id: '12', title: 'Podpis 4', image: '/sznurek/12.jpg' },
+    { id: '13', title: 'Podpis 5', image: '/sznurek/13.jpg' },
+    { id: '14', title: 'Podpis 6', image: '/sznurek/14.jpg' },
+    { id: '15', title: 'Podpis 7', image: '/sznurek/15.jpg' },
+    { id: '16', title: 'Podpis 8', image: '/sznurek/16.jpg' },
+    { id: '17', title: 'Podpis 9', image: '/sznurek/17.jpg' },
+    { id: '18', title: 'Podpis 10', image: '/sznurek/18.jpg' },
   ];
 
   const toggleExtraCharm = (id: string) => {
