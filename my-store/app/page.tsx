@@ -160,7 +160,7 @@ export default function Home() {
   );
 
   const ringsList = [
-    { id: 'złoty', title: 'Złoty', image: '/Rings/Gold.jpg' },
+    { id: 'złoty', title: 'Złoty', image: '/Rings/gold.jpg' },
     { id: 'srebrny', title: 'Srebrny', image: '/Rings/silver.jpg' },
   ];
 
@@ -209,16 +209,16 @@ export default function Home() {
   ];
 
   const classicStringsList = [
-    { id: '9', title: 'Podpis 1', image: '/Sznurek/9.png' },
-    { id: '10', title: 'Podpis 2', image: '/Sznurek/10.png' },
-    { id: '11', title: 'Podpis 3', image: '/Sznurek/11.png' },
-    { id: '12', title: 'Podpis 4', image: '/Sznurek/12.png' },
-    { id: '13', title: 'Podpis 5', image: '/Sznurek/13.png' },
-    { id: '14', title: 'Podpis 6', image: '/Sznurek/14.png' },
-    { id: '15', title: 'Podpis 7', image: '/Sznurek/15.png' },
-    { id: '16', title: 'Podpis 8', image: '/Sznurek/16.png' },
-    { id: '17', title: 'Podpis 9', image: '/Sznurek/17.png' },
-    { id: '18', title: 'Podpis 10', image: '/Sznurek/18.png' },
+    { id: '9', title: 'Podpis 1', image: '/Sznurek/9.jpg' },
+    { id: '10', title: 'Podpis 2', image: '/Sznurek/10.jpg' },
+    { id: '11', title: 'Podpis 3', image: '/Sznurek/11.jpg' },
+    { id: '12', title: 'Podpis 4', image: '/Sznurek/12.jpg' },
+    { id: '13', title: 'Podpis 5', image: '/Sznurek/13.jpg' },
+    { id: '14', title: 'Podpis 6', image: '/Sznurek/14.jpg' },
+    { id: '15', title: 'Podpis 7', image: '/Sznurek/15.jpg' },
+    { id: '16', title: 'Podpis 8', image: '/Sznurek/16.jpg' },
+    { id: '17', title: 'Podpis 9', image: '/Sznurek/17.jpg' },
+    { id: '18', title: 'Podpis 10', image: '/Sznurek/18.jpg' },
   ];
 
   const toggleExtraCharm = (id: string) => {
