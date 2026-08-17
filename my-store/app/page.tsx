@@ -160,38 +160,38 @@ export default function Home() {
   );
 
   const ringsList = [
-    { id: 'złoty', title: 'Złoty', image: '/Rings/Gold.png' },
-    { id: 'srebrny', title: 'Srebrny', image: '/Rings/silver.png' },
+    { id: 'złoty', title: 'Złoty', image: '/Rings/Gold.jpg' },
+    { id: 'srebrny', title: 'Srebrny', image: '/Rings/silver.jpg' },
   ];
 
   const goldBases = Array.from({ length: 16 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Baza/${i + 1}.png`,
+    image: `/Baza/${i + 1}.jpg`,
   }));
 
   const silverBases = Array.from({ length: 8 }, (_, i) => ({
     id: String(i + 17),
     title: `Podpis ${i + 17}`,
-    image: `/Baza/${i + 17}.png`,
+    image: `/Baza/${i + 17}.jpg`,
   }));
 
   const charmsList = Array.from({ length: 53 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Charms/${i + 1}.png`,
+    image: `/Charms/${i + 1}.jpg`,
   }));
 
   const karabinersList = Array.from({ length: 12 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Karabinczyk/${i + 1}.png`,
+    image: `/Karabinczyk/${i + 1}.jpg`,
   }));
 
   const premiumStringsList = Array.from({ length: 8 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/Sznurek/${i + 1}.png`,
+    image: `/Sznurek/${i + 1}.jpg`,
   }));
 
   const stopersList = [
