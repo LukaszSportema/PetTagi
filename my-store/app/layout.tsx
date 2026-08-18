@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Outfit } from "next/font/google";
 import "./globals.css";
 
@@ -17,6 +17,12 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "PetTagi",
   description: "Ręcznie tworzone adresówki i biżuteria dla zwierząt.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

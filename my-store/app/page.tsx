@@ -116,6 +116,7 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isHeaderOpen, setIsHeaderOpen] = useState(false);
   const topStackRef = useRef<HTMLDivElement>(null);
+  const stepsScrollRef = useRef<HTMLDivElement>(null);
   const [topStackHeight, setTopStackHeight] = useState(40);
   const totalSteps = 11;
 
@@ -166,8 +167,8 @@ export default function Home() {
   };
 
   const imageGridClass = (count: number) => {
-    if (count <= 1) return 'grid grid-cols-1 gap-10 md:gap-14';
-    return 'grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14';
+    if (count <= 1) return 'grid grid-cols-1 gap-5 md:gap-14';
+    return 'grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-14';
   };
 
   const countryCodes = [
@@ -291,8 +292,8 @@ export default function Home() {
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
 
-  const backButtonClass = "px-5 py-2.5 rounded-none border border-[#D6C7AE] text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-light text-[#161616] hover:bg-[#EBE4D6] transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shrink-0";
-  const nextButtonClass = "px-5 md:px-7 py-2.5 rounded-none bg-[#161616] text-[#F4EFE6] text-[10px] md:text-[11px] uppercase tracking-[0.22em] font-light hover:bg-[#3A3A3A] transition-colors duration-300 whitespace-nowrap shrink-0";
+  const backButtonClass = "px-2.5 sm:px-5 py-2.5 rounded-none border border-[#D6C7AE] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light text-[#161616] hover:bg-[#EBE4D6] transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shrink-0";
+  const nextButtonClass = "px-2.5 sm:px-7 py-2.5 rounded-none bg-[#161616] text-[#F4EFE6] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light hover:bg-[#3A3A3A] transition-colors duration-300 whitespace-nowrap shrink-0";
 
   const renderBackButton = () => (
     <button
@@ -300,14 +301,14 @@ export default function Home() {
       disabled={currentStep === 1}
       className={backButtonClass}
     >
-      &larr; Wstecz
+      &larr;<span className="hidden sm:inline"> Wstecz</span>
     </button>
   );
 
   const renderNextButton = () => (
     currentStep < 11 ? (
       <button onClick={nextStep} className={nextButtonClass}>
-        Dalej &rarr;
+        Dalej<span className="hidden sm:inline"> &rarr;</span>
       </button>
     ) : (
       <span className="px-4 md:px-6 py-2 text-xs md:text-sm whitespace-nowrap shrink-0 invisible" aria-hidden>
@@ -520,10 +521,10 @@ export default function Home() {
   const isCheckoutValid = !Object.values(checkoutErrors).some(Boolean);
 
   const checkoutInputClass = (hasError: boolean) =>
-    `w-full bg-white rounded-none border px-4 py-3 text-sm focus:outline-none ${
+    `w-full bg-white rounded-none border px-4 py-3 text-base md:text-sm focus:outline-none ${
       showCheckoutErrors && hasError ? 'border-red-400' : 'border-[#D6C7AE] focus:border-[#C4A574]'
     }`;
-  const checkoutLabelClass = 'block text-[11px] font-light tracking-[0.22em] text-[#9A9288] uppercase mb-1.5';
+  const checkoutLabelClass = 'block text-[11px] font-light tracking-[0.12em] md:tracking-[0.22em] text-[#9A9288] uppercase mb-1.5';
   const requiredMark = <span className="text-[#161616]"> *</span>;
   const checkoutFieldError = (show: boolean, message: string) =>
     show ? <p className="text-xs text-red-500 mt-1">{message}</p> : null;
@@ -724,6 +725,15 @@ export default function Home() {
   }, [isHeaderOpen, activeTab]);
 
   useEffect(() => {
+    const container = stepsScrollRef.current;
+    if (!container || activeTab !== 'configurator') return;
+    const active = container.querySelector<HTMLElement>(`[data-step="${currentStep}"]`);
+    if (!active) return;
+    const left = active.offsetLeft - container.clientWidth / 2 + active.offsetWidth / 2;
+    container.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }, [currentStep, activeTab]);
+
+  useEffect(() => {
     return () => {
       if (addedToCartTimeoutRef.current) clearTimeout(addedToCartTimeoutRef.current);
       if (removedFromCartTimeoutRef.current) clearTimeout(removedFromCartTimeoutRef.current);
@@ -731,28 +741,28 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F4EFE6] text-[#161616] flex flex-col font-sans selection:bg-[#D6C7AE]">
+    <div className="min-h-screen bg-[#F4EFE6] text-[#161616] flex flex-col font-sans selection:bg-[#D6C7AE] overflow-x-hidden">
       {showRemovedFromCart && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-[#161616] text-[#F4EFE6] px-6 py-3 rounded-full shadow-lg text-sm font-medium">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[70] bg-[#161616] text-[#F4EFE6] px-6 py-3 rounded-full shadow-lg text-sm font-medium text-center">
           Usunięto produkt z koszyka
         </div>
       )}
-      <div ref={topStackRef} className="sticky top-0 z-50 bg-[#F4EFE6]">
-        <div className="bg-[#161616] text-[#F4EFE6] px-6 py-2.5 text-center">
-          <p className="text-[10px] md:text-[11px] uppercase tracking-[0.28em] font-light">
+      <div ref={topStackRef} className="sticky top-0 z-50 bg-[#F4EFE6] pt-[env(safe-area-inset-top)]">
+        <div className="bg-[#161616] text-[#F4EFE6] px-4 md:px-6 py-2 md:py-2.5 text-center">
+          <p className="text-[10px] md:text-[11px] uppercase tracking-[0.14em] md:tracking-[0.28em] font-light">
             Darmowa dostawa od 299 zł
           </p>
         </div>
         {/* Pasek sterujący zwijaniem górnej belki */}
-        <div className="bg-[#EBE4D6] border-b border-[#D6C7AE] px-6 py-2 text-xs flex justify-between items-center">
-          <span className="font-medium text-[#7A736C]">
+        <div className="bg-[#EBE4D6] border-b border-[#D6C7AE] px-3 md:px-6 py-2 text-xs flex justify-between items-center gap-2">
+          <span className="font-medium text-[#7A736C] truncate min-w-0 hidden sm:block">
             {activeTab === 'configurator' ? 'Tryb konfiguratora' : activeTab === 'cart' ? 'Koszyk' : activeTab === 'checkout' && placedOrder ? 'Dziękujemy' : activeTab === 'checkout' ? 'Dane i dostawa' : activeTab === 'admin' ? 'Panel administratora' : `Zakładka: ${activeTab}`}
           </span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 ml-auto">
             <button
               type="button"
               onClick={() => goToTab('admin')}
-              className={`px-4 py-1.5 rounded-none text-[10px] uppercase tracking-[0.2em] font-light transition-colors duration-300 ${
+              className={`px-3 md:px-4 py-1.5 rounded-none text-[10px] uppercase tracking-[0.2em] font-light transition-colors duration-300 ${
                 activeTab === 'admin'
                   ? 'bg-[#161616] text-[#F4EFE6]'
                   : 'bg-transparent text-[#161616] border border-[#D6C7AE] hover:border-[#161616]'
@@ -762,9 +772,10 @@ export default function Home() {
             </button>
             <button
               onClick={() => setIsHeaderOpen(!isHeaderOpen)}
-              className="text-[10px] uppercase tracking-[0.2em] font-light text-[#161616] hover:text-[#C4A574] transition-colors flex items-center gap-1"
+              className="text-[10px] uppercase tracking-[0.2em] font-light text-[#161616] hover:text-[#C4A574] transition-colors flex items-center gap-1 shrink-0"
             >
-              {isHeaderOpen ? '▲ Zwiń górne menu' : '▼ Pokaż górne menu'}
+              <span className="sm:hidden">{isHeaderOpen ? 'Zwiń' : 'Menu'}</span>
+              <span className="hidden sm:inline">{isHeaderOpen ? '▲ Zwiń górne menu' : '▼ Pokaż górne menu'}</span>
             </button>
           </div>
         </div>
@@ -773,9 +784,9 @@ export default function Home() {
         <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isHeaderOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
           <div className="overflow-hidden">
             <header className="border-b border-[#D6C7AE] bg-[#F4EFE6]/90 backdrop-blur-md">
-              <div className="max-w-6xl mx-auto px-8 md:px-12 h-28 flex items-center justify-between">
-                <div className="flex items-center gap-4 cursor-pointer" onClick={() => goToTab('home')}>
-                  <span className="font-serif font-light text-3xl tracking-[0.18em] uppercase text-[#161616]">
+              <div className="max-w-6xl mx-auto px-5 md:px-12 h-16 md:h-28 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-4 cursor-pointer min-w-0" onClick={() => goToTab('home')}>
+                  <span className="font-serif font-light text-2xl md:text-3xl tracking-[0.12em] md:tracking-[0.18em] uppercase text-[#161616]">
                     PetTagi
                   </span>
                 </div>
@@ -801,46 +812,81 @@ export default function Home() {
                   </button>
                 </nav>
 
-                <div>
+                <div className="shrink-0">
                   <button 
                     onClick={() => goToTab('cart')}
-                    className={`bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-7 py-3 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
+                    className={`bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-3 md:px-7 py-2 md:py-3 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
                   >
                     <span>Koszyk</span>
                     <span className="bg-[#3A3A3A] text-[#F4EFE6] px-2 py-0.5 rounded-full text-xs">{cartCount}</span>
                   </button>
                 </div>
               </div>
+              <nav className="md:hidden flex flex-col gap-3 px-5 pb-5 pt-3 border-t border-[#D6C7AE]">
+                <button
+                  onClick={() => {
+                    goToTab('home');
+                    setIsHeaderOpen(false);
+                  }}
+                  className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'home' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
+                >
+                  O nas
+                </button>
+                <button
+                  onClick={() => {
+                    goToTab('products');
+                    setIsHeaderOpen(false);
+                  }}
+                  className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'products' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
+                >
+                  Produkty
+                </button>
+                <button
+                  onClick={() => {
+                    goToTab('configurator');
+                    setIsHeaderOpen(false);
+                  }}
+                  className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'configurator' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
+                >
+                  Skonfiguruj adresówkę
+                </button>
+              </nav>
             </header>
           </div>
         </div>
 
         {activeTab === 'configurator' && (
           <div className="bg-white border-b border-[#D6C7AE] py-2 shadow-xs">
-            <div className="px-3 md:px-4 flex items-center gap-2 md:gap-4">
+            <div className="px-2 md:px-4 flex items-center gap-2 md:gap-4">
               {renderBackButton()}
               <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1.5">
-                  {stepsInfo.map((step) => (
-                    <div 
-                      key={step.id} 
-                      className={`flex flex-col items-center gap-0.5 transition-all duration-300 ${
-                        step.id === currentStep ? 'scale-105 opacity-100' : 'opacity-40'
-                      }`}
-                    >
-                      <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm border-2 ${
-                        step.id === currentStep ? 'border-[#161616] bg-[#F4EFE6]' : 'border-[#D6C7AE] bg-white'
-                      }`}>
-                        {step.icon}
+                <div
+                  ref={stepsScrollRef}
+                  className="overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  <div className="flex items-center gap-3 md:gap-0 md:justify-between w-max md:w-full mb-1.5 px-1">
+                    {stepsInfo.map((step) => (
+                      <div
+                        key={step.id}
+                        data-step={step.id}
+                        className={`flex flex-col items-center gap-0.5 shrink-0 w-9 md:w-auto transition-all duration-300 ${
+                          step.id === currentStep ? 'scale-105 opacity-100' : 'opacity-40'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm border-2 ${
+                          step.id === currentStep ? 'border-[#161616] bg-[#F4EFE6]' : 'border-[#D6C7AE] bg-white'
+                        }`}>
+                          {step.icon}
+                        </div>
+                        <span className="text-[7px] md:text-[8px] font-medium uppercase tracking-wider hidden md:block">{step.label}</span>
                       </div>
-                      <span className="text-[7px] md:text-[8px] font-medium uppercase tracking-wider hidden md:block">{step.label}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
                 <div className="h-1 bg-[#D6C7AE] rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-[#161616] transition-all duration-500" 
-                    style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }} 
+                  <div
+                    className="h-full bg-[#161616] transition-all duration-500"
+                    style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}
                   />
                 </div>
               </div>
@@ -850,13 +896,13 @@ export default function Home() {
         )}
       </div>
 
-      <main className="flex-grow">
+      <main className="flex-grow pb-[env(safe-area-inset-bottom)]">
         
         {/* ZAKŁADKA: O nas */}
         {activeTab === 'home' && (
-          <div className="max-w-4xl mx-auto px-8 md:px-12 py-28 space-y-16 text-center">
-            <span className="text-[#C4A574] font-light uppercase tracking-[0.28em] text-[11px]">Witaj w świecie PetTagi</span>
-            <h1 className="text-5xl md:text-7xl font-serif font-light text-[#161616] leading-[1.15]">
+          <div className="max-w-4xl mx-auto px-5 md:px-12 py-12 md:py-28 space-y-10 md:space-y-16 text-center">
+            <span className="text-[#C4A574] font-light uppercase tracking-[0.22em] md:tracking-[0.28em] text-[11px]">Witaj w świecie PetTagi</span>
+            <h1 className="text-4xl md:text-7xl font-serif font-light text-[#161616] leading-[1.15]">
               Tworzymy wyjątkowe akcesoria dla Twojego pupila
             </h1>
             <p className="text-base md:text-lg text-[#7A736C] max-w-2xl mx-auto leading-relaxed font-light">
@@ -865,12 +911,12 @@ export default function Home() {
             <div className="pt-4">
               <button 
                 onClick={() => goToTab('configurator')}
-                className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
+                className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
               >
                 Przejdź do kreatora adresówek
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16 pt-16 text-left border-t border-[#D6C7AE]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pt-10 md:pt-16 text-left border-t border-[#D6C7AE]">
               <div className="space-y-3">
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#C4A574] font-light">Opis</p>
                 <p className="text-sm text-[#7A736C] font-light leading-relaxed">Adresówki o rzeźbiarskim charakterze, projektowane tak, by łączyć urodę biżuterii z codzienną funkcją identyfikacji.</p>
@@ -889,14 +935,14 @@ export default function Home() {
 
         {/* ZAKŁADKA: Produkty */}
         {activeTab === 'products' && (
-          <div className="max-w-5xl mx-auto px-8 md:px-12 py-24 space-y-16">
+          <div className="max-w-5xl mx-auto px-5 md:px-12 py-12 md:py-24 space-y-12 md:space-y-16">
             <div className="text-center space-y-5">
               <span className="text-[#C4A574] font-light uppercase tracking-[0.28em] text-[11px]">Kolekcja</span>
               <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616]">Nasze produkty</h1>
               <p className="text-sm text-[#7A736C] font-light tracking-wide">Ręcznie tworzone adresówki i akcesoria o rzeźbiarskim detalu.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20">
               <div className="space-y-6">
                 <div className="w-full aspect-[4/5] bg-[#EFE8DC] flex items-center justify-center text-5xl border border-[#D6C7AE]">💍</div>
                 <h3 className="text-2xl md:text-3xl font-serif font-light">Personalizowane adresówki</h3>
@@ -926,15 +972,15 @@ export default function Home() {
 
         {/* ZAKŁADKA: Koszyk */}
         {activeTab === 'cart' && (
-          <div className="max-w-6xl mx-auto px-8 md:px-12 py-16 md:py-20">
-            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-14">Twój koszyk</h1>
+          <div className="max-w-6xl mx-auto px-5 md:px-12 py-10 md:py-20">
+            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-8 md:mb-14">Twój koszyk</h1>
 
             {cartItems.length === 0 ? (
-              <div className="bg-white rounded-3xl p-10 text-center space-y-4 border border-[#D6C7AE]">
+              <div className="bg-white rounded-3xl p-6 md:p-10 text-center space-y-4 border border-[#D6C7AE]">
                 <p className="text-[#7A736C]">Twój koszyk jest pusty.</p>
                 <button
                   onClick={() => goToTab('configurator')}
-                  className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-10 py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
+                  className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
                 >
                   Skonfiguruj adresówkę
                 </button>
@@ -953,7 +999,7 @@ export default function Home() {
                       >
                         ×
                       </button>
-                      <div className="w-24 h-24 md:w-32 md:h-32 overflow-hidden bg-[#EFE8DC] shrink-0 border border-[#D6C7AE]">
+                      <div className="w-20 h-20 md:w-32 md:h-32 overflow-hidden bg-[#EFE8DC] shrink-0 border border-[#D6C7AE]">
                         <img src={item.image} alt="Adresówka" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0 pr-8">
@@ -985,7 +1031,7 @@ export default function Home() {
                   })}
                 </div>
 
-                <aside className="w-full lg:w-[380px] shrink-0 bg-[#EBE4D6] p-8 md:p-10 space-y-6">
+                <aside className="w-full lg:w-[380px] shrink-0 bg-[#EBE4D6] p-5 md:p-10 space-y-6">
                   <h2 className="text-2xl font-serif font-light text-[#161616]">Podsumowanie zamówienia</h2>
                   <div className="space-y-2 text-sm text-[#7A736C] pt-2">
                     <div className="flex justify-between">
@@ -1020,11 +1066,11 @@ export default function Home() {
 
         {/* ZAKŁADKA: Dane i dostawa */}
         {activeTab === 'checkout' && placedOrder && (
-          <div className="max-w-3xl mx-auto px-8 md:px-12 py-16 md:py-20">
-            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-14">
+          <div className="max-w-3xl mx-auto px-5 md:px-12 py-10 md:py-20">
+            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-8 md:mb-14">
               Dziękujemy za złożenie zamówienia
             </h1>
-            <div className="bg-white rounded-3xl border border-[#D6C7AE] p-6 md:p-8 space-y-6">
+            <div className="bg-white rounded-3xl border border-[#D6C7AE] p-5 md:p-8 space-y-6">
               <div>
                 <p className="font-bold text-[#161616] mb-3">
                   Dokonaj płatności kwoty {formatPrice(placedOrder.total)}:
@@ -1037,7 +1083,7 @@ export default function Home() {
                     <p>- przelewem na rachunek bankowy:</p>
                     <div className="mt-1 font-medium pl-3">
                       <p>{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountName}</p>
-                      <p>{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountNumber}</p>
+                      <p className="break-all">{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountNumber}</p>
                     </div>
                   </div>
                 </div>
@@ -1053,21 +1099,21 @@ export default function Home() {
         )}
 
         {activeTab === 'checkout' && !placedOrder && (
-          <div className="max-w-6xl mx-auto px-8 md:px-12 py-16 md:py-20">
+          <div className="max-w-6xl mx-auto px-5 md:px-12 py-10 md:py-20">
             <button
               onClick={() => goToTab('cart')}
               className="text-[#161616] text-sm font-medium mb-6 hover:underline"
             >
               ← Wróć do koszyka
             </button>
-            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-14">Dane i dostawa</h1>
+            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-8 md:mb-14">Dane i dostawa</h1>
 
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               <div className="flex-1 space-y-10 w-full">
                 <section>
                   <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">1</span>
-                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616]">Dane do wysyłki</h2>
+                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">1</span>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Dane do wysyłki</h2>
                   </div>
 
                   <div className="space-y-4">
@@ -1129,7 +1175,7 @@ export default function Home() {
                           <select
                             value={checkoutData.phoneCode}
                             onChange={(e) => updateCheckoutField('phoneCode', e.target.value)}
-                            className={`w-[3.85rem] shrink-0 appearance-none bg-white rounded-xl border pl-1.5 pr-4 py-3 text-sm focus:outline-none bg-[length:10px] bg-[right_5px_center] bg-no-repeat ${
+                            className={`w-[3.85rem] shrink-0 appearance-none bg-white rounded-xl border pl-1.5 pr-4 py-3 text-base md:text-sm focus:outline-none bg-[length:10px] bg-[right_5px_center] bg-no-repeat ${
                               showCheckoutErrors && checkoutErrors.phone ? 'border-red-400' : 'border-[#D6C7AE] focus:border-[#161616]'
                             }`}
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
@@ -1203,8 +1249,8 @@ export default function Home() {
 
                 <section>
                   <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">2</span>
-                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616]">Czas realizacji</h2>
+                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">2</span>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Czas realizacji</h2>
                   </div>
                   <div className="space-y-4">
                     <p className="bg-[#EBE4D6] rounded-2xl px-5 py-4 text-sm text-[#7A736C]">
@@ -1232,10 +1278,10 @@ export default function Home() {
 
                 <section>
                   <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">3</span>
-                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616]">Metoda wysyłki</h2>
+                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">3</span>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Metoda wysyłki</h2>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 max-w-xl mx-auto">
+                  <div className="grid grid-cols-2 gap-2 md:gap-4 max-w-xl mx-auto">
                     {shippingOptions.map((option) => {
                       const isSelected = checkoutData.shippingMethod === option.id;
                       return (
@@ -1250,16 +1296,16 @@ export default function Home() {
                               pickupPointAddress: option.id === 'paczkomat' ? prev.pickupPointAddress : '',
                             }));
                           }}
-                          className={`bg-white rounded-2xl p-5 border-2 transition-all flex flex-col items-center ${
+                          className={`bg-white rounded-2xl p-3 md:p-5 border-2 transition-all flex flex-col items-center ${
                             isSelected ? 'border-[#161616] shadow-md' : 'border-[#D6C7AE] hover:border-[#C4A574]'
                           } ${showCheckoutErrors && checkoutErrors.shippingMethod ? 'border-red-400' : ''}`}
                         >
                           <img
                             src={option.image}
                             alt={`InPost ${option.title}`}
-                            className="h-16 w-auto max-w-[200px] object-contain"
+                            className="h-12 md:h-16 w-auto max-w-full object-contain"
                           />
-                          <span className="mt-3 font-bold text-base text-[#161616]">{formatPrice(option.price)}</span>
+                          <span className="mt-3 font-bold text-sm md:text-base text-[#161616]">{formatPrice(option.price)}</span>
                           <span className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
                             {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
                           </span>
@@ -1301,7 +1347,7 @@ export default function Home() {
                 </section>
               </div>
 
-              <aside className="w-full lg:w-[380px] shrink-0 bg-[#EBE4D6] p-8 md:p-10 space-y-6">
+              <aside className="w-full lg:w-[380px] shrink-0 bg-[#EBE4D6] p-5 md:p-10 space-y-6">
                 <h2 className="text-2xl font-serif font-light text-[#161616]">Podsumowanie zamówienia</h2>
 
                 <div className="space-y-4">
@@ -1323,17 +1369,17 @@ export default function Home() {
 
                 <div>
                   <p className="text-sm text-[#7A736C] mb-2">Masz kod rabatowy?</p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       value={discountInput}
                       onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
                       placeholder="KOD RABATOWY..."
-                      className="flex-1 rounded-none border border-[#D6C7AE] bg-white px-4 py-2 text-sm focus:outline-none focus:border-[#C4A574]"
+                      className="flex-1 min-w-0 rounded-none border border-[#D6C7AE] bg-white px-4 py-2 text-base md:text-sm focus:outline-none focus:border-[#C4A574]"
                     />
                     <button
                       onClick={() => setAppliedDiscount(discountInput.trim())}
-                      className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 py-2.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
+                      className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-4 md:px-6 py-2.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
                     >
                       Zastosuj
                     </button>
@@ -1348,14 +1394,14 @@ export default function Home() {
                     <span>Wartość produktów</span>
                     <span className="font-medium text-[#161616]">{formatPrice(cartProductsValue)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-3">
                     <span>Dostawa</span>
-                    <span>{selectedShipping ? formatPrice(selectedShipping.price) : 'wybierz metodę wysyłki'}</span>
+                    <span className="text-right min-w-0">{selectedShipping ? formatPrice(selectedShipping.price) : 'wybierz metodę wysyłki'}</span>
                   </div>
                   {checkoutData.fastDelivery && (
-                    <div className="flex justify-between">
-                      <span>Ekspresowy czas realizacji</span>
-                      <span className="font-medium text-[#161616]">{formatPrice(fastDeliveryCost)}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="min-w-0">Ekspresowy czas realizacji</span>
+                      <span className="font-medium text-[#161616] shrink-0">{formatPrice(fastDeliveryCost)}</span>
                     </div>
                   )}
                 </div>
@@ -1382,7 +1428,7 @@ export default function Home() {
                 <button
                   onClick={submitCheckout}
                   disabled={isPlacingOrder}
-                  className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isPlacingOrder ? 'Składanie zamówienia...' : 'Złóż zamówienie'}
                 </button>
@@ -1398,14 +1444,14 @@ export default function Home() {
         {activeTab === 'configurator' && (
           <div>
             {/* Układ dwukolumnowy z panelem podsumowania po prawej */}
-            <div className={`mx-auto px-8 md:px-12 py-16 md:py-20 flex flex-col gap-12 ${currentStep >= 10 ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
+            <div className={`mx-auto px-4 md:px-12 py-8 md:py-20 flex flex-col gap-8 md:gap-12 ${currentStep >= 10 ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
               
               {/* Kolumna główna (formularz/opcje) */}
-              <div className="flex-grow">
-                <div className="bg-[#F9F5ED] p-8 md:p-16 border border-[#D6C7AE] min-h-[450px] flex flex-col">
-                  <div className="space-y-8">
-                    <span className="text-[#C4A574] font-light uppercase tracking-[0.28em] text-[11px]">Krok {currentStep} z {totalSteps}</span>
-                    <h2 className="text-3xl md:text-4xl font-serif font-light text-[#161616]">
+              <div className="flex-grow min-w-0">
+                <div className="bg-[#F9F5ED] p-4 md:p-16 border border-[#D6C7AE] min-h-0 md:min-h-[450px] flex flex-col">
+                  <div className="space-y-6 md:space-y-8">
+                    <span className="text-[#C4A574] font-light uppercase tracking-[0.22em] md:tracking-[0.28em] text-[11px]">Krok {currentStep} z {totalSteps}</span>
+                    <h2 className="text-2xl md:text-4xl font-serif font-light text-[#161616]">
                       {stepsInfo[currentStep - 1].label}
                     </h2>
                     
@@ -1422,11 +1468,11 @@ export default function Home() {
                                   ringColor: item.id,
                                   baseOption: item.id === 'złoty' ? '1' : '17',
                                 })}
-                                className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                   formData.ringColor === item.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{item.title}</span>
@@ -1449,11 +1495,11 @@ export default function Home() {
                               <div
                                 key={base.id}
                                 onClick={() => setFormData({...formData, baseOption: base.id})}
-                                className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                   formData.baseOption === base.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={base.image} alt={base.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{base.title}</span>
@@ -1474,11 +1520,11 @@ export default function Home() {
                               <div
                                 key={charm.id}
                                 onClick={() => setFormData({...formData, charmOption: charm.id})}
-                                className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                   formData.charmOption === charm.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{charm.title}</span>
@@ -1528,11 +1574,11 @@ export default function Home() {
                                     <div
                                       key={charm.id}
                                       onClick={() => toggleExtraCharm(charm.id)}
-                                      className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                      className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                         isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                       }`}
                                     >
-                                      <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                      <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                         <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
                                       </div>
                                       <span className="text-base font-medium text-[#161616]">{charm.title}</span>
@@ -1556,11 +1602,11 @@ export default function Home() {
                               <div
                                 key={karabiner.id}
                                 onClick={() => setFormData({...formData, karabinerOption: karabiner.id})}
-                                className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                   formData.karabinerOption === karabiner.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
@@ -1610,11 +1656,11 @@ export default function Home() {
                                     <div
                                       key={karabiner.id}
                                       onClick={() => toggleExtraKarabiner(karabiner.id)}
-                                      className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                      className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                         isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                       }`}
                                     >
-                                      <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                      <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                         <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
                                       </div>
                                       <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
@@ -1687,11 +1733,11 @@ export default function Home() {
                                       <div
                                         key={item.id}
                                         onClick={() => togglePremiumString(item.id)}
-                                        className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                           isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                         }`}
                                       >
-                                        <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                           <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                                         </div>
                                         <span className="text-base font-medium text-[#161616]">{item.title}</span>
@@ -1713,11 +1759,11 @@ export default function Home() {
                                       <div
                                         key={item.id}
                                         onClick={() => toggleClassicString(item.id)}
-                                        className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                           isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                         }`}
                                       >
-                                        <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                           <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                                         </div>
                                         <span className="text-base font-medium text-[#161616]">{item.title}</span>
@@ -1769,11 +1815,11 @@ export default function Home() {
                                   <div
                                     key={stoper.id}
                                     onClick={() => setFormData({ ...formData, extraStopers: stoper.id })}
-                                    className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                    className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                       formData.extraStopers === stoper.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                     }`}
                                   >
-                                    <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                    <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                       <img src={stoper.image} alt={stoper.title} className="w-full h-full object-cover" />
                                     </div>
                                     <span className="text-base font-medium text-[#161616]">{stoper.title}</span>
@@ -1823,11 +1869,11 @@ export default function Home() {
                                   <div
                                     key={sticker.id}
                                     onClick={() => setFormData({ ...formData, stickerOption: sticker.id })}
-                                    className={`cursor-pointer rounded-none p-6 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                    className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                       formData.stickerOption === sticker.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                     }`}
                                   >
-                                    <div className="w-full aspect-[4/5] bg-[#EFE8DC] mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                    <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                       <img src={sticker.image} alt={sticker.title} className="w-full h-full object-cover" />
                                     </div>
                                     <span className="text-base font-medium text-[#161616]">{sticker.title}</span>
@@ -1874,7 +1920,7 @@ export default function Home() {
                                 if (isLettersOnly(value)) updateFormField('petName', value);
                               }}
                               placeholder="Wpisz imię"
-                              className={`w-full p-3 rounded-xl border bg-white focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.petName ? 'border-red-400' : 'border-[#D6C7AE]'}`}
+                              className={`w-full p-3 rounded-xl border bg-white text-base md:text-sm focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.petName ? 'border-red-400' : 'border-[#D6C7AE]'}`}
                             />
                             {showOrderErrors && orderErrors.petName && (
                               <p className="text-xs text-red-500">Wpisz imię psa (tylko litery).</p>
@@ -1883,11 +1929,11 @@ export default function Home() {
 
                           <div className="space-y-2">
                             <label className="block font-bold text-base text-[#161616]">Numer telefonu</label>
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-3">
                               <select
                                 value={formData.phoneCode}
                                 onChange={(e) => updateFormField('phoneCode', e.target.value)}
-                                className="w-44 p-3 rounded-xl border border-[#D6C7AE] bg-white focus:outline-none focus:border-[#161616]"
+                                className="w-full sm:w-44 p-3 rounded-xl border border-[#D6C7AE] bg-white text-base md:text-sm focus:outline-none focus:border-[#161616]"
                               >
                                 {countryCodes.map((item) => (
                                   <option key={item.code} value={item.code}>{item.label}</option>
@@ -1902,7 +1948,7 @@ export default function Home() {
                                   if (isDigitsOnly(digits)) updateFormField('phoneNumber', digits);
                                 }}
                                 placeholder="Numer telefonu"
-                                className={`flex-1 p-3 rounded-xl border bg-white focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.phoneNumber ? 'border-red-400' : 'border-[#D6C7AE]'}`}
+                                className={`flex-1 p-3 rounded-xl border bg-white text-base md:text-sm focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.phoneNumber ? 'border-red-400' : 'border-[#D6C7AE]'}`}
                               />
                             </div>
                             {showOrderErrors && orderErrors.phoneNumber && (
@@ -1937,7 +1983,7 @@ export default function Home() {
 
               {currentStep < 10 && (
               <div className="w-full lg:w-80 flex-shrink-0">
-                <div className="bg-[#F9F5ED] p-8 border border-[#D6C7AE] sticky space-y-6" style={{ top: topStackHeight + 16 }}>
+                <div className="bg-[#F9F5ED] p-5 md:p-8 border border-[#D6C7AE] sticky space-y-6" style={{ top: topStackHeight + 16 }}>
                   <h3 className="font-serif font-light text-2xl text-[#161616] border-b border-[#D6C7AE] pb-4">
                     Twoje podsumowanie
                   </h3>

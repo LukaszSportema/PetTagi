@@ -274,28 +274,28 @@ export default function FurgonetkaMap({
   };
 
   return (
-    <div className="w-full h-[580px] flex flex-col bg-white">
+    <div className="w-full h-[min(70vh,480px)] md:h-[580px] flex flex-col bg-white">
       <form onSubmit={handleSearch} className="p-3 border-b border-[#D6C7AE]">
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Wpisz miasto, adres lub kod paczkomatu"
-            className="flex-1 rounded-none border border-[#D6C7AE] px-4 py-2 text-sm focus:outline-none focus:border-[#C4A574]"
+            placeholder="Miasto, adres lub kod"
+            className="flex-1 min-w-0 rounded-none border border-[#D6C7AE] px-4 py-2 text-base md:text-sm focus:outline-none focus:border-[#C4A574]"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-5 py-2 rounded-none text-[11px] uppercase tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
+            className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-4 md:px-5 py-2 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
           >
             Szukaj
           </button>
         </div>
       </form>
 
-      <div className="flex-1 flex min-h-0">
-        <div className="relative flex-[1.6] min-w-0">
+      <div className="flex-1 flex min-h-0 flex-col md:flex-row">
+        <div className="relative flex-[1.6] min-h-[200px] min-w-0">
           <div ref={mapElRef} className="absolute inset-0" />
           {loading && (
             <div className="absolute inset-0 z-[500] flex items-center justify-center bg-white/80 text-sm text-[#6E635B]">
@@ -303,7 +303,7 @@ export default function FurgonetkaMap({
             </div>
           )}
         </div>
-        <ul className="w-56 md:w-72 overflow-y-auto border-l border-[#D6C7AE] bg-white">
+        <ul className="h-36 md:h-auto w-full md:w-56 lg:w-72 overflow-y-auto border-t md:border-t-0 md:border-l border-[#D6C7AE] bg-white shrink-0">
           {error && !points.length && <li className="p-3 text-xs text-red-500">{error}</li>}
           {points.map((item) => {
             const isSelected = item.code === selectedCode;
@@ -313,7 +313,7 @@ export default function FurgonetkaMap({
                   type="button"
                   onClick={() => selectPoint(item)}
                   className={`w-full text-left px-3 py-2.5 border-b border-[#F3EFEA] ${
-                    isSelected ? 'bg-[#FFF6CC]' : 'hover:bg-[#FBF9F5]'
+                    isSelected ? 'bg-[#F4EFE6]' : 'hover:bg-[#FBF9F5]'
                   }`}
                 >
                   <p className="text-sm font-bold text-[#2C2623]">{item.code}</p>

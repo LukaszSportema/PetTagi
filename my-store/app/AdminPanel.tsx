@@ -136,10 +136,10 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-8 md:py-12">
+    <div className="max-w-[1400px] mx-auto px-5 md:px-6 py-8 md:py-12">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
         <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616]">Panel administratora</h1>
-        <label className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-1.5 w-full md:w-auto">
           <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
             Odbiorca płatności
           </span>
@@ -147,7 +147,7 @@ export default function AdminPanel() {
             value={paymentRecipient}
             onChange={(e) => changePaymentRecipient(e.target.value as PaymentRecipientId)}
             disabled={isSavingRecipient}
-            className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat disabled:opacity-60"
+            className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat disabled:opacity-60 w-full md:min-w-[220px]"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
           >
             {Object.values(PAYMENT_RECIPIENTS).map((recipient) => (
@@ -358,7 +358,7 @@ function OrderDetailView({
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8 items-start">
-            <section className="flex-1 w-full bg-[#EBE4D6] p-8 md:p-10 space-y-6">
+            <section className="flex-1 w-full bg-[#EBE4D6] p-5 md:p-10 space-y-6">
               <h3 className="text-2xl font-serif font-light text-[#161616]">Podsumowanie zamówienia</h3>
 
               <div className="space-y-4">
@@ -427,7 +427,7 @@ function OrderDetailView({
               </div>
             </section>
 
-            <section className="w-full lg:w-[380px] shrink-0 bg-[#F9F5ED] p-8 space-y-6 border border-[#D6C7AE]">
+            <section className="w-full lg:w-[380px] shrink-0 bg-[#F9F5ED] p-5 md:p-8 space-y-6 border border-[#D6C7AE]">
               <h3 className="text-xl font-bold text-[#161616]">Dane do wysyłki</h3>
               <dl className="space-y-4 text-sm">
                 <DetailField label="Imię i nazwisko" value={`${detail.clientName} ${detail.clientSurname}`.trim()} />
@@ -450,7 +450,7 @@ function OrderDetailView({
               {inpostCode ? (
                 <div className="space-y-3">
                   <p className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">Kod nadania InPost</p>
-                  <p className="text-3xl font-bold tracking-[0.2em] text-[#161616]">{inpostCode}</p>
+                  <p className="text-2xl md:text-3xl font-bold tracking-[0.12em] md:tracking-[0.2em] text-[#161616] break-all">{inpostCode}</p>
                   <p className="text-xs text-[#7A736C]">
                     Napisz ten kod na przesyłce i wpisz go w Paczkomacie albo podaj w punkcie POP.
                   </p>
