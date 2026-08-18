@@ -2,29 +2,20 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
-export type InpostPoint = {
+export type SelectedPickupPoint = {
+  code: string;
   name: string;
-  address?: {
-    line1?: string;
-    city?: string;
-    post_code?: string;
-  };
-  location_description?: string;
+  address: string;
 };
 
 type ApiPoint = {
+  code: string;
   name: string;
-  location?: { latitude: number; longitude: number };
-  location_description?: string | null;
-  address?: { line1?: string };
-  address_details?: { city?: string; post_code?: string };
-};
-
-type AddressSuggestion = {
-  type: 'address';
-  label: string;
-  lat: number;
-  lng: number;
+  latitude: number;
+  longitude: number;
+  street: string;
+  city: string;
+  postcode: string;
 };
 
 type LeafletMap = {
@@ -76,7 +67,7 @@ const loadLeaflet = () => {
       existing.addEventListener(
         'load',
         () => (window.L ? resolve(window.L) : reject(new Error('Leaflet niedostępny'))),
-        { once: true }
+        { once: true },
       );
       return;
     }
@@ -93,21 +84,9 @@ const loadLeaflet = () => {
   return leafletPromise;
 };
 
-const toWidgetPoint = (item: ApiPoint): InpostPoint => ({
-  name: item.name,
-  address: {
-    line1: item.address?.line1,
-    city: item.address_details?.city,
-    post_code: item.address_details?.post_code,
-  },
-  location_description: item.location_description ?? undefined,
-});
-
-export const formatInpostPointAddress = (point: InpostPoint) => {
-  const line = point.address?.line1 ?? '';
-  const code = point.address?.post_code ?? '';
-  const city = point.address?.city ?? '';
-  return [line, [code, city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+const formatPointAddress = (point: ApiPoint) => {
+  const line = [point.street, [point.postcode, point.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return line || point.name;
 };
 
 const markerHtml = (selected: boolean) =>
@@ -127,10 +106,16 @@ const waitForSize = (el: HTMLElement) =>
     requestAnimationFrame(tick);
   });
 
-export default function InpostGeowidget({
+export default function FurgonetkaMap({
+  city,
+  street,
+  postcode,
   onSelect,
 }: {
-  onSelect: (point: InpostPoint) => void;
+  city?: string;
+  street?: string;
+  postcode?: string;
+  onSelect: (point: SelectedPickupPoint) => void;
 }) {
   const mapElRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -138,27 +123,24 @@ export default function InpostGeowidget({
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
 
-  const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [query, setQuery] = useState([street, postcode, city].filter((value) => value?.trim()).join(', '));
   const [points, setPoints] = useState<ApiPoint[]>([]);
-  const [selectedName, setSelectedName] = useState('');
+  const [selectedCode, setSelectedCode] = useState('');
   const [loading, setLoading] = useState(true);
-  const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState('');
 
   const fetchPoints = async (params: string) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/inpost-points?${params}`);
+      const res = await fetch(`/api/furgonetka-points?${params}`);
       const data = (await res.json()) as { items?: ApiPoint[] };
-      const items = (data.items ?? []).filter((item) => item.location?.latitude && item.location?.longitude);
+      const items = data.items ?? [];
       setPoints(items);
-      if (!items.length) setError('Nie znaleziono paczkomatów. Spróbuj innego adresu.');
+      if (!items.length) setError('Nie znaleziono punktów InPost. Spróbuj innego adresu.');
       return items;
     } catch {
-      setError('Nie udało się pobrać listy paczkomatów.');
+      setError('Nie udało się pobrać punktów Furgonetki.');
       setPoints([]);
       return [];
     } finally {
@@ -167,13 +149,13 @@ export default function InpostGeowidget({
   };
 
   const selectPoint = (item: ApiPoint) => {
-    setSelectedName(item.name);
-    setShowSuggestions(false);
-    onSelectRef.current(toWidgetPoint(item));
-    const map = mapRef.current;
-    if (map && item.location) {
-      map.setView([item.location.latitude, item.location.longitude], 16);
-    }
+    setSelectedCode(item.code);
+    onSelectRef.current({
+      code: item.code,
+      name: item.name,
+      address: formatPointAddress(item),
+    });
+    mapRef.current?.setView([item.latitude, item.longitude], 16);
   };
 
   const loadAround = async (lat: number, lng: number, zoom = 14) => {
@@ -205,7 +187,10 @@ export default function InpostGeowidget({
         resizeObserver = new ResizeObserver(() => map.invalidateSize());
         resizeObserver.observe(el);
 
-        if (navigator.geolocation) {
+        const initialQuery = [street, postcode, city].filter((value) => value?.trim()).join(', ');
+        if (initialQuery) {
+          await fetchPoints(`q=${encodeURIComponent(initialQuery)}`);
+        } else if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               if (!cancelled) loadAround(pos.coords.latitude, pos.coords.longitude);
@@ -213,7 +198,7 @@ export default function InpostGeowidget({
             () => {
               if (!cancelled) loadAround(WARSAW[0], WARSAW[1], 12);
             },
-            { timeout: 2500, maximumAge: 60000 }
+            { timeout: 2500, maximumAge: 60000 },
           );
         } else {
           await loadAround(WARSAW[0], WARSAW[1], 12);
@@ -221,7 +206,7 @@ export default function InpostGeowidget({
       } catch {
         if (!cancelled) {
           setLoading(false);
-          setError('Nie udało się wyświetlić mapy paczkomatów.');
+          setError('Nie udało się wyświetlić mapy punktów InPost.');
         }
       }
     };
@@ -246,31 +231,27 @@ export default function InpostGeowidget({
     markersRef.current = [];
 
     points.forEach((item) => {
-      if (!item.location) return;
-      const latlng: [number, number] = [item.location.latitude, item.location.longitude];
-      const marker = L.marker(latlng, {
+      const marker = L.marker([item.latitude, item.longitude], {
         icon: L.divIcon({
           className: '',
-          html: markerHtml(item.name === selectedName),
-          iconSize: item.name === selectedName ? [22, 22] : [16, 16],
-          iconAnchor: item.name === selectedName ? [11, 11] : [8, 8],
+          html: markerHtml(item.code === selectedCode),
+          iconSize: item.code === selectedCode ? [22, 22] : [16, 16],
+          iconAnchor: item.code === selectedCode ? [11, 11] : [8, 8],
         }),
       }).addTo(map);
       marker.on('click', () => selectPoint(item));
       markersRef.current.push(marker);
     });
-  }, [points, selectedName]);
+  }, [points, selectedCode]);
 
   useEffect(() => {
     const map = mapRef.current;
     const L = window.L;
     if (!map || !L || points.length === 0) return;
-    const latlngs = points
-      .filter((item) => item.location)
-      .map((item) => [item.location!.latitude, item.location!.longitude] as [number, number]);
+    const latlngs = points.map((item) => [item.latitude, item.longitude] as [number, number]);
     if (latlngs.length > 1) {
       map.fitBounds(L.latLngBounds(latlngs), { padding: [28, 28] });
-    } else if (latlngs.length === 1) {
+    } else {
       map.setView(latlngs[0], 15);
     }
     setTimeout(() => map.invalidateSize(), 50);
@@ -278,26 +259,10 @@ export default function InpostGeowidget({
 
   useEffect(() => {
     const value = query.trim();
-    if (value.length < 2) {
-      setSuggestions([]);
-      setSuggesting(false);
-      return;
-    }
-
-    const timeout = setTimeout(async () => {
-      setSuggesting(true);
-      try {
-        const res = await fetch(`/api/inpost-points?suggest=1&q=${encodeURIComponent(value)}`);
-        const data = (await res.json()) as { items?: AddressSuggestion[] };
-        setSuggestions(data.items ?? []);
-        setShowSuggestions(true);
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setSuggesting(false);
-      }
+    if (value.length < 2) return;
+    const timeout = setTimeout(() => {
+      fetchPoints(`q=${encodeURIComponent(value)}`);
     }, 280);
-
     return () => clearTimeout(timeout);
   }, [query]);
 
@@ -305,64 +270,28 @@ export default function InpostGeowidget({
     event?.preventDefault();
     const value = query.trim();
     if (!value) return;
-    setShowSuggestions(false);
-    if (suggestions[0]) {
-      await loadAround(suggestions[0].lat, suggestions[0].lng);
-      return;
-    }
     await fetchPoints(`q=${encodeURIComponent(value)}`);
-  };
-
-  const pickSuggestion = async (item: AddressSuggestion) => {
-    setQuery(item.label);
-    setShowSuggestions(false);
-    setSuggestions([]);
-    await loadAround(item.lat, item.lng);
   };
 
   return (
     <div className="w-full h-[580px] flex flex-col bg-white">
-      <form onSubmit={handleSearch} className="p-3 border-b border-[#E8E2D8] space-y-2">
+      <form onSubmit={handleSearch} className="p-3 border-b border-[#D6C7AE]">
         <div className="flex gap-2">
           <input
             type="text"
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setShowSuggestions(true);
-            }}
-            onFocus={() => {
-              if (suggestions.length) setShowSuggestions(true);
-            }}
-            placeholder="Wpisz adres, miasto lub kod pocztowy"
-            className="flex-1 rounded-full border border-[#E8E2D8] px-4 py-2 text-sm focus:outline-none focus:border-[#4A90E2]"
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Wpisz miasto, adres lub kod paczkomatu"
+            className="flex-1 rounded-none border border-[#D6C7AE] px-4 py-2 text-sm focus:outline-none focus:border-[#C4A574]"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-[#FFCC00] hover:bg-[#f0c000] text-black px-4 py-2 rounded-full text-sm font-bold shrink-0"
+            className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-5 py-2 rounded-none text-[11px] uppercase tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
           >
             Szukaj
           </button>
         </div>
-        {showSuggestions && (suggesting || suggestions.length > 0) && (
-          <ul className="border border-[#E8E2D8] rounded-xl overflow-hidden max-h-48 overflow-y-auto bg-white">
-            {suggesting && !suggestions.length && (
-              <li className="px-4 py-2 text-sm text-[#9A918A]">Szukam adresów...</li>
-            )}
-            {suggestions.map((item) => (
-              <li key={`${item.label}-${item.lat}-${item.lng}`}>
-                <button
-                  type="button"
-                  onClick={() => pickSuggestion(item)}
-                  className="w-full text-left px-4 py-2.5 text-sm text-[#2C2623] hover:bg-[#FBF9F5] border-b border-[#F3EFEA] last:border-b-0"
-                >
-                  {item.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
       </form>
 
       <div className="flex-1 flex min-h-0">
@@ -370,16 +299,16 @@ export default function InpostGeowidget({
           <div ref={mapElRef} className="absolute inset-0" />
           {loading && (
             <div className="absolute inset-0 z-[500] flex items-center justify-center bg-white/80 text-sm text-[#6E635B]">
-              Ładowanie mapy paczkomatów...
+              Ładowanie punktów InPost...
             </div>
           )}
         </div>
-        <ul className="w-56 md:w-72 overflow-y-auto border-l border-[#E8E2D8] bg-white">
+        <ul className="w-56 md:w-72 overflow-y-auto border-l border-[#D6C7AE] bg-white">
           {error && !points.length && <li className="p-3 text-xs text-red-500">{error}</li>}
           {points.map((item) => {
-            const isSelected = item.name === selectedName;
+            const isSelected = item.code === selectedCode;
             return (
-              <li key={item.name}>
+              <li key={item.code}>
                 <button
                   type="button"
                   onClick={() => selectPoint(item)}
@@ -387,14 +316,8 @@ export default function InpostGeowidget({
                     isSelected ? 'bg-[#FFF6CC]' : 'hover:bg-[#FBF9F5]'
                   }`}
                 >
-                  <p className="text-sm font-bold text-[#2C2623]">{item.name}</p>
-                  <p className="text-xs text-[#6E635B]">
-                    {item.address?.line1}
-                    {item.address_details?.city ? `, ${item.address_details.city}` : ''}
-                  </p>
-                  {item.location_description && (
-                    <p className="text-xs text-[#9A918A]">{item.location_description}</p>
-                  )}
+                  <p className="text-sm font-bold text-[#2C2623]">{item.code}</p>
+                  <p className="text-xs text-[#6E635B]">{formatPointAddress(item)}</p>
                 </button>
               </li>
             );
