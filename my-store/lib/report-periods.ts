@@ -75,3 +75,53 @@ export const reportPeriods = (nowIso = new Date().toISOString()): ReportPeriod[]
 
   return periods
 }
+
+export const popularityPeriods = (nowIso = new Date().toISOString()): ReportPeriod[] => {
+  const today = warsawYmd(nowIso)
+  const currentYear = Number(today.slice(0, 4))
+  const currentMonth = Number(today.slice(5, 7))
+  const previousYear = currentYear - 1
+  const currentMonthKey = `${currentYear}-${pad2(currentMonth)}`
+
+  const periods: ReportPeriod[] = [
+    {
+      key: `month-current-${currentMonthKey}`,
+      label: "Bieżący miesiąc",
+      startYmd: `${currentMonthKey}-01`,
+      endYmd: today,
+      highlight: true,
+    },
+  ]
+
+  for (let month = 1; month <= currentMonth; month += 1) {
+    const isCurrent = month === currentMonth
+    periods.push({
+      key: `${currentYear}-${pad2(month)}`,
+      label: monthLabel(currentYear, month),
+      startYmd: `${currentYear}-${pad2(month)}-01`,
+      endYmd: isCurrent
+        ? today
+        : `${currentYear}-${pad2(month)}-${pad2(lastDayOfMonth(currentYear, month))}`,
+      highlight: false,
+    })
+  }
+
+  periods.push(
+    {
+      key: `year-${currentYear}`,
+      label: `Bieżący rok (${currentYear})`,
+      startYmd: `${currentYear}-01-01`,
+      endYmd: today,
+      highlight: true,
+    },
+    {
+      key: `year-${previousYear}`,
+      label: `Poprzedni rok (${previousYear})`,
+      startYmd: `${previousYear}-01-01`,
+      endYmd: `${previousYear}-12-31`,
+      highlight: true,
+    },
+  )
+
+  return periods
+}

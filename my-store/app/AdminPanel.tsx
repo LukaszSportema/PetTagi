@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getAnalyticsReport } from './actions/analytics';
 import { getOrder, listOrders, updateOrderStatus } from './actions/orders';
+import { getPopularityReport } from './actions/popularity';
 import { getRevenueReport } from './actions/revenue';
 import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
 import { generateShippingLabel } from './actions/shipping';
@@ -26,12 +27,15 @@ import {
 } from '@/lib/payment';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
 import type { AnalyticsRow } from '@/lib/analytics-report';
+import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from '@/lib/popularity';
+import type { ReportPeriod } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
 
 const adminTabs = [
   { id: 'orders', label: 'Zamówienia' },
   { id: 'revenue', label: 'Przychody' },
   { id: 'analytics', label: 'Analityka' },
+  { id: 'popularity', label: 'Popularność' },
 ] as const;
 
 const statusClass: Record<OrderStatus, string> = {
@@ -68,6 +72,10 @@ export default function AdminPanel() {
   const [analyticsError, setAnalyticsError] = useState('');
   const [analyticsWarning, setAnalyticsWarning] = useState('');
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [popularityRows, setPopularityRows] = useState<PopularityRow[]>([]);
+  const [popularityPeriods, setPopularityPeriods] = useState<ReportPeriod[]>([]);
+  const [popularityError, setPopularityError] = useState('');
+  const [isLoadingPopularity, setIsLoadingPopularity] = useState(false);
   const paymentRecipientVersion = useRef(0);
 
   useEffect(() => {
@@ -179,6 +187,30 @@ export default function AdminPanel() {
         setAnalyticsRows(result.rows);
       }
       setIsLoadingAnalytics(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAdminTab]);
+
+  useEffect(() => {
+    if (activeAdminTab !== 'popularity') return;
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingPopularity(true);
+      const result = await getPopularityReport();
+      if (cancelled) return;
+      if (!result.ok) {
+        setPopularityError(result.message);
+        setPopularityRows([]);
+        setPopularityPeriods([]);
+      } else {
+        setPopularityError('');
+        setPopularityRows(result.rows);
+        setPopularityPeriods(result.periods);
+      }
+      setIsLoadingPopularity(false);
     };
     load();
     return () => {
@@ -303,6 +335,107 @@ export default function AdminPanel() {
           isLoading={isLoadingAnalytics}
         />
       )}
+
+      {activeAdminTab === 'popularity' && (
+        <PopularityTable
+          rows={popularityRows}
+          periods={popularityPeriods}
+          error={popularityError}
+          isLoading={isLoadingPopularity}
+        />
+      )}
+    </div>
+  );
+}
+
+function PopularityTable({
+  rows,
+  periods,
+  error,
+  isLoading,
+}: {
+  rows: PopularityRow[];
+  periods: ReportPeriod[];
+  error: string;
+  isLoading: boolean;
+}) {
+  const [selectedGroup, setSelectedGroup] = useState(DEFAULT_POPULARITY_GROUP);
+
+  if (isLoading) {
+    return <p className="text-sm text-[#7A736C]">Ładowanie popularności...</p>;
+  }
+
+  if (error) {
+    return <p className="text-sm text-red-500">{error}</p>;
+  }
+
+  const formatCount = (value: number) => value.toLocaleString('pl-PL');
+  const visibleRows = rows.filter((row) => row.groupKey === selectedGroup);
+
+  return (
+    <div className="space-y-4">
+      <label className="flex flex-col gap-1.5 w-full md:w-auto">
+        <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
+          Grupa elementów
+        </span>
+        <select
+          value={selectedGroup}
+          onChange={(event) => setSelectedGroup(event.target.value)}
+          className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat w-full md:min-w-[260px]"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
+        >
+          {POPULARITY_GROUPS.map((group) => (
+            <option key={group.key} value={group.key}>
+              {group.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] text-left text-sm">
+            <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
+              <tr>
+                <th className="px-4 py-3 whitespace-nowrap sticky left-0 bg-[#EFE8DC] z-10">Element</th>
+                {periods.map((period) => (
+                  <th key={period.key} className="px-4 py-3 whitespace-nowrap text-right">
+                    {period.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((row) => (
+                <tr
+                  key={row.key}
+                  className={`border-t border-[#D6C7AE] ${row.isGroup ? 'bg-[#F9F5ED]' : ''}`}
+                >
+                  <td
+                    className={`px-4 py-3 whitespace-nowrap sticky left-0 z-10 ${
+                      row.isGroup
+                        ? 'font-medium text-[#161616] bg-[#F9F5ED]'
+                        : 'pl-8 text-[#7A736C] bg-white'
+                    }`}
+                  >
+                    {row.label}
+                  </td>
+                  {periods.map((period) => (
+                    <td
+                      key={period.key}
+                      className={`px-4 py-3 whitespace-nowrap text-right tabular-nums ${
+                        row.isGroup ? 'font-medium text-[#161616]' : 'text-[#161616]'
+                      }`}
+                    >
+                      {formatCount(row.counts[period.key] ?? 0)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
