@@ -5,6 +5,15 @@ import { createOrder } from './actions/orders';
 import AdminPanel from './AdminPanel';
 import FurgonetkaMap from './FurgonetkaMap';
 import { fulfillmentMessage, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
+import {
+  BASE_TAG_PRICE,
+  CLASSIC_STRING_PRICE,
+  EXTRA_CHARM_PRICE,
+  EXTRA_KARABINER_PRICE,
+  PREMIUM_STRING_PRICE,
+  STICKER_PRICE,
+  STOPPER_PRICE,
+} from '@/lib/pricing';
 
 type FormDataState = {
   ringColor: string;
@@ -135,14 +144,14 @@ export default function Home() {
   const [checkoutSubmitError, setCheckoutSubmitError] = useState('');
 
   // --- LOGIKA OBLICZANIA CENY ---
-  const basePrice = 50;
-  const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * 5 : 0;
-  const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * 5 : 0;
-  const extraStopersCost = formData.wantStopers === 'tak' && formData.extraStopers ? 5 : 0;
-  const stickerCost = formData.wantSticker === 'tak' && formData.stickerOption ? 5 : 0;
+  const basePrice = BASE_TAG_PRICE;
+  const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
+  const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
+  const extraStopersCost = formData.wantStopers === 'tak' && formData.extraStopers ? STOPPER_PRICE : 0;
+  const stickerCost = formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
   
-  const premiumStringsCost = formData.wantString === 'tak' ? formData.premiumStrings.length * 8 : 0;
-  const classicStringsCost = formData.wantString === 'tak' ? formData.classicStrings.length * 6 : 0;
+  const premiumStringsCost = formData.wantString === 'tak' ? formData.premiumStrings.length * PREMIUM_STRING_PRICE : 0;
+  const classicStringsCost = formData.wantString === 'tak' ? formData.classicStrings.length * CLASSIC_STRING_PRICE : 0;
 
   const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost;
 

@@ -25,13 +25,21 @@ export const fulfillmentLabel = (fastDelivery: boolean) =>
   fastDelivery ? "Ekspresowy (3-5 dni roboczych)" : "Standardowy (7-10 dni roboczych)"
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "Oczekujące",
+  pending: "Oczekuje na płatność",
   paid: "Opłacone",
-  processing: "W realizacji",
+  processing: "Zalane",
   shipped: "Wysłane",
   completed: "Zrealizowane",
   cancelled: "Anulowane",
 }
+
+export const ADMIN_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
+  { value: "pending", label: STATUS_LABELS.pending },
+  { value: "paid", label: STATUS_LABELS.paid },
+  { value: "processing", label: STATUS_LABELS.processing },
+  { value: "shipped", label: STATUS_LABELS.shipped },
+  { value: "cancelled", label: STATUS_LABELS.cancelled },
+]
 
 export const statusLabel = (status: OrderStatus) =>
   STATUS_LABELS[status] ?? status

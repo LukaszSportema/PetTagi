@@ -13,6 +13,7 @@ import type {
   OrderItemRecord,
   OrderRecord,
   OrderStatus,
+  UpdateOrderStatusResult,
 } from "@/lib/types/order"
 
 type PlaceOrderRow = {
@@ -305,4 +306,39 @@ export async function saveInpostCode(orderUuid: string, code: string): Promise<v
   if (error) {
     console.error("admin_set_inpost_code failed", error)
   }
+}
+
+const WRITABLE_STATUSES: OrderStatus[] = [
+  "pending",
+  "paid",
+  "processing",
+  "shipped",
+  "cancelled",
+]
+
+export async function updateOrderStatus(
+  orderUuid: string,
+  status: OrderStatus,
+): Promise<UpdateOrderStatusResult> {
+  if (!WRITABLE_STATUSES.includes(status)) {
+    return { ok: false, message: "Nieprawidłowy status zamówienia." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("admin_set_order_status", {
+    p_id: orderUuid,
+    p_status: status,
+  })
+
+  if (error) {
+    console.error("admin_set_order_status failed", error)
+    return {
+      ok: false,
+      message: error.message.includes("admin_set_order_status")
+        ? "Brak funkcji admin_set_order_status w Supabase. Wklej skrypt SQL z supabase/migrations/20260819_order_status.sql."
+        : "Nie udało się zmienić statusu. Spróbuj ponownie.",
+    }
+  }
+
+  return { ok: true }
 }

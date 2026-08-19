@@ -110,3 +110,7 @@ export type ListOrdersResult =
 export type GetOrderResult =
   | { ok: true; order: OrderDetail }
   | { ok: false; message: string }
+
+export type UpdateOrderStatusResult =
+  | { ok: true }
+  | { ok: false; message: string }

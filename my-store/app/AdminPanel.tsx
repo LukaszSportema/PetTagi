@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getOrder, listOrders } from './actions/orders';
+import { getAnalyticsReport } from './actions/analytics';
+import { getOrder, listOrders, updateOrderStatus } from './actions/orders';
+import { getRevenueReport } from './actions/revenue';
 import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
 import { generateShippingLabel } from './actions/shipping';
 import {
+  ADMIN_STATUS_OPTIONS,
   deliveryLabel,
   formatAddress,
   formatOrderDate,
@@ -22,8 +25,14 @@ import {
   type PaymentRecipientId,
 } from '@/lib/payment';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
+import type { AnalyticsRow } from '@/lib/analytics-report';
+import type { RevenueRow } from '@/lib/revenue';
 
-const adminTabs = [{ id: 'orders', label: 'Zamówienia' }] as const;
+const adminTabs = [
+  { id: 'orders', label: 'Zamówienia' },
+  { id: 'revenue', label: 'Przychody' },
+  { id: 'analytics', label: 'Analityka' },
+] as const;
 
 const statusClass: Record<OrderStatus, string> = {
   pending: 'bg-[#EBE4D6] text-[#7A736C]',
@@ -50,6 +59,15 @@ export default function AdminPanel() {
   );
   const [paymentRecipientError, setPaymentRecipientError] = useState('');
   const [isSavingRecipient, setIsSavingRecipient] = useState(false);
+  const [statusError, setStatusError] = useState('');
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [revenueRows, setRevenueRows] = useState<RevenueRow[]>([]);
+  const [revenueError, setRevenueError] = useState('');
+  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
+  const [analyticsRows, setAnalyticsRows] = useState<AnalyticsRow[]>([]);
+  const [analyticsError, setAnalyticsError] = useState('');
+  const [analyticsWarning, setAnalyticsWarning] = useState('');
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const paymentRecipientVersion = useRef(0);
 
   useEffect(() => {
@@ -122,6 +140,72 @@ export default function AdminPanel() {
     };
   }, []);
 
+  useEffect(() => {
+    if (activeAdminTab !== 'revenue') return;
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingRevenue(true);
+      const result = await getRevenueReport();
+      if (cancelled) return;
+      if (!result.ok) {
+        setRevenueError(result.message);
+        setRevenueRows([]);
+      } else {
+        setRevenueError('');
+        setRevenueRows(result.rows);
+      }
+      setIsLoadingRevenue(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAdminTab]);
+
+  useEffect(() => {
+    if (activeAdminTab !== 'analytics') return;
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingAnalytics(true);
+      const result = await getAnalyticsReport();
+      if (cancelled) return;
+      if (!result.ok) {
+        setAnalyticsError(result.message);
+        setAnalyticsWarning('');
+        setAnalyticsRows([]);
+      } else {
+        setAnalyticsError('');
+        setAnalyticsWarning(result.warning ?? '');
+        setAnalyticsRows(result.rows);
+      }
+      setIsLoadingAnalytics(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAdminTab]);
+
+  const changeOrderStatus = async (id: string, status: OrderStatus) => {
+    const previous = orders.find((order) => order.id === id)?.status;
+    setStatusError('');
+    setUpdatingStatusId(id);
+    setOrders((current) => current.map((order) => (order.id === id ? { ...order, status } : order)));
+    setDetail((current) => (current?.id === id ? { ...current, status } : current));
+
+    const result = await updateOrderStatus(id, status);
+    setUpdatingStatusId(null);
+    if (result.ok) return;
+
+    if (previous) {
+      setOrders((current) =>
+        current.map((order) => (order.id === id ? { ...order, status: previous } : order)),
+      );
+      setDetail((current) => (current?.id === id ? { ...current, status: previous } : current));
+    }
+    setStatusError(result.message);
+  };
+
   const changePaymentRecipient = async (value: PaymentRecipientId) => {
     paymentRecipientVersion.current += 1;
     setPaymentRecipientState(value);
@@ -161,8 +245,11 @@ export default function AdminPanel() {
       {paymentRecipientError && (
         <p className="text-sm text-red-500 mb-6">{paymentRecipientError}</p>
       )}
+      {statusError && (
+        <p className="text-sm text-red-500 mb-6">{statusError}</p>
+      )}
 
-      <div className="flex gap-2 mb-8 border-b border-[#D6C7AE]">
+      <div className="flex flex-wrap gap-2 mb-8 border-b border-[#D6C7AE]">
         {adminTabs.map((tab) => (
           <button
             key={tab.id}
@@ -188,6 +275,8 @@ export default function AdminPanel() {
             detail={detail}
             error={detailError}
             isLoading={isLoadingDetail}
+            isUpdatingStatus={updatingStatusId === selectedId}
+            onStatusChange={changeOrderStatus}
             onBack={() => setSelectedId(null)}
           />
         ) : (
@@ -195,10 +284,163 @@ export default function AdminPanel() {
             orders={orders}
             error={listError}
             isLoading={isLoadingList}
+            updatingStatusId={updatingStatusId}
+            onStatusChange={changeOrderStatus}
             onOpen={setSelectedId}
           />
         )
       )}
+
+      {activeAdminTab === 'revenue' && (
+        <RevenueTable rows={revenueRows} error={revenueError} isLoading={isLoadingRevenue} />
+      )}
+
+      {activeAdminTab === 'analytics' && (
+        <AnalyticsTable
+          rows={analyticsRows}
+          error={analyticsError}
+          warning={analyticsWarning}
+          isLoading={isLoadingAnalytics}
+        />
+      )}
+    </div>
+  );
+}
+
+function AnalyticsTable({
+  rows,
+  error,
+  warning,
+  isLoading,
+}: {
+  rows: AnalyticsRow[];
+  error: string;
+  warning: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return <p className="text-sm text-[#7A736C]">Ładowanie analityki...</p>;
+  }
+
+  if (error) {
+    return <p className="text-sm text-red-500">{error}</p>;
+  }
+
+  const formatCount = (value: number) => value.toLocaleString('pl-PL');
+  const columns: { key: keyof Omit<AnalyticsRow, 'key' | 'label'>; label: string }[] = [
+    { key: 'visits', label: 'Wejścia na stronę' },
+    { key: 'orders', label: 'Zamówienia' },
+    { key: 'paidOrders', label: 'Opłacone zamówienia' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {warning && <p className="text-sm text-[#C4A574]">{warning}</p>}
+      <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
+              <tr>
+                <th className="px-4 py-3 whitespace-nowrap">Okres</th>
+                {columns.map((column) => (
+                  <th key={column.key} className="px-4 py-3 whitespace-nowrap text-right">
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr
+                  key={row.key}
+                  className={`border-t border-[#D6C7AE] ${index < 3 ? 'bg-[#F9F5ED]' : ''}`}
+                >
+                  <td className="px-4 py-3 whitespace-nowrap font-medium text-[#161616]">
+                    {row.label}
+                  </td>
+                  {columns.map((column) => (
+                    <td
+                      key={column.key}
+                      className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-[#161616]"
+                    >
+                      {formatCount(row[column.key])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevenueTable({
+  rows,
+  error,
+  isLoading,
+}: {
+  rows: RevenueRow[];
+  error: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return <p className="text-sm text-[#7A736C]">Ładowanie przychodów...</p>;
+  }
+
+  if (error) {
+    return <p className="text-sm text-red-500">{error}</p>;
+  }
+
+  const columns: { key: keyof Omit<RevenueRow, 'key' | 'label'>; label: string }[] = [
+    { key: 'total', label: 'Przychody razem' },
+    { key: 'base', label: 'Bazowe' },
+    { key: 'charms', label: 'Charms' },
+    { key: 'karabiners', label: 'Karabińczyki' },
+    { key: 'strings', label: 'Sznurki' },
+    { key: 'stoppers', label: 'Stopery' },
+    { key: 'stickers', label: 'Naklejki' },
+    { key: 'express', label: 'Ekspresowa realizacja' },
+    { key: 'shipping', label: 'Wysyłka' },
+  ];
+
+  return (
+    <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1100px] text-left text-sm">
+          <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
+            <tr>
+              <th className="px-4 py-3 whitespace-nowrap">Okres</th>
+              {columns.map((column) => (
+                <th key={column.key} className="px-4 py-3 whitespace-nowrap text-right">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr
+                key={row.key}
+                className={`border-t border-[#D6C7AE] ${index < 3 ? 'bg-[#F9F5ED]' : ''}`}
+              >
+                <td className="px-4 py-3 whitespace-nowrap font-medium text-[#161616]">
+                  {row.label}
+                </td>
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-[#161616]"
+                  >
+                    {formatPrice(row[column.key])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -207,11 +449,15 @@ function OrdersTable({
   orders,
   error,
   isLoading,
+  updatingStatusId,
+  onStatusChange,
   onOpen,
 }: {
   orders: OrderRecord[];
   error: string;
   isLoading: boolean;
+  updatingStatusId: string | null;
+  onStatusChange: (id: string, status: OrderStatus) => void;
   onOpen: (id: string) => void;
 }) {
   if (isLoading) {
@@ -283,8 +529,12 @@ function OrdersTable({
                   {order.deliveryType === 'paczkomat' ? order.inpostId || dash : dash}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{order.discountCode || dash}</td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <StatusPill status={order.status} />
+                <td className="px-4 py-3 whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
+                  <StatusSelect
+                    status={order.status}
+                    disabled={updatingStatusId === order.id}
+                    onChange={(status) => onStatusChange(order.id, status)}
+                  />
                 </td>
               </tr>
             ))}
@@ -299,11 +549,15 @@ function OrderDetailView({
   detail,
   error,
   isLoading,
+  isUpdatingStatus,
+  onStatusChange,
   onBack,
 }: {
   detail: OrderDetail | null;
   error: string;
   isLoading: boolean;
+  isUpdatingStatus: boolean;
+  onStatusChange: (id: string, status: OrderStatus) => void;
   onBack: () => void;
 }) {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
@@ -354,7 +608,11 @@ function OrderDetailView({
           <div className="flex flex-wrap items-baseline gap-3 mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-[#161616]">{detail.orderId}</h2>
             <span className="text-sm text-[#7A736C]">{formatOrderDate(detail.createdAt)}</span>
-            <StatusPill status={detail.status} />
+            <StatusSelect
+              status={detail.status}
+              disabled={isUpdatingStatus}
+              onChange={(status) => onStatusChange(detail.id, status)}
+            />
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -490,10 +748,37 @@ function DetailField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatusPill({ status }: { status: OrderStatus }) {
+function StatusSelect({
+  status,
+  disabled,
+  onChange,
+}: {
+  status: OrderStatus;
+  disabled?: boolean;
+  onChange: (status: OrderStatus) => void;
+}) {
+  const options =
+    status === 'completed'
+      ? [{ value: 'completed' as const, label: statusLabel('completed') }, ...ADMIN_STATUS_OPTIONS]
+      : ADMIN_STATUS_OPTIONS;
+
   return (
-    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusClass[status]}`}>
-      {statusLabel(status)}
-    </span>
+    <select
+      value={status}
+      disabled={disabled}
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      onChange={(event) => onChange(event.target.value as OrderStatus)}
+      aria-label="Status zamówienia"
+      className={`appearance-none rounded-none border border-[#D6C7AE] pl-2.5 pr-8 py-1.5 text-xs font-medium focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_8px_center] bg-no-repeat disabled:opacity-60 ${statusClass[status]}`}
+      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
