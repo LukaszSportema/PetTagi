@@ -7,12 +7,15 @@ import FurgonetkaMap from './FurgonetkaMap';
 import { fulfillmentMessage, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
 import {
   BASE_TAG_PRICE,
-  CLASSIC_STRING_PRICE,
+  classicStringUnitPrice,
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
-  PREMIUM_STRING_PRICE,
+  premiumStringUnitPrice,
   STICKER_PRICE,
+  DIAL_CODE_PRICE,
   STOPPER_PRICE,
+  stringSizeFromNeckCm,
+  stringSizeLabel,
 } from '@/lib/pricing';
 
 type FormDataState = {
@@ -123,7 +126,6 @@ const formatPrice = (value: number) => `${value.toFixed(2).replace('.', ',')} z�
 export default function Home() {
   const [activeTab, setActiveTab] = useState('configurator');
   const [currentStep, setCurrentStep] = useState(1);
-  const [isHeaderOpen, setIsHeaderOpen] = useState(false);
   const topStackRef = useRef<HTMLDivElement>(null);
   const stepsScrollRef = useRef<HTMLDivElement>(null);
   const [topStackHeight, setTopStackHeight] = useState(40);
@@ -134,7 +136,6 @@ export default function Home() {
   const [discountInput, setDiscountInput] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState('');
   const [showAddedToCart, setShowAddedToCart] = useState(false);
-  const addedToCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
@@ -149,11 +150,20 @@ export default function Home() {
   const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
   const extraStopersCost = formData.wantStopers === 'tak' && formData.extraStopers ? STOPPER_PRICE : 0;
   const stickerCost = formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
+  const dialCodeCost = formData.includePhoneCode === 'tak' ? DIAL_CODE_PRICE : 0;
   
-  const premiumStringsCost = formData.wantString === 'tak' ? formData.premiumStrings.length * PREMIUM_STRING_PRICE : 0;
-  const classicStringsCost = formData.wantString === 'tak' ? formData.classicStrings.length * CLASSIC_STRING_PRICE : 0;
+  const stringSize = stringSizeFromNeckCm(formData.stringLength);
+  const stringSizeText = stringSizeLabel(stringSize);
+  const premiumStringPrice = premiumStringUnitPrice(stringSize);
+  const classicStringPrice = classicStringUnitPrice(stringSize);
+  const premiumStringsCost = formData.wantString === 'tak' && premiumStringPrice
+    ? formData.premiumStrings.length * premiumStringPrice
+    : 0;
+  const classicStringsCost = formData.wantString === 'tak' && classicStringPrice
+    ? formData.classicStrings.length * classicStringPrice
+    : 0;
 
-  const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost;
+  const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + dialCodeCost;
 
   const stepsInfo = [
     { id: 1, label: 'Obręcz', icon: '💍' },
@@ -172,7 +182,6 @@ export default function Home() {
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
   const goToTab = (tab: string) => {
     setActiveTab(tab);
-    setIsHeaderOpen(tab !== 'configurator' && tab !== 'admin');
   };
 
   const imageGridClass = (count: number) => {
@@ -362,17 +371,23 @@ export default function Home() {
   }));
 
   const stopersList = [
-    { id: '1', title: 'Złote', image: '/stopery/1.png' },
-    { id: '2', title: 'Srebrne', image: '/stopery/2.png' },
+    { id: '1', title: 'Złote', image: '/stopery/1.jpg' },
+    { id: '2', title: 'Srebrne', image: '/stopery/2.jpg' },
   ];
 
   const stickersList = [
-    { id: '1', title: 'Pies 1', image: '/naklejki/1.png' },
-    { id: '2', title: 'Pies 2', image: '/naklejki/2.png' },
-    { id: '3', title: 'Pies 3', image: '/naklejki/3.png' },
-    { id: '4', title: 'Pies 4', image: '/naklejki/4.png' },
-    { id: '5', title: 'Pies 5', image: '/naklejki/5.png' },
-    { id: '6', title: 'Pies 6', image: '/naklejki/6.png' },
+    { id: '1', title: 'Pies 1', image: '/naklejki/1.jpg' },
+    { id: '2', title: 'Pies 2', image: '/naklejki/2.jpg' },
+    { id: '3', title: 'Pies 3', image: '/naklejki/3.jpg' },
+    { id: '4', title: 'Pies 4', image: '/naklejki/4.jpg' },
+    { id: '5', title: 'Pies 5', image: '/naklejki/5.jpg' },
+    { id: '6', title: 'Pies 6', image: '/naklejki/6.jpg' },
+    { id: '7', title: 'Pies 7', image: '/naklejki/7.jpg' },
+    { id: '8', title: 'Pies 8', image: '/naklejki/8.jpg' },
+    { id: '9', title: 'Pies 9', image: '/naklejki/9.jpg' },
+    { id: '10', title: 'Pies 10', image: '/naklejki/10.jpg' },
+    { id: '11', title: 'Pies 11', image: '/naklejki/11.jpg' },
+    { id: '12', title: 'Pies 12', image: '/naklejki/12.jpg' },
   ];
 
   const classicStringsList = [
@@ -435,7 +450,7 @@ export default function Home() {
     if (formData.wantString === 'tak' && formData.stringLength) {
       options.push({
         label: 'Obwód szyi',
-        values: [`${formData.stringLength} cm`],
+        values: [stringSizeText ? `${formData.stringLength} cm (${stringSizeText})` : `${formData.stringLength} cm`],
       });
     }
 
@@ -450,6 +465,13 @@ export default function Home() {
       options.push({
         label: 'Naklejka',
         values: [findTitle(stickersList, formData.stickerOption, `Pies ${formData.stickerOption}`)],
+      });
+    }
+
+    if (formData.includePhoneCode === 'tak') {
+      options.push({
+        label: 'Numer kierunkowy na adresówce',
+        values: [`Tak (+${DIAL_CODE_PRICE} zł)`],
       });
     }
 
@@ -480,15 +502,24 @@ export default function Home() {
     if (!isOrderValid || showAddedToCart) return;
     setCartItems((prev) => [...prev, buildCartItem()]);
     setShowAddedToCart(true);
-    if (addedToCartTimeoutRef.current) clearTimeout(addedToCartTimeoutRef.current);
-    addedToCartTimeoutRef.current = setTimeout(() => {
-      setFormData(initialFormData);
-      setShowOrderErrors(false);
-      setCurrentStep(1);
-      goToTab('configurator');
-      setShowAddedToCart(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 1000);
+  };
+
+  const resetConfigurator = () => {
+    setFormData(initialFormData);
+    setShowOrderErrors(false);
+    setCurrentStep(1);
+    setShowAddedToCart(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goToCartAfterAdd = () => {
+    resetConfigurator();
+    goToTab('cart');
+  };
+
+  const returnToConfiguratorAfterAdd = () => {
+    resetConfigurator();
+    goToTab('configurator');
   };
 
   const removeFromCart = (id: string) => {
@@ -520,9 +551,9 @@ export default function Home() {
     lastName: !checkoutData.lastName.trim(),
     email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutData.email.trim()),
     phone: !isValidPhoneNumber(checkoutData.phoneCode, checkoutData.phone),
-    street: !checkoutData.street.trim(),
-    postalCode: checkoutData.postalCode.replace(/\D/g, '').length !== 5,
-    city: !checkoutData.city.trim(),
+    street: checkoutData.shippingMethod === 'kurier' && !checkoutData.street.trim(),
+    postalCode: checkoutData.shippingMethod === 'kurier' && checkoutData.postalCode.replace(/\D/g, '').length !== 5,
+    city: checkoutData.shippingMethod === 'kurier' && !checkoutData.city.trim(),
     shippingMethod: !checkoutData.shippingMethod,
     pickupPoint: checkoutData.shippingMethod === 'paczkomat' && !checkoutData.pickupPointName,
     acceptTerms: !checkoutData.acceptTerms,
@@ -557,7 +588,9 @@ export default function Home() {
       clientSurname: checkoutData.lastName,
       clientEmail: checkoutData.email,
       clientPhone: `${checkoutData.phoneCode} ${formatPhoneGroups(checkoutData.phone, checkoutData.phoneCode)}`,
-      clientAddress: checkoutData.street,
+      clientAddress: deliveryType === 'paczkomat'
+        ? (checkoutData.pickupPointAddress || checkoutData.street)
+        : checkoutData.street,
       clientPostcode: checkoutData.postalCode,
       clientCity: checkoutData.city,
       deliveryType,
@@ -669,6 +702,13 @@ export default function Home() {
           <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">50 zł</span>
         </div>
 
+        <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+          <span className="min-w-0 pl-3">Darmowy charms x1</span>
+        </div>
+        <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+          <span className="min-w-0 pl-3">Darmowy karabińczyk x1</span>
+        </div>
+
         {formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Dodatkowe charms x{formData.extraCharms.length}</span>
@@ -686,14 +726,22 @@ export default function Home() {
         {formData.wantString === 'tak' && formData.premiumStrings.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Sznurek Premium x{formData.premiumStrings.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.premiumStrings.length * 8} zł (8 zł/szt)</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              {premiumStringPrice
+                ? `+${formData.premiumStrings.length * premiumStringPrice} zł (${premiumStringPrice} zł/szt)`
+                : 'cena wg rozmiaru'}
+            </span>
           </div>
         )}
 
         {formData.wantString === 'tak' && formData.classicStrings.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Sznurek Klasyczny x{formData.classicStrings.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.classicStrings.length * 6} zł (6 zł/szt)</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              {classicStringPrice
+                ? `+${formData.classicStrings.length * classicStringPrice} zł (${classicStringPrice} zł/szt)`
+                : 'cena wg rozmiaru'}
+            </span>
           </div>
         )}
 
@@ -708,6 +756,13 @@ export default function Home() {
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Naklejka (Pies {formData.stickerOption})</span>
             <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
+          </div>
+        )}
+
+        {formData.includePhoneCode === 'tak' && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Numer kierunkowy na adresówce</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{DIAL_CODE_PRICE} zł</span>
           </div>
         )}
       </div>
@@ -731,7 +786,7 @@ export default function Home() {
     const observer = new ResizeObserver(updateHeight);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isHeaderOpen, activeTab]);
+  }, [activeTab]);
 
   useEffect(() => {
     const container = stepsScrollRef.current;
@@ -744,16 +799,50 @@ export default function Home() {
 
   useEffect(() => {
     return () => {
-      if (addedToCartTimeoutRef.current) clearTimeout(addedToCartTimeoutRef.current);
       if (removedFromCartTimeoutRef.current) clearTimeout(removedFromCartTimeoutRef.current);
     };
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F4EFE6] text-[#161616] flex flex-col font-sans selection:bg-[#D6C7AE] overflow-x-hidden">
+    <div className="min-h-screen bg-[#F4EFE6] text-[#161616] flex flex-col font-sans selection:bg-[#D6C7AE] overflow-x-clip">
       {showRemovedFromCart && (
         <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[70] bg-[#161616] text-[#F4EFE6] px-6 py-3 rounded-full shadow-lg text-sm font-medium text-center">
           Usunięto produkt z koszyka
+        </div>
+      )}
+      {showAddedToCart && (
+        <div className="fixed inset-0 z-[80] bg-[#161616]/40 flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="added-to-cart-title"
+            className="w-full max-w-md bg-[#F9F5ED] border border-[#D6C7AE] p-8 md:p-10 space-y-8"
+          >
+            <div className="space-y-3 text-center">
+              <h3 id="added-to-cart-title" className="font-serif font-light text-2xl md:text-3xl text-[#161616]">
+                Dodano do koszyka
+              </h3>
+              <p className="text-sm text-[#7A736C] font-light leading-relaxed">
+                Adresówka jest już w koszyku. Możesz przejść do koszyka albo skonfigurować kolejną.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={goToCartAfterAdd}
+                className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
+              >
+                Przejdź do koszyka
+              </button>
+              <button
+                type="button"
+                onClick={returnToConfiguratorAfterAdd}
+                className="w-full border border-[#D6C7AE] text-[#161616] hover:bg-[#EBE4D6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
+              >
+                Wróć do konfiguratora
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <div ref={topStackRef} className="sticky top-0 z-50 bg-[#F4EFE6] pt-[env(safe-area-inset-top)]">
@@ -762,40 +851,11 @@ export default function Home() {
             Darmowa dostawa od 299 zł
           </p>
         </div>
-        {/* Pasek sterujący zwijaniem górnej belki */}
-        <div className="bg-[#EBE4D6] border-b border-[#D6C7AE] px-3 md:px-6 py-2 text-xs flex justify-between items-center gap-2">
-          <span className="font-medium text-[#7A736C] truncate min-w-0 hidden sm:block">
-            {activeTab === 'configurator' ? 'Tryb konfiguratora' : activeTab === 'cart' ? 'Koszyk' : activeTab === 'checkout' && placedOrder ? 'Dziękujemy' : activeTab === 'checkout' ? 'Dane i dostawa' : activeTab === 'admin' ? 'Panel administratora' : `Zakładka: ${activeTab}`}
-          </span>
-          <div className="flex items-center gap-3 ml-auto">
-            <button
-              type="button"
-              onClick={() => goToTab('admin')}
-              className={`px-3 md:px-4 py-1.5 rounded-none text-[10px] uppercase tracking-[0.2em] font-light transition-colors duration-300 ${
-                activeTab === 'admin'
-                  ? 'bg-[#161616] text-[#F4EFE6]'
-                  : 'bg-transparent text-[#161616] border border-[#D6C7AE] hover:border-[#161616]'
-              }`}
-            >
-              Panel
-            </button>
-            <button
-              onClick={() => setIsHeaderOpen(!isHeaderOpen)}
-              className="text-[10px] uppercase tracking-[0.2em] font-light text-[#161616] hover:text-[#C4A574] transition-colors flex items-center gap-1 shrink-0"
-            >
-              <span className="sm:hidden">{isHeaderOpen ? 'Zwiń' : 'Menu'}</span>
-              <span className="hidden sm:inline">{isHeaderOpen ? '▲ Zwiń górne menu' : '▼ Pokaż górne menu'}</span>
-            </button>
-          </div>
-        </div>
-
         {/* Navbar z zakładkami */}
-        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isHeaderOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-          <div className="overflow-hidden">
-            <header className="border-b border-[#D6C7AE] bg-[#F4EFE6]/90 backdrop-blur-md">
-              <div className="max-w-6xl mx-auto px-5 md:px-12 h-16 md:h-28 flex items-center justify-between gap-3">
+        <header className="border-b border-[#D6C7AE] bg-[#F4EFE6]/90 backdrop-blur-md">
+              <div className="max-w-6xl mx-auto px-5 md:px-12 h-14 md:h-16 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-4 cursor-pointer min-w-0" onClick={() => goToTab('home')}>
-                  <span className="font-serif font-light text-2xl md:text-3xl tracking-[0.12em] md:tracking-[0.18em] uppercase text-[#161616]">
+                  <span className="font-serif font-light text-xl md:text-2xl tracking-[0.12em] md:tracking-[0.18em] uppercase text-[#161616]">
                     PetTagi
                   </span>
                 </div>
@@ -821,10 +881,21 @@ export default function Home() {
                   </button>
                 </nav>
 
-                <div className="shrink-0">
+                <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goToTab('admin')}
+                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 ${
+                      activeTab === 'admin'
+                        ? 'bg-[#161616] text-[#F4EFE6]'
+                        : 'bg-transparent text-[#161616] border border-[#D6C7AE] hover:border-[#161616]'
+                    }`}
+                  >
+                    Panel
+                  </button>
                   <button 
                     onClick={() => goToTab('cart')}
-                    className={`bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-3 md:px-7 py-2 md:py-3 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
+                    className={`bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-3 md:px-5 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
                   >
                     <span>Koszyk</span>
                     <span className="bg-[#3A3A3A] text-[#F4EFE6] px-2 py-0.5 rounded-full text-xs">{cartCount}</span>
@@ -833,36 +904,25 @@ export default function Home() {
               </div>
               <nav className="md:hidden flex flex-col gap-3 px-5 pb-5 pt-3 border-t border-[#D6C7AE]">
                 <button
-                  onClick={() => {
-                    goToTab('home');
-                    setIsHeaderOpen(false);
-                  }}
+                  onClick={() => goToTab('home')}
                   className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'home' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
                 >
                   O nas
                 </button>
                 <button
-                  onClick={() => {
-                    goToTab('products');
-                    setIsHeaderOpen(false);
-                  }}
+                  onClick={() => goToTab('products')}
                   className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'products' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
                 >
                   Produkty
                 </button>
                 <button
-                  onClick={() => {
-                    goToTab('configurator');
-                    setIsHeaderOpen(false);
-                  }}
+                  onClick={() => goToTab('configurator')}
                   className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'configurator' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
                 >
                   Skonfiguruj adresówkę
                 </button>
               </nav>
             </header>
-          </div>
-        </div>
 
         {activeTab === 'configurator' && (
           <div className="bg-white border-b border-[#D6C7AE] py-2 shadow-xs">
@@ -899,7 +959,9 @@ export default function Home() {
                   />
                 </div>
               </div>
-              {renderNextButton()}
+              <div className={currentStep <= 10 ? 'lg:hidden' : undefined}>
+                {renderNextButton()}
+              </div>
             </div>
           </div>
         )}
@@ -1122,6 +1184,76 @@ export default function Home() {
                 <section>
                   <div className="flex items-center gap-3 mb-6">
                     <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">1</span>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Metoda wysyłki</h2>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 md:gap-4 max-w-xl mx-auto">
+                    {shippingOptions.map((option) => {
+                      const isSelected = checkoutData.shippingMethod === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setCheckoutData((prev) => ({
+                              ...prev,
+                              shippingMethod: option.id,
+                              pickupPointName: option.id === 'paczkomat' ? prev.pickupPointName : '',
+                              pickupPointAddress: option.id === 'paczkomat' ? prev.pickupPointAddress : '',
+                            }));
+                          }}
+                          className={`bg-white rounded-2xl p-3 md:p-5 border-2 transition-all flex flex-col items-center ${
+                            isSelected ? 'border-[#161616] shadow-md' : 'border-[#D6C7AE] hover:border-[#C4A574]'
+                          } ${showCheckoutErrors && checkoutErrors.shippingMethod ? 'border-red-400' : ''}`}
+                        >
+                          <img
+                            src={option.image}
+                            alt={`InPost ${option.title}`}
+                            className="h-12 md:h-16 w-auto max-w-full object-contain"
+                          />
+                          <span className="mt-3 font-bold text-sm md:text-base text-[#161616]">{formatPrice(option.price)}</span>
+                          <span className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                            {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {checkoutData.shippingMethod === 'paczkomat' && (
+                    <div className="mt-6 space-y-3">
+                      <p className="font-medium text-[#161616]">Wybierz paczkomat</p>
+                      {checkoutData.pickupPointName && (
+                        <p className="text-sm text-[#7A736C]">
+                          Wybrany paczkomat:{' '}
+                          <span className="font-medium text-[#161616]">
+                            {checkoutData.pickupPointName}
+                            {checkoutData.pickupPointAddress ? `, ${checkoutData.pickupPointAddress}` : ''}
+                          </span>
+                        </p>
+                      )}
+                      <div className="rounded-2xl border border-[#D6C7AE] bg-white overflow-hidden">
+                        <FurgonetkaMap
+                          city={checkoutData.city}
+                          street={checkoutData.street}
+                          postcode={checkoutData.postalCode}
+                          onSelect={(point) => {
+                            setCheckoutData((prev) => ({
+                              ...prev,
+                              pickupPointName: point.code,
+                              pickupPointAddress: point.address,
+                            }));
+                          }}
+                        />
+                      </div>
+                      {showCheckoutErrors && checkoutErrors.pickupPoint && (
+                        <p className="text-xs text-red-500">Wybierz paczkomat na mapie.</p>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                <section>
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">2</span>
                     <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Dane do wysyłki</h2>
                   </div>
 
@@ -1211,6 +1343,8 @@ export default function Home() {
                       </div>
                     </div>
 
+                    {checkoutData.shippingMethod === 'kurier' && (
+                      <>
                     <div>
                       <label className={checkoutLabelClass}>Ulica i numer domu / lokalu{requiredMark}</label>
                       <input
@@ -1253,12 +1387,14 @@ export default function Home() {
                         {checkoutFieldError(showCheckoutErrors && checkoutErrors.city, 'Pole obowiązkowe')}
                       </div>
                     </div>
+                      </>
+                    )}
                   </div>
                 </section>
 
                 <section>
                   <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">2</span>
+                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">3</span>
                     <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Czas realizacji</h2>
                   </div>
                   <div className="space-y-4">
@@ -1283,76 +1419,6 @@ export default function Home() {
                       </span>
                     </label>
                   </div>
-                </section>
-
-                <section>
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">3</span>
-                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Metoda wysyłki</h2>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 md:gap-4 max-w-xl mx-auto">
-                    {shippingOptions.map((option) => {
-                      const isSelected = checkoutData.shippingMethod === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => {
-                            setCheckoutData((prev) => ({
-                              ...prev,
-                              shippingMethod: option.id,
-                              pickupPointName: option.id === 'paczkomat' ? prev.pickupPointName : '',
-                              pickupPointAddress: option.id === 'paczkomat' ? prev.pickupPointAddress : '',
-                            }));
-                          }}
-                          className={`bg-white rounded-2xl p-3 md:p-5 border-2 transition-all flex flex-col items-center ${
-                            isSelected ? 'border-[#161616] shadow-md' : 'border-[#D6C7AE] hover:border-[#C4A574]'
-                          } ${showCheckoutErrors && checkoutErrors.shippingMethod ? 'border-red-400' : ''}`}
-                        >
-                          <img
-                            src={option.image}
-                            alt={`InPost ${option.title}`}
-                            className="h-12 md:h-16 w-auto max-w-full object-contain"
-                          />
-                          <span className="mt-3 font-bold text-sm md:text-base text-[#161616]">{formatPrice(option.price)}</span>
-                          <span className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
-                            {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {checkoutData.shippingMethod === 'paczkomat' && (
-                    <div className="mt-6 space-y-3">
-                      <p className="font-medium text-[#161616]">Wybierz paczkomat</p>
-                      {checkoutData.pickupPointName && (
-                        <p className="text-sm text-[#7A736C]">
-                          Wybrany paczkomat:{' '}
-                          <span className="font-medium text-[#161616]">
-                            {checkoutData.pickupPointName}
-                            {checkoutData.pickupPointAddress ? `, ${checkoutData.pickupPointAddress}` : ''}
-                          </span>
-                        </p>
-                      )}
-                      <div className="rounded-2xl border border-[#D6C7AE] bg-white overflow-hidden">
-                        <FurgonetkaMap
-                          city={checkoutData.city}
-                          street={checkoutData.street}
-                          postcode={checkoutData.postalCode}
-                          onSelect={(point) => {
-                            setCheckoutData((prev) => ({
-                              ...prev,
-                              pickupPointName: point.code,
-                              pickupPointAddress: point.address,
-                            }));
-                          }}
-                        />
-                      </div>
-                      {showCheckoutErrors && checkoutErrors.pickupPoint && (
-                        <p className="text-xs text-red-500">Wybierz paczkomat na mapie.</p>
-                      )}
-                    </div>
-                  )}
                 </section>
               </div>
 
@@ -1453,7 +1519,7 @@ export default function Home() {
         {activeTab === 'configurator' && (
           <div>
             {/* Układ dwukolumnowy z panelem podsumowania po prawej */}
-            <div className={`mx-auto px-4 md:px-12 py-8 md:py-20 flex flex-col gap-8 md:gap-12 ${currentStep >= 10 ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
+            <div className={`mx-auto px-4 md:px-12 py-8 md:py-20 flex flex-col gap-8 md:gap-12 items-start ${currentStep >= 11 ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
               
               {/* Kolumna główna (formularz/opcje) */}
               <div className="flex-grow min-w-0">
@@ -1731,10 +1797,18 @@ export default function Home() {
                                   placeholder="wpisz obwód szyi"
                                   className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
                                 />
+                                {stringSizeText && (
+                                  <div className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] bg-[#F4EFE6] font-bold text-base text-[#161616]">
+                                    {stringSizeText}
+                                  </div>
+                                )}
                               </div>
 
                               <div className="space-y-4 pt-4">
-                                <h3 className="font-bold text-lg text-[#161616]">Dodaj sznurek Premium (możesz wybrać wiele)</h3>
+                                <h3 className="font-bold text-lg text-[#161616]">
+                                  Dodaj sznurek Premium (możesz wybrać wiele)
+                                  {premiumStringPrice ? ` — ${premiumStringPrice} zł/szt` : ''}
+                                </h3>
                                 <div className={imageGridClass(premiumStringsList.length)}>
                                   {premiumStringsList.map((item) => {
                                     const isSelected = formData.premiumStrings.includes(item.id);
@@ -1760,7 +1834,10 @@ export default function Home() {
                               </div>
 
                               <div className="space-y-4 pt-4">
-                                <h3 className="font-bold text-lg text-[#161616]">Dodaj sznurek Klasyczny (możesz wybrać wiele)</h3>
+                                <h3 className="font-bold text-lg text-[#161616]">
+                                  Dodaj sznurek Klasyczny (możesz wybrać wiele)
+                                  {classicStringPrice ? ` — ${classicStringPrice} zł/szt` : ''}
+                                </h3>
                                 <div className={imageGridClass(classicStringsList.length)}>
                                   {classicStringsList.map((item) => {
                                     const isSelected = formData.classicStrings.includes(item.id);
@@ -1977,7 +2054,10 @@ export default function Home() {
                               formData.includePhoneCode === 'tak' ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                             }`}
                           >
-                            <span className="text-base font-medium text-[#161616] pr-4">Umieść numer kierunkowy na adresówce</span>
+                            <span className="text-base font-medium text-[#161616] pr-4">
+                              Umieść numer kierunkowy na adresówce
+                              <span className="block text-sm font-normal text-[#7A736C] mt-1">+{DIAL_CODE_PRICE} zł</span>
+                            </span>
                             <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${formData.includePhoneCode === 'tak' ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
                               {formData.includePhoneCode === 'tak' && <span className="text-white text-xs font-bold">✓</span>}
                             </div>
@@ -1990,13 +2070,19 @@ export default function Home() {
                 </div>
               </div>
 
-              {currentStep < 10 && (
-              <div className="w-full lg:w-80 flex-shrink-0">
-                <div className="bg-[#F9F5ED] p-5 md:p-8 border border-[#D6C7AE] sticky space-y-6" style={{ top: topStackHeight + 16 }}>
+              {currentStep <= 10 && (
+              <div
+                className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:self-start"
+                style={{ top: topStackHeight + 16 }}
+              >
+                <div className="bg-[#F9F5ED] p-5 md:p-8 border border-[#D6C7AE] space-y-6">
                   <h3 className="font-serif font-light text-2xl text-[#161616] border-b border-[#D6C7AE] pb-4">
                     Twoje podsumowanie
                   </h3>
                   {summaryLines}
+                </div>
+                <div className="hidden lg:flex justify-center mt-4">
+                  {renderNextButton()}
                 </div>
               </div>
               )}

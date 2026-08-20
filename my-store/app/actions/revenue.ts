@@ -9,8 +9,10 @@ type RevenueItemRow = {
   extra_carabiner: unknown
   string_premium: unknown
   string_classic: unknown
+  dog_neck: string | null
   stoppers: string | null
   sticker: string | null
+  dial_code_info: boolean | string | null
 }
 
 type RevenueOrderRow = {
@@ -54,8 +56,10 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
     extraCarabiner: toStringArray(item.extra_carabiner),
     stringPremium: toStringArray(item.string_premium),
     stringClassic: toStringArray(item.string_classic),
+    dogNeck: item.dog_neck,
     stoppers: item.stoppers,
     sticker: item.sticker,
+    dialCodeInfo: item.dial_code_info === true || item.dial_code_info === "true",
   })),
 })
 

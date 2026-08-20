@@ -17,6 +17,7 @@ export type RevenueTotals = {
   strings: number
   stoppers: number
   stickers: number
+  dialCode: number
   express: number
   shipping: number
 }
@@ -34,6 +35,7 @@ const emptyTotals = (): RevenueTotals => ({
   strings: 0,
   stoppers: 0,
   stickers: 0,
+  dialCode: 0,
   express: 0,
   shipping: 0,
 })
@@ -48,6 +50,7 @@ const roundTotals = (totals: RevenueTotals): RevenueTotals => ({
   strings: roundMoney(totals.strings),
   stoppers: roundMoney(totals.stoppers),
   stickers: roundMoney(totals.stickers),
+  dialCode: roundMoney(totals.dialCode),
   express: roundMoney(totals.express),
   shipping: roundMoney(totals.shipping),
 })
@@ -64,6 +67,7 @@ const addOrder = (totals: RevenueTotals, order: RevenueOrder) => {
     totals.strings += parts.strings
     totals.stoppers += parts.stoppers
     totals.stickers += parts.stickers
+    totals.dialCode += parts.dialCode
   }
 }
 

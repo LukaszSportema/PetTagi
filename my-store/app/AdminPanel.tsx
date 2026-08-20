@@ -534,6 +534,7 @@ function RevenueTable({
     { key: 'strings', label: 'Sznurki' },
     { key: 'stoppers', label: 'Stopery' },
     { key: 'stickers', label: 'Naklejki' },
+    { key: 'dialCode', label: 'Kierunkowy' },
     { key: 'express', label: 'Ekspresowa realizacja' },
     { key: 'shipping', label: 'Wysyłka' },
   ];

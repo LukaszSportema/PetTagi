@@ -40,7 +40,7 @@ body {
   font-family: var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 300;
   letter-spacing: 0.04em;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 h1,
