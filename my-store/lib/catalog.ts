@@ -35,7 +35,6 @@ export const GLOW_TAG_PRODUCT: CatalogProduct = {
   cta: "Skonfiguruj własną",
   configuratorId: "glow-tag",
   gallery: [
-    { type: "image", src: "/produkty/glow1.jpg" },
     { type: "video", src: "/produkty/glow1vid.mp4" },
     { type: "video", src: "/produkty/glow2vid.mp4" },
   ],

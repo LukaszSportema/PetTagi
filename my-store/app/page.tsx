@@ -222,7 +222,7 @@ function ProductGallery({ items, alt }: { items: CatalogMedia[]; alt: string }) 
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('configurator');
+  const [activeTab, setActiveTab] = useState('products');
   const [activeProductSlug, setActiveProductSlug] = useState(CLASSIC_TAG_PRODUCT.slug);
   const [currentStep, setCurrentStep] = useState(1);
   const topStackRef = useRef<HTMLDivElement>(null);
