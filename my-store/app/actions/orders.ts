@@ -4,6 +4,7 @@ import { sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
 import { getPaymentRecipient } from "@/app/actions/settings"
 import { createClient } from "@/lib/supabase/server"
+import { CLASSIC_TAG_PRODUCT } from "@/lib/catalog"
 import type {
   CreateOrderInput,
   CreateOrderResult,
@@ -64,6 +65,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     unit_price: roundMoney(item.unitPrice),
     line_total: roundMoney(item.unitPrice * item.quantity),
     image_url: item.imageUrl,
+    product_slug: item.productSlug,
+    product_name: item.productName,
     ring_color: item.ringColor,
     base_color: item.baseColor,
     base_charms: item.baseCharms,
@@ -154,6 +157,8 @@ type OrderItemRow = {
   unit_price: number | string
   line_total: number | string
   image_url: string | null
+  product_slug?: string | null
+  product_name?: string | null
   ring_color: string
   base_color: string
   base_charms: string
@@ -233,6 +238,8 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   unitPrice: toMoney(row.unit_price),
   lineTotal: toMoney(row.line_total),
   imageUrl: row.image_url,
+  productSlug: row.product_slug || CLASSIC_TAG_PRODUCT.slug,
+  productName: row.product_name || CLASSIC_TAG_PRODUCT.name,
   ringColor: row.ring_color,
   baseColor: row.base_color,
   baseCharms: row.base_charms,

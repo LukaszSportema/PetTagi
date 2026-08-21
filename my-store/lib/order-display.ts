@@ -1,7 +1,13 @@
+import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
+import { BASE_OPTIONS, optionLabel } from "@/lib/catalog-options"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
   `${value.toFixed(2).replace(".", ",")} zł`
+
+export const orderItemTitle = (
+  item: Pick<OrderItemRecord, "dogName"> & { productName?: string | null },
+) => productLineTitle(item.productName || CLASSIC_TAG_PRODUCT.name, item.dogName)
 
 export const formatOrderDate = (iso: string) =>
   new Date(iso).toLocaleString("pl-PL", {
@@ -75,14 +81,25 @@ const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) => {
 }
 
 export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
-  const options: OrderOption[] = [
-    {
-      label: "Obręcz",
-      values: [item.ringColor === "złoty" ? "Złoty" : item.ringColor === "srebrny" ? "Srebrny" : item.ringColor],
-    },
-    { label: "Baza", values: [optionTitle(item.baseColor)] },
-    { label: "Darmowy charms", values: [optionTitle(item.baseCharms)] },
-  ]
+  const options: OrderOption[] = []
+
+  if (item.ringColor && item.ringColor !== "glow") {
+    options.push({
+      label: "Oprawa",
+      values: [
+        item.ringColor === "złoty"
+          ? "Złoty"
+          : item.ringColor === "srebrny"
+            ? "Srebrny"
+            : item.ringColor === "kwiat"
+              ? "Kwiat"
+              : item.ringColor,
+      ],
+    })
+  }
+
+  options.push({ label: "Baza", values: [optionLabel(BASE_OPTIONS, item.baseColor)] })
+  options.push({ label: "Darmowy charms", values: [optionTitle(item.baseCharms)] })
 
   if (item.extraCharms.length > 0) {
     options.push({ label: "Dodatkowe charms", values: item.extraCharms.map(optionTitle) })

@@ -6,6 +6,8 @@ export type CreateOrderItemInput = {
   quantity: number
   unitPrice: number
   imageUrl: string
+  productSlug: string
+  productName: string
   ringColor: string
   baseColor: string
   baseCharms: string
@@ -83,6 +85,8 @@ export type OrderItemRecord = {
   unitPrice: number
   lineTotal: number
   imageUrl: string | null
+  productSlug: string
+  productName: string
   ringColor: string
   baseColor: string
   baseCharms: string

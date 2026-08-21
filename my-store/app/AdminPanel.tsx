@@ -15,6 +15,7 @@ import {
   formatPrice,
   fulfillmentLabel,
   orderItemOptions,
+  orderItemTitle,
   statusLabel,
 } from '@/lib/order-display';
 import {
@@ -761,11 +762,11 @@ function OrderDetailView({
                       <div className="flex gap-3 items-start">
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-white shrink-0 border border-[#D6C7AE]">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="Adresówka" className="w-full h-full object-cover" />
+                            <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-cover" />
                           ) : null}
                         </div>
                         <p className="flex-1 min-w-0 font-bold text-[#161616]">
-                          Adresówka{item.dogName ? ` dla ${item.dogName}` : ''}
+                          {orderItemTitle(item)}
                           {item.quantity > 1 ? ` × ${item.quantity}` : ''}
                         </p>
                         <span className="font-bold text-[#161616] whitespace-nowrap">

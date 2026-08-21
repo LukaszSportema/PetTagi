@@ -4,6 +4,7 @@ import {
   formatAddress,
   formatPrice,
   orderItemOptions,
+  orderItemTitle,
 } from "@/lib/order-display"
 import { PAYMENT_RECIPIENTS, type PaymentRecipientId } from "@/lib/payment"
 import type { CreateOrderInput } from "@/lib/types/order"
@@ -68,7 +69,7 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
   const address = formatAddress(order.clientAddress, order.clientPostcode, order.clientCity)
 
   const itemBlocks = order.items.map((item) => {
-    const title = item.dogName ? `Adresówka dla ${item.dogName}` : "Adresówka"
+    const title = orderItemTitle(item)
     const qty = item.quantity > 1 ? ` × ${item.quantity}` : ""
     const options = orderItemOptions(item)
     const optionLines = options

@@ -43,7 +43,7 @@ type GroupDef = {
 }
 
 const GROUPS: GroupDef[] = [
-  { key: "ring", label: "Obręcz", options: RING_OPTIONS, values: (item) => (item.ringColor ? [item.ringColor] : []) },
+  { key: "ring", label: "Oprawa", options: RING_OPTIONS, values: (item) => (item.ringColor ? [item.ringColor] : []) },
   { key: "base", label: "Kolor bazy", options: BASE_OPTIONS, values: (item) => (item.baseColor ? [item.baseColor] : []) },
   {
     key: "base-charm",

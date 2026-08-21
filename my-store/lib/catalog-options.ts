@@ -9,9 +9,21 @@ const numbered = (count: number, start = 1): CatalogOption[] =>
 export const RING_OPTIONS: CatalogOption[] = [
   { id: "złoty", label: "Złoty" },
   { id: "srebrny", label: "Srebrny" },
+  { id: "kwiat", label: "Kwiat" },
+  { id: "glow", label: "Glow" },
 ]
 
-export const BASE_OPTIONS = numbered(24)
+export const BASE_OPTIONS: CatalogOption[] = [
+  ...numbered(24),
+  ...Array.from({ length: 6 }, (_, index) => ({
+    id: `kwiat${index + 1}`,
+    label: `Podpis ${index + 1}`,
+  })),
+  ...Array.from({ length: 5 }, (_, index) => ({
+    id: `glow${index + 1}`,
+    label: `Podpis ${index + 1}`,
+  })),
+]
 
 export const CHARM_OPTIONS = numbered(53)
 

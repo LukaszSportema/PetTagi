@@ -1,10 +1,18 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
 import { createOrder } from './actions/orders';
 import AdminPanel from './AdminPanel';
 import FurgonetkaMap from './FurgonetkaMap';
 import { fulfillmentMessage, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
+import {
+  CATALOG_PRODUCTS,
+  CLASSIC_TAG_PRODUCT,
+  GLOW_TAG_PRODUCT,
+  getCatalogProduct,
+  productLineTitle,
+  type CatalogMedia,
+} from '@/lib/catalog';
 import {
   BASE_TAG_PRICE,
   classicStringUnitPrice,
@@ -44,6 +52,8 @@ type FormDataState = {
 
 type CartItem = {
   id: string;
+  productSlug: string;
+  productName: string;
   quantity: number;
   price: number;
   image: string;
@@ -114,6 +124,13 @@ const initialFormData: FormDataState = {
   includePhoneCode: 'nie',
 };
 
+const formDataForProduct = (slug: string): FormDataState => {
+  if (slug === GLOW_TAG_PRODUCT.slug) {
+    return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1' };
+  }
+  return initialFormData;
+};
+
 type PlacedOrder = {
   orderId: string;
   total: number;
@@ -123,14 +140,94 @@ type PlacedOrder = {
 
 const formatPrice = (value: number) => `${value.toFixed(2).replace('.', ',')} zł`;
 
+function ProductGallery({ items, alt }: { items: CatalogMedia[]; alt: string }) {
+  const [index, setIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const current = items[index] ?? items[0];
+  const canBrowse = items.length > 1;
+
+  const goTo = (next: number) => {
+    if (!items.length) return;
+    setIndex((next + items.length) % items.length);
+  };
+
+  const onTouchStart = (event: TouchEvent) => {
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+  };
+
+  const onTouchEnd = (event: TouchEvent) => {
+    if (touchStartX.current == null || !canBrowse) return;
+    const delta = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 40) return;
+    goTo(index + (delta < 0 ? 1 : -1));
+  };
+
+  return (
+    <div
+      className="relative w-full aspect-[4/5] bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {current?.type === 'video' ? (
+        <video
+          key={current.src}
+          src={current.src}
+          className="w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          controls={false}
+        />
+      ) : current ? (
+        <img src={current.src} alt={alt} className="w-full h-full object-cover" />
+      ) : null}
+
+      {canBrowse && (
+        <>
+          <button
+            type="button"
+            onClick={() => goTo(index - 1)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#F4EFE6]/90 border border-[#D6C7AE] text-[#161616] text-lg leading-none hover:bg-white transition-colors"
+            aria-label="Poprzednie zdjęcie"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => goTo(index + 1)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#F4EFE6]/90 border border-[#D6C7AE] text-[#161616] text-lg leading-none hover:bg-white transition-colors"
+            aria-label="Następne zdjęcie"
+          >
+            ›
+          </button>
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+            {items.map((item, itemIndex) => (
+              <button
+                key={`${item.src}-${itemIndex}`}
+                type="button"
+                onClick={() => goTo(itemIndex)}
+                className={`h-1.5 rounded-full transition-all ${
+                  itemIndex === index ? 'w-5 bg-[#161616]' : 'w-1.5 bg-[#161616]/35'
+                }`}
+                aria-label={`Slajd ${itemIndex + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('configurator');
+  const [activeProductSlug, setActiveProductSlug] = useState(CLASSIC_TAG_PRODUCT.slug);
   const [currentStep, setCurrentStep] = useState(1);
   const topStackRef = useRef<HTMLDivElement>(null);
   const stepsScrollRef = useRef<HTMLDivElement>(null);
   const [topStackHeight, setTopStackHeight] = useState(40);
-  const totalSteps = 11;
-
   const [formData, setFormData] = useState<FormDataState>(initialFormData);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountInput, setDiscountInput] = useState('');
@@ -165,8 +262,16 @@ export default function Home() {
 
   const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + dialCodeCost;
 
-  const stepsInfo = [
-    { id: 1, label: 'Obręcz', icon: '💍' },
+  const goToTab = (tab: string) => {
+    setActiveTab(tab);
+  };
+  const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
+  const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
+  const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
+  const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator;
+
+  const allStepsInfo = [
+    { id: 1, label: 'Oprawa', icon: '💍' },
     { id: 2, label: 'Baza', icon: '🎨' },
     { id: 3, label: 'Darmowy charms', icon: '🦮' },
     { id: 4, label: 'Dodatkowe charms', icon: '🪝' },
@@ -178,14 +283,27 @@ export default function Home() {
     { id: 10, label: 'Dane na adresówce', icon: '📝' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒' },
   ];
+  const stepsInfo = isGlowTagConfigurator
+    ? allStepsInfo.filter((step) => step.id !== 1).map((step, index) => ({ ...step, id: index + 1 }))
+    : allStepsInfo;
+  const totalSteps = stepsInfo.length;
+  const contentStep = isGlowTagConfigurator ? currentStep + 1 : currentStep;
 
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
-  const goToTab = (tab: string) => {
-    setActiveTab(tab);
+  const openConfigurator = (slug: string = CLASSIC_TAG_PRODUCT.slug) => {
+    const product = getCatalogProduct(slug) ?? CLASSIC_TAG_PRODUCT;
+    if (product.slug !== activeProductSlug) {
+      setFormData(formDataForProduct(product.slug));
+      setCurrentStep(1);
+      setShowAddedToCart(false);
+    }
+    setActiveProductSlug(product.slug);
+    goToTab('configurator');
   };
 
   const imageGridClass = (count: number) => {
     if (count <= 1) return 'grid grid-cols-1 gap-5 md:gap-14';
+    if (count === 3) return 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-14';
     return 'grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-14';
   };
 
@@ -303,7 +421,7 @@ export default function Home() {
   const isOrderValid = !Object.values(orderErrors).some(Boolean);
 
   const nextStep = () => {
-    if (currentStep === 10) {
+    if (contentStep === 10) {
       setShowOrderErrors(true);
       if (!isOrderValid) return;
     }
@@ -324,7 +442,7 @@ export default function Home() {
   );
 
   const renderNextButton = () => (
-    currentStep < 11 ? (
+    currentStep < totalSteps ? (
       <button onClick={nextStep} className={nextButtonClass}>
         Dalej<span className="hidden sm:inline"> &rarr;</span>
       </button>
@@ -336,21 +454,50 @@ export default function Home() {
   );
 
   const ringsList = [
-    { id: 'złoty', title: 'Złoty', image: '/rings/gold.jpg' },
-    { id: 'srebrny', title: 'Srebrny', image: '/rings/silver.jpg' },
+    { id: 'złoty', title: 'Złota', image: '/oprawy/gold.png' },
+    { id: 'srebrny', title: 'Srebrna', image: '/oprawy/silver.png' },
+    { id: 'kwiat', title: 'Kwiat', image: '/oprawy/kwiat.png' },
   ];
 
   const goldBases = Array.from({ length: 16 }, (_, i) => ({
     id: String(i + 1),
     title: `Podpis ${i + 1}`,
-    image: `/baza/${i + 1}.jpg`,
+    image: `/baza/gold${i + 1}.jpg`,
   }));
 
   const silverBases = Array.from({ length: 8 }, (_, i) => ({
     id: String(i + 17),
     title: `Podpis ${i + 17}`,
-    image: `/baza/${i + 17}.jpg`,
+    image: `/baza/silver${i + 1}.jpg`,
   }));
+
+  const flowerBases = Array.from({ length: 6 }, (_, i) => ({
+    id: `kwiat${i + 1}`,
+    title: `Podpis ${i + 1}`,
+    image: `/baza/kwiat${i + 1}.jpg`,
+  }));
+
+  const glowBases = Array.from({ length: 5 }, (_, i) => ({
+    id: `glow${i + 1}`,
+    title: `Podpis ${i + 1}`,
+    image: `/glow/${i + 1}.jpg`,
+  }));
+
+  const basesForRing = (ringColor: string) => {
+    if (ringColor === 'srebrny') return silverBases;
+    if (ringColor === 'kwiat') return flowerBases;
+    if (ringColor === 'glow') return glowBases;
+    return goldBases;
+  };
+
+  const selectedBases = isGlowTagConfigurator ? glowBases : basesForRing(formData.ringColor);
+
+  const oprawaLabel = (ringColor: string) => {
+    if (ringColor === 'złoty') return 'Złoty';
+    if (ringColor === 'srebrny') return 'Srebrny';
+    if (ringColor === 'kwiat') return 'Kwiat';
+    return ringColor;
+  };
 
   const charmsList = Array.from({ length: 53 }, (_, i) => ({
     id: String(i + 1),
@@ -407,12 +554,15 @@ export default function Home() {
     list.find((item) => item.id === id)?.title ?? fallback;
 
   const buildCartItem = (): CartItem => {
-    const bases = formData.ringColor === 'złoty' ? goldBases : silverBases;
-    const options = [
-      { label: 'Obręcz', values: [formData.ringColor === 'złoty' ? 'Złoty' : 'Srebrny'] },
+    const bases = selectedBases;
+    const options: { label: string; values: string[] }[] = [];
+    if (!isGlowTagConfigurator) {
+      options.push({ label: 'Oprawa', values: [oprawaLabel(formData.ringColor)] });
+    }
+    options.push(
       { label: 'Baza', values: [findTitle(bases, formData.baseOption, `Opcja nr ${formData.baseOption}`)] },
       { label: 'Darmowy charms', values: [findTitle(charmsList, formData.charmOption, `Opcja nr ${formData.charmOption}`)] },
-    ];
+    );
 
     if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0) {
       options.push({
@@ -487,11 +637,13 @@ export default function Home() {
 
     return {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      productSlug: activeProduct.slug,
+      productName: activeProduct.name,
       quantity: 1,
       price: totalPrice,
-      image: [...goldBases, ...silverBases].find((base) => base.id === formData.baseOption)?.image
-        ?? bases[0]?.image
-        ?? `/baza/${formData.baseOption}.jpg`,
+      image: selectedBases.find((base) => base.id === formData.baseOption)?.image
+        ?? selectedBases[0]?.image
+        ?? '',
       options,
       config: { ...formData },
     };
@@ -505,7 +657,7 @@ export default function Home() {
   };
 
   const resetConfigurator = () => {
-    setFormData(initialFormData);
+    setFormData(formDataForProduct(activeProductSlug));
     setShowOrderErrors(false);
     setCurrentStep(1);
     setShowAddedToCart(false);
@@ -519,7 +671,7 @@ export default function Home() {
 
   const returnToConfiguratorAfterAdd = () => {
     resetConfigurator();
-    goToTab('configurator');
+    openConfigurator(activeProductSlug);
   };
 
   const removeFromCart = (id: string) => {
@@ -607,6 +759,8 @@ export default function Home() {
           quantity: item.quantity,
           unitPrice: item.price,
           imageUrl: item.image,
+          productSlug: item.productSlug,
+          productName: item.productName,
           ringColor: config.ringColor,
           baseColor: config.baseOption,
           baseCharms: config.charmOption,
@@ -698,7 +852,7 @@ export default function Home() {
     <>
       <div className="space-y-3 text-sm text-[#7A736C]">
         <div className="flex justify-between items-start gap-4">
-          <span className="font-serif font-bold text-lg text-[#161616]">Adresówka</span>
+          <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
           <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">50 zł</span>
         </div>
 
@@ -790,12 +944,12 @@ export default function Home() {
 
   useEffect(() => {
     const container = stepsScrollRef.current;
-    if (!container || activeTab !== 'configurator') return;
+    if (!container || activeTab !== 'configurator' || !isTagConfigurator) return;
     const active = container.querySelector<HTMLElement>(`[data-step="${currentStep}"]`);
     if (!active) return;
     const left = active.offsetLeft - container.clientWidth / 2 + active.offsetWidth / 2;
     container.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
-  }, [currentStep, activeTab]);
+  }, [currentStep, activeTab, isTagConfigurator]);
 
   useEffect(() => {
     return () => {
@@ -823,7 +977,7 @@ export default function Home() {
                 Dodano do koszyka
               </h3>
               <p className="text-sm text-[#7A736C] font-light leading-relaxed">
-                Adresówka jest już w koszyku. Możesz przejść do koszyka albo skonfigurować kolejną.
+                {activeProduct.name} jest już w koszyku. Możesz przejść do koszyka albo skonfigurować kolejną.
               </p>
             </div>
             <div className="space-y-3">
@@ -874,7 +1028,7 @@ export default function Home() {
                     Produkty
                   </button>
                   <button 
-                    onClick={() => goToTab('configurator')}
+                    onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
                     className={`text-[11px] uppercase tracking-[0.22em] font-light transition-colors ${activeTab === 'configurator' ? 'text-[#161616] border-b border-[#161616] pb-1' : 'text-[#7A736C] hover:text-[#161616]'}`}
                   >
                     Skonfiguruj adresówkę
@@ -916,7 +1070,7 @@ export default function Home() {
                   Produkty
                 </button>
                 <button
-                  onClick={() => goToTab('configurator')}
+                  onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
                   className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'configurator' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
                 >
                   Skonfiguruj adresówkę
@@ -924,7 +1078,7 @@ export default function Home() {
               </nav>
             </header>
 
-        {activeTab === 'configurator' && (
+        {activeTab === 'configurator' && isTagConfigurator && (
           <div className="bg-white border-b border-[#D6C7AE] py-2 shadow-xs">
             <div className="px-2 md:px-4 flex items-center gap-2 md:gap-4">
               {renderBackButton()}
@@ -959,7 +1113,7 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <div className={currentStep <= 10 ? 'lg:hidden' : undefined}>
+              <div className={currentStep < totalSteps ? 'lg:hidden' : undefined}>
                 {renderNextButton()}
               </div>
             </div>
@@ -981,7 +1135,7 @@ export default function Home() {
             </p>
             <div className="pt-4">
               <button 
-                onClick={() => goToTab('configurator')}
+                onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
                 className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
               >
                 Przejdź do kreatora adresówek
@@ -1014,29 +1168,19 @@ export default function Home() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20">
-              <div className="space-y-6">
-                <div className="w-full aspect-[4/5] bg-[#EFE8DC] flex items-center justify-center text-5xl border border-[#D6C7AE]">💍</div>
-                <h3 className="text-2xl md:text-3xl font-serif font-light">Personalizowane adresówki</h3>
-                <p className="text-sm text-[#7A736C] font-light leading-relaxed">W pełni personalizowane zawieszki z imieniem i numerem telefonu, dostępne w wielu wzorach.</p>
-                <button 
-                  onClick={() => goToTab('configurator')}
-                  className="text-[11px] uppercase tracking-[0.22em] font-light text-[#161616] border-b border-[#161616] pb-1 hover:text-[#C4A574] hover:border-[#C4A574] transition-colors"
-                >
-                  Skonfiguruj własną
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div className="w-full aspect-[4/5] bg-[#EFE8DC] flex items-center justify-center text-5xl border border-[#D6C7AE]">🦮</div>
-                <h3 className="text-2xl md:text-3xl font-serif font-light">Szelki i obroże</h3>
-                <p className="text-sm text-[#7A736C] font-light leading-relaxed">Wygodne, bezpieczne i stylowe zestawy spacerowe dopasowane do każdej rasy psa.</p>
-                <button 
-                  onClick={() => goToTab('configurator')}
-                  className="text-[11px] uppercase tracking-[0.22em] font-light text-[#161616] border-b border-[#161616] pb-1 hover:text-[#C4A574] hover:border-[#C4A574] transition-colors"
-                >
-                  Stwórz zestaw
-                </button>
-              </div>
+              {CATALOG_PRODUCTS.map((product) => (
+                <div key={product.slug} className="space-y-6">
+                  <ProductGallery items={product.gallery} alt={product.name} />
+                  <h3 className="text-2xl md:text-3xl font-serif font-light">{product.name}</h3>
+                  <p className="text-sm text-[#7A736C] font-light leading-relaxed">{product.description}</p>
+                  <button
+                    onClick={() => openConfigurator(product.slug)}
+                    className="text-[11px] uppercase tracking-[0.22em] font-light text-[#161616] border-b border-[#161616] pb-1 hover:text-[#C4A574] hover:border-[#C4A574] transition-colors"
+                  >
+                    {product.cta}
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1050,7 +1194,7 @@ export default function Home() {
               <div className="bg-white rounded-3xl p-6 md:p-10 text-center space-y-4 border border-[#D6C7AE]">
                 <p className="text-[#7A736C]">Twój koszyk jest pusty.</p>
                 <button
-                  onClick={() => goToTab('configurator')}
+                  onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
                   className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
                 >
                   Skonfiguruj adresówkę
@@ -1071,13 +1215,13 @@ export default function Home() {
                         ×
                       </button>
                       <div className="w-20 h-20 md:w-32 md:h-32 overflow-hidden bg-[#EFE8DC] shrink-0 border border-[#D6C7AE]">
-                        <img src={item.image} alt="Adresówka" className="w-full h-full object-cover" />
+                        <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0 pr-8">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                           <div>
                             <h3 className="text-xl font-serif font-light text-[#161616]">
-                              Adresówka{petName ? ` dla ${petName}` : ''}
+                              {productLineTitle(item.productName, petName)}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-3">
                               {item.options.map((option) => (
@@ -1431,10 +1575,10 @@ export default function Home() {
                     return (
                       <div key={item.id} className="flex gap-3 items-center">
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-white shrink-0 border border-[#D6C7AE]">
-                          <img src={item.image} alt="Adresówka" className="w-full h-full object-cover" />
+                          <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
                         </div>
                         <p className="flex-1 min-w-0 font-bold text-[#161616]">
-                          Adresówka{petName ? ` dla ${petName}` : ''}
+                          {productLineTitle(item.productName, petName)}
                         </p>
                         <span className="font-bold text-[#161616] whitespace-nowrap">{formatPrice(item.price * item.quantity)}</span>
                       </div>
@@ -1515,25 +1659,44 @@ export default function Home() {
         {/* ZAKŁADKA: Panel administratora */}
         {activeTab === 'admin' && <AdminPanel />}
 
-        {/* ZAKŁADKA: Skonfiguruj adresówkę */}
-        {activeTab === 'configurator' && (
+        {/* ZAKŁADKA: Konfigurator produktu */}
+        {activeTab === 'configurator' && !isTagConfigurator && (
+          <div className="max-w-3xl mx-auto px-5 md:px-12 py-12 md:py-24 space-y-6 text-center">
+            <span className="text-[#C4A574] font-light uppercase tracking-[0.28em] text-[11px]">Konfigurator</span>
+            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616]">{activeProduct.name}</h1>
+            <p className="text-sm text-[#7A736C] font-light leading-relaxed">
+              Konfigurator tego produktu pojawi się wkrótce.
+            </p>
+            <div className="pt-4">
+              <button
+                onClick={() => goToTab('products')}
+                className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
+              >
+                Wróć do produktów
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ZAKŁADKA: Adresówka klasyczna */}
+        {activeTab === 'configurator' && isTagConfigurator && (
           <div>
             {/* Układ dwukolumnowy z panelem podsumowania po prawej */}
-            <div className={`mx-auto px-4 md:px-12 py-8 md:py-20 flex flex-col gap-8 md:gap-12 items-start ${currentStep >= 11 ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
+            <div className={`mx-auto px-4 md:px-12 py-8 md:py-20 flex flex-col gap-8 md:gap-12 items-start ${currentStep >= totalSteps ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
               
               {/* Kolumna główna (formularz/opcje) */}
               <div className="flex-grow min-w-0">
                 <div className="bg-[#F9F5ED] p-4 md:p-16 border border-[#D6C7AE] min-h-0 md:min-h-[450px] flex flex-col">
                   <div className="space-y-6 md:space-y-8">
-                    <span className="text-[#C4A574] font-light uppercase tracking-[0.22em] md:tracking-[0.28em] text-[11px]">Krok {currentStep} z {totalSteps}</span>
+                    <span className="text-[#C4A574] font-light uppercase tracking-[0.22em] md:tracking-[0.28em] text-[11px]">Krok {currentStep} z {totalSteps} · {activeProduct.name}</span>
                     <h2 className="text-2xl md:text-4xl font-serif font-light text-[#161616]">
                       {stepsInfo[currentStep - 1].label}
                     </h2>
                     
                     <div className="pt-4">
-                      {currentStep === 1 && (
+                      {contentStep === 1 && (
                         <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz kolor obręczy:</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz kolor oprawy:</p>
                           <div className={imageGridClass(ringsList.length)}>
                             {ringsList.map((item) => (
                               <div
@@ -1541,7 +1704,7 @@ export default function Home() {
                                 onClick={() => setFormData({
                                   ...formData,
                                   ringColor: item.id,
-                                  baseOption: item.id === 'złoty' ? '1' : '17',
+                                  baseOption: basesForRing(item.id)[0]?.id ?? '1',
                                 })}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                   formData.ringColor === item.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -1560,13 +1723,19 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 2 && (
+                      {contentStep === 2 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">
-                            Wybierz bazę (dla koloru obręczy: <span className="uppercase text-[#C4A574]">{formData.ringColor}</span>):
+                            {isGlowTagConfigurator ? (
+                              'Wybierz bazę'
+                            ) : (
+                              <>
+                                Wybierz bazę (dla koloru oprawy: <span className="uppercase text-[#C4A574]">{oprawaLabel(formData.ringColor)}</span>):
+                              </>
+                            )}
                           </p>
-                          <div className={imageGridClass((formData.ringColor === 'złoty' ? goldBases : silverBases).length)}>
-                            {(formData.ringColor === 'złoty' ? goldBases : silverBases).map((base) => (
+                          <div className={imageGridClass(selectedBases.length)}>
+                            {selectedBases.map((base) => (
                               <div
                                 key={base.id}
                                 onClick={() => setFormData({...formData, baseOption: base.id})}
@@ -1587,7 +1756,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 3 && (
+                      {contentStep === 3 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy charms:</p>
                           <div className={imageGridClass(charmsList.length)}>
@@ -1612,7 +1781,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 4 && (
+                      {contentStep === 4 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Czy chcesz wybrać dodatkowe, płatne charms?</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1669,7 +1838,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 5 && (
+                      {contentStep === 5 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk:</p>
                           <div className={imageGridClass(karabinersList.length)}>
@@ -1694,7 +1863,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 6 && (
+                      {contentStep === 6 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Czy chcesz wybrać dodatkowe, płatne karabińczyki?</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1752,7 +1921,7 @@ export default function Home() {
                       )}
 
                       {/* KROK 7: Sznurek */}
-                      {currentStep === 7 && (
+                      {contentStep === 7 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Czy chcesz dodać sznurek?</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1866,7 +2035,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 8 && (
+                      {contentStep === 8 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Czy chcesz dodać stopery?</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1920,7 +2089,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 9 && (
+                      {contentStep === 9 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Czy chcesz dodać naklejkę Twojego pieska?</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1974,7 +2143,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 11 && (
+                      {contentStep === 11 && (
                         <div className="space-y-6">
                           {summaryLines}
                           <p className="text-xs text-[#7A736C] font-light leading-relaxed">
@@ -1994,7 +2163,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {currentStep === 10 && (
+                      {contentStep === 10 && (
                         <div className="space-y-5">
                           <div className="space-y-2">
                             <label className="block font-bold text-base text-[#161616]">Imię Twojego psa</label>
@@ -2070,7 +2239,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {currentStep <= 10 && (
+              {currentStep < totalSteps && (
               <div
                 className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:self-start"
                 style={{ top: topStackHeight + 16 }}
