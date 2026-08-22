@@ -1,5 +1,5 @@
 import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
-import { BASE_OPTIONS, optionLabel } from "@/lib/catalog-options"
+import { BASE_OPTIONS, CLASSIC_STRING_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS } from "@/lib/catalog-options"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
@@ -112,11 +112,17 @@ export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
   }
 
   if (item.stringPremium.length > 0) {
-    options.push({ label: "Sznurek Premium", values: item.stringPremium.map(optionTitle) })
+    options.push({
+      label: "Sznurek Premium",
+      values: item.stringPremium.map((id) => optionLabel(PREMIUM_STRING_OPTIONS, id)),
+    })
   }
 
   if (item.stringClassic.length > 0) {
-    options.push({ label: "Sznurek Klasyczny", values: item.stringClassic.map(optionTitle) })
+    options.push({
+      label: "Sznurek Klasyczny",
+      values: item.stringClassic.map((id) => optionLabel(CLASSIC_STRING_OPTIONS, id)),
+    })
   }
 
   if (item.dogNeck) {

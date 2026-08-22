@@ -25,6 +25,7 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
+import { CLASSIC_STRING_CATALOG, PREMIUM_STRING_CATALOG } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
@@ -126,7 +127,7 @@ const initialFormData: FormDataState = {
 
 const formDataForProduct = (slug: string): FormDataState => {
   if (slug === GLOW_TAG_PRODUCT.slug) {
-    return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1' };
+    return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1', wantSticker: 'nie', stickerOption: '' };
   }
   return initialFormData;
 };
@@ -139,6 +140,87 @@ type PlacedOrder = {
 };
 
 const formatPrice = (value: number) => `${value.toFixed(2).replace('.', ',')} zł`;
+
+function ImageGallery({
+  items,
+  alt,
+  stopPropagation = false,
+}: {
+  items: string[];
+  alt: string;
+  stopPropagation?: boolean;
+}) {
+  const [index, setIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const current = items[index] ?? items[0];
+  const canBrowse = items.length > 1;
+
+  const goTo = (next: number, event?: React.MouseEvent | React.TouchEvent) => {
+    if (stopPropagation) event?.stopPropagation();
+    if (!items.length) return;
+    setIndex((next + items.length) % items.length);
+  };
+
+  const onTouchStart = (event: TouchEvent) => {
+    if (stopPropagation) event.stopPropagation();
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+  };
+
+  const onTouchEnd = (event: TouchEvent) => {
+    if (stopPropagation) event.stopPropagation();
+    if (touchStartX.current == null || !canBrowse) return;
+    const delta = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 40) return;
+    goTo(index + (delta < 0 ? 1 : -1));
+  };
+
+  return (
+    <div
+      className="relative w-full aspect-[4/5] bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {current ? (
+        <img src={current} alt={alt} className="w-full h-full object-cover" />
+      ) : null}
+
+      {canBrowse && (
+        <>
+          <button
+            type="button"
+            onClick={(event) => goTo(index - 1, event)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#F4EFE6]/90 border border-[#D6C7AE] text-[#161616] text-lg leading-none hover:bg-white transition-colors"
+            aria-label="Poprzednie zdjęcie"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={(event) => goTo(index + 1, event)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#F4EFE6]/90 border border-[#D6C7AE] text-[#161616] text-lg leading-none hover:bg-white transition-colors"
+            aria-label="Następne zdjęcie"
+          >
+            ›
+          </button>
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+            {items.map((item, itemIndex) => (
+              <button
+                key={`${item}-${itemIndex}`}
+                type="button"
+                onClick={(event) => goTo(itemIndex, event)}
+                className={`h-1.5 rounded-full transition-all ${
+                  itemIndex === index ? 'w-5 bg-[#161616]' : 'w-1.5 bg-[#161616]/35'
+                }`}
+                aria-label={`Slajd ${itemIndex + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function ProductGallery({ items, alt }: { items: CatalogMedia[]; alt: string }) {
   const [index, setIndex] = useState(0);
@@ -162,6 +244,10 @@ function ProductGallery({ items, alt }: { items: CatalogMedia[]; alt: string }) 
     if (Math.abs(delta) < 40) return;
     goTo(index + (delta < 0 ? 1 : -1));
   };
+
+  if (current?.type === 'image' && items.every((item) => item.type === 'image')) {
+    return <ImageGallery items={items.map((item) => item.src)} alt={alt} />;
+  }
 
   return (
     <div
@@ -246,7 +332,9 @@ export default function Home() {
   const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
   const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
   const extraStopersCost = formData.wantStopers === 'tak' && formData.extraStopers ? STOPPER_PRICE : 0;
-  const stickerCost = formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
+  const stickerCost = activeProductSlug === GLOW_TAG_PRODUCT.slug
+    ? 0
+    : formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
   const dialCodeCost = formData.includePhoneCode === 'tak' ? DIAL_CODE_PRICE : 0;
   
   const stringSize = stringSizeFromNeckCm(formData.stringLength);
@@ -283,11 +371,11 @@ export default function Home() {
     { id: 10, label: 'Dane na adresówce', icon: '📝' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒' },
   ];
-  const stepsInfo = isGlowTagConfigurator
-    ? allStepsInfo.filter((step) => step.id !== 1).map((step, index) => ({ ...step, id: index + 1 }))
-    : allStepsInfo;
+  const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [];
+  const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
+  const stepsInfo = visibleClassicSteps.map((step, index) => ({ ...step, id: index + 1 }));
   const totalSteps = stepsInfo.length;
-  const contentStep = isGlowTagConfigurator ? currentStep + 1 : currentStep;
+  const contentStep = visibleClassicSteps[currentStep - 1]?.id ?? currentStep;
 
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
   const openConfigurator = (slug: string = CLASSIC_TAG_PRODUCT.slug) => {
@@ -511,10 +599,10 @@ export default function Home() {
     image: `/karabinczyk/${i + 1}.jpg`,
   }));
 
-  const premiumStringsList = Array.from({ length: 8 }, (_, i) => ({
-    id: String(i + 1),
-    title: `Podpis ${i + 1}`,
-    image: `/sznurek/${i + 1}.jpg`,
+  const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    images: item.images,
   }));
 
   const stopersList = [
@@ -537,18 +625,11 @@ export default function Home() {
     { id: '12', title: 'Pies 12', image: '/naklejki/12.jpg' },
   ];
 
-  const classicStringsList = [
-    { id: '9', title: 'Podpis 1', image: '/sznurek/9.jpg' },
-    { id: '10', title: 'Podpis 2', image: '/sznurek/10.jpg' },
-    { id: '11', title: 'Podpis 3', image: '/sznurek/11.jpg' },
-    { id: '12', title: 'Podpis 4', image: '/sznurek/12.jpg' },
-    { id: '13', title: 'Podpis 5', image: '/sznurek/13.jpg' },
-    { id: '14', title: 'Podpis 6', image: '/sznurek/14.jpg' },
-    { id: '15', title: 'Podpis 7', image: '/sznurek/15.jpg' },
-    { id: '16', title: 'Podpis 8', image: '/sznurek/16.jpg' },
-    { id: '17', title: 'Podpis 9', image: '/sznurek/17.jpg' },
-    { id: '18', title: 'Podpis 10', image: '/sznurek/18.jpg' },
-  ];
+  const classicStringsList = CLASSIC_STRING_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    images: item.images,
+  }));
 
   const findTitle = (list: { id: string; title: string }[], id: string, fallback: string) =>
     list.find((item) => item.id === id)?.title ?? fallback;
@@ -611,7 +692,7 @@ export default function Home() {
       });
     }
 
-    if (formData.wantSticker === 'tak' && formData.stickerOption) {
+    if (!isGlowTagConfigurator && formData.wantSticker === 'tak' && formData.stickerOption) {
       options.push({
         label: 'Naklejka',
         values: [findTitle(stickersList, formData.stickerOption, `Pies ${formData.stickerOption}`)],
@@ -773,7 +854,9 @@ export default function Home() {
           stoppers: config.wantStopers === 'tak' && config.extraStopers
             ? (config.extraStopers === '1' ? 'złote' : 'srebrne')
             : null,
-          sticker: config.wantSticker === 'tak' ? config.stickerOption || null : null,
+          sticker: item.productSlug === GLOW_TAG_PRODUCT.slug
+            ? null
+            : config.wantSticker === 'tak' ? config.stickerOption || null : null,
           dogName: config.petName,
           numberOnTag:
             config.includePhoneCode === 'tak'
@@ -906,7 +989,7 @@ export default function Home() {
           </div>
         )}
 
-        {formData.wantSticker === 'tak' && formData.stickerOption && (
+        {formData.wantSticker === 'tak' && formData.stickerOption && !isGlowTagConfigurator && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Naklejka (Pies {formData.stickerOption})</span>
             <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
@@ -1027,12 +1110,6 @@ export default function Home() {
                   >
                     Produkty
                   </button>
-                  <button 
-                    onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
-                    className={`text-[11px] uppercase tracking-[0.22em] font-light transition-colors ${activeTab === 'configurator' ? 'text-[#161616] border-b border-[#161616] pb-1' : 'text-[#7A736C] hover:text-[#161616]'}`}
-                  >
-                    Skonfiguruj adresówkę
-                  </button>
                 </nav>
 
                 <div className="shrink-0 flex items-center gap-2">
@@ -1068,12 +1145,6 @@ export default function Home() {
                   className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'products' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
                 >
                   Produkty
-                </button>
-                <button
-                  onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
-                  className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'configurator' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
-                >
-                  Skonfiguruj adresówkę
                 </button>
               </nav>
             </header>
@@ -1135,10 +1206,10 @@ export default function Home() {
             </p>
             <div className="pt-4">
               <button 
-                onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
+                onClick={() => goToTab('products')}
                 className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
               >
-                Przejdź do kreatora adresówek
+                Zobacz produkty
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 pt-10 md:pt-16 text-left border-t border-[#D6C7AE]">
@@ -1194,10 +1265,10 @@ export default function Home() {
               <div className="bg-white rounded-3xl p-6 md:p-10 text-center space-y-4 border border-[#D6C7AE]">
                 <p className="text-[#7A736C]">Twój koszyk jest pusty.</p>
                 <button
-                  onClick={() => openConfigurator(CLASSIC_TAG_PRODUCT.slug)}
+                  onClick={() => goToTab('products')}
                   className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
                 >
-                  Skonfiguruj adresówkę
+                  Zobacz produkty
                 </button>
               </div>
             ) : (
@@ -1989,8 +2060,8 @@ export default function Home() {
                                           isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                         }`}
                                       >
-                                        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                        <div className="w-full mb-3 md:mb-5">
+                                          <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                         </div>
                                         <span className="text-base font-medium text-[#161616]">{item.title}</span>
                                         <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
@@ -2018,8 +2089,8 @@ export default function Home() {
                                           isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                         }`}
                                       >
-                                        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                        <div className="w-full mb-3 md:mb-5">
+                                          <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                         </div>
                                         <span className="text-base font-medium text-[#161616]">{item.title}</span>
                                         <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
