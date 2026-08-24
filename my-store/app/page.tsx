@@ -18,6 +18,7 @@ import {
   classicStringUnitPrice,
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
+  glowStringUnitPrice,
   premiumStringUnitPrice,
   STICKER_PRICE,
   DIAL_CODE_PRICE,
@@ -25,7 +26,7 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, PREMIUM_STRING_CATALOG } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GOLD_BASE_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
@@ -40,6 +41,7 @@ type FormDataState = {
   stringLength: string;
   premiumStrings: string[];
   classicStrings: string[];
+  glowStrings: string[];
   wantStopers: string;
   extraStopers: string;
   wantSticker: string;
@@ -114,6 +116,7 @@ const initialFormData: FormDataState = {
   stringLength: '',
   premiumStrings: [],
   classicStrings: [],
+  glowStrings: [],
   wantStopers: 'nie',
   extraStopers: '',
   wantSticker: 'nie',
@@ -341,14 +344,18 @@ export default function Home() {
   const stringSizeText = stringSizeLabel(stringSize);
   const premiumStringPrice = premiumStringUnitPrice(stringSize);
   const classicStringPrice = classicStringUnitPrice(stringSize);
+  const glowStringPrice = glowStringUnitPrice(stringSize);
   const premiumStringsCost = formData.wantString === 'tak' && premiumStringPrice
     ? formData.premiumStrings.length * premiumStringPrice
     : 0;
   const classicStringsCost = formData.wantString === 'tak' && classicStringPrice
     ? formData.classicStrings.length * classicStringPrice
     : 0;
+  const glowStringsCost = formData.wantString === 'tak' && glowStringPrice
+    ? formData.glowStrings.length * glowStringPrice
+    : 0;
 
-  const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + dialCodeCost;
+  const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + glowStringsCost + dialCodeCost;
 
   const goToTab = (tab: string) => {
     setActiveTab(tab);
@@ -362,12 +369,12 @@ export default function Home() {
     { id: 1, label: 'Oprawa', icon: '💍' },
     { id: 2, label: 'Baza', icon: '🎨' },
     { id: 3, label: 'Darmowy charms', icon: '🦮' },
-    { id: 4, label: 'Dodatkowe charms', icon: '🪝' },
+    { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝' },
     { id: 5, label: 'Darmowy karabińczyk', icon: '✍️' },
-    { id: 6, label: 'Dodatkowe karabińczyki', icon: '✨' },
-    { id: 7, label: 'Sznurek', icon: '📏' },
-    { id: 8, label: 'Stopery', icon: '🧵' },
-    { id: 9, label: 'Naklejka', icon: '🏷️' },
+    { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨' },
+    { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏' },
+    { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵' },
+    { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'Naklejka', icon: '🏷️' },
     { id: 10, label: 'Dane na adresówce', icon: '📝' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒' },
   ];
@@ -542,33 +549,57 @@ export default function Home() {
   );
 
   const ringsList = [
-    { id: 'złoty', title: 'Złota', image: '/oprawy/gold.png' },
-    { id: 'srebrny', title: 'Srebrna', image: '/oprawy/silver.png' },
-    { id: 'kwiat', title: 'Kwiat', image: '/oprawy/kwiat.png' },
+    {
+      id: 'złoty',
+      title: 'Złota',
+      image: '/oprawy/gold.png',
+      details: [
+        { label: 'Rozmiar', value: '25 mm' },
+        { label: 'Materiał', value: 'stal nierdzewna' },
+      ],
+    },
+    {
+      id: 'srebrny',
+      title: 'Srebrna',
+      image: '/oprawy/silver.png',
+      details: [
+        { label: 'Rozmiar', value: '25 mm' },
+        { label: 'Materiał', value: 'stal nierdzewna' },
+      ],
+    },
+    {
+      id: 'kwiat',
+      title: 'Kwiat',
+      image: '/oprawy/kwiat.png',
+      details: [
+        { label: 'Rozmiar', value: '28 mm' },
+        { label: 'Materiał', value: 'stal nierdzewna' },
+      ],
+    },
   ];
 
-  const goldBases = Array.from({ length: 16 }, (_, i) => ({
-    id: String(i + 1),
-    title: `Podpis ${i + 1}`,
-    image: `/baza/gold${i + 1}.jpg`,
+  const goldBases = GOLD_BASE_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    image: item.image,
   }));
 
-  const silverBases = Array.from({ length: 8 }, (_, i) => ({
-    id: String(i + 17),
-    title: `Podpis ${i + 17}`,
-    image: `/baza/silver${i + 1}.jpg`,
+  const silverBases = SILVER_BASE_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    image: item.image,
   }));
 
-  const flowerBases = Array.from({ length: 6 }, (_, i) => ({
-    id: `kwiat${i + 1}`,
-    title: `Podpis ${i + 1}`,
-    image: `/baza/kwiat${i + 1}.jpg`,
+  const flowerBases = FLOWER_BASE_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    image: item.image,
   }));
 
-  const glowBases = Array.from({ length: 5 }, (_, i) => ({
-    id: `glow${i + 1}`,
-    title: `Podpis ${i + 1}`,
-    image: `/glow/${i + 1}.jpg`,
+  const glowBases = GLOW_BASE_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    images: item.images,
   }));
 
   const basesForRing = (ringColor: string) => {
@@ -631,6 +662,12 @@ export default function Home() {
     images: item.images,
   }));
 
+  const glowStringsList = GLOW_STRING_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    images: item.images,
+  }));
+
   const findTitle = (list: { id: string; title: string }[], id: string, fallback: string) =>
     list.find((item) => item.id === id)?.title ?? fallback;
 
@@ -678,6 +715,13 @@ export default function Home() {
       });
     }
 
+    if (formData.wantString === 'tak' && formData.glowStrings.length > 0) {
+      options.push({
+        label: 'Sznurek Glow',
+        values: formData.glowStrings.map((id) => findTitle(glowStringsList, id, id)),
+      });
+    }
+
     if (formData.wantString === 'tak' && formData.stringLength) {
       options.push({
         label: 'Obwód szyi',
@@ -722,9 +766,11 @@ export default function Home() {
       productName: activeProduct.name,
       quantity: 1,
       price: totalPrice,
-      image: selectedBases.find((base) => base.id === formData.baseOption)?.image
-        ?? selectedBases[0]?.image
-        ?? '',
+      image: (() => {
+        const base = selectedBases.find((item) => item.id === formData.baseOption) ?? selectedBases[0];
+        if (!base) return '';
+        return 'images' in base && base.images?.length ? base.images[0] : base.image ?? '';
+      })(),
       options,
       config: { ...formData },
     };
@@ -850,6 +896,7 @@ export default function Home() {
           extraCarabiner: config.wantExtraKarabiners === 'tak' ? config.extraKarabiners : [],
           stringPremium: config.wantString === 'tak' ? config.premiumStrings : [],
           stringClassic: config.wantString === 'tak' ? config.classicStrings : [],
+          stringGlow: config.wantString === 'tak' ? config.glowStrings : [],
           dogNeck: config.wantString === 'tak' && config.stringLength ? `${config.stringLength} cm` : null,
           stoppers: config.wantStopers === 'tak' && config.extraStopers
             ? (config.extraStopers === '1' ? 'złote' : 'srebrne')
@@ -931,6 +978,17 @@ export default function Home() {
     });
   };
 
+  const toggleGlowString = (id: string) => {
+    setFormData((prev) => {
+      const exists = prev.glowStrings.includes(id);
+      if (exists) {
+        return { ...prev, glowStrings: prev.glowStrings.filter((item) => item !== id) };
+      } else {
+        return { ...prev, glowStrings: [...prev.glowStrings, id] };
+      }
+    });
+  };
+
   const summaryLines = (
     <>
       <div className="space-y-3 text-sm text-[#7A736C]">
@@ -977,6 +1035,17 @@ export default function Home() {
             <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
               {classicStringPrice
                 ? `+${formData.classicStrings.length * classicStringPrice} zł (${classicStringPrice} zł/szt)`
+                : 'cena wg rozmiaru'}
+            </span>
+          </div>
+        )}
+
+        {formData.wantString === 'tak' && formData.glowStrings.length > 0 && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Sznurek Glow x{formData.glowStrings.length}</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              {glowStringPrice
+                ? `+${formData.glowStrings.length * glowStringPrice} zł (${glowStringPrice} zł/szt)`
                 : 'cena wg rozmiaru'}
             </span>
           </div>
@@ -1172,7 +1241,7 @@ export default function Home() {
                         }`}>
                           {step.icon}
                         </div>
-                        <span className="text-[7px] md:text-[8px] font-medium uppercase tracking-wider hidden md:block">{step.label}</span>
+                        <span className="text-[7px] md:text-[8px] font-medium uppercase tracking-wider hidden md:block">{'shortLabel' in step && step.shortLabel ? step.shortLabel : step.label}</span>
                       </div>
                     ))}
                   </div>
@@ -1749,7 +1818,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ZAKŁADKA: Adresówka klasyczna */}
+        {/* ZAKŁADKA: Adresówka biżuteryjna */}
         {activeTab === 'configurator' && isTagConfigurator && (
           <div>
             {/* Układ dwukolumnowy z panelem podsumowania po prawej */}
@@ -1767,7 +1836,7 @@ export default function Home() {
                     <div className="pt-4">
                       {contentStep === 1 && (
                         <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz kolor oprawy:</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz kolor oprawy, który najlepiej podkreśli styl Twojego pupila:</p>
                           <div className={imageGridClass(ringsList.length)}>
                             {ringsList.map((item) => (
                               <div
@@ -1785,6 +1854,14 @@ export default function Home() {
                                   <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                <ul className="mt-1 text-[10px] md:text-[11px] text-[#7A736C] space-y-0.5">
+                                  {item.details.map((detail) => (
+                                    <li key={detail.label} className="whitespace-nowrap">
+                                      <span className="font-semibold text-[#161616]">{detail.label}:</span>{' '}
+                                      {detail.value}
+                                    </li>
+                                  ))}
+                                </ul>
                                 <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.ringColor === item.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
                                   {formData.ringColor === item.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
@@ -1801,7 +1878,7 @@ export default function Home() {
                               'Wybierz bazę'
                             ) : (
                               <>
-                                Wybierz bazę (dla koloru oprawy: <span className="uppercase text-[#C4A574]">{oprawaLabel(formData.ringColor)}</span>):
+                                Wybierz bazę (dla oprawy: <span className="uppercase text-[#C4A574]">{oprawaLabel(formData.ringColor)}</span>):
                               </>
                             )}
                           </p>
@@ -1815,7 +1892,11 @@ export default function Home() {
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                  <img src={base.image} alt={base.title} className="w-full h-full object-cover" />
+                                  {'images' in base && base.images?.length ? (
+                                    <ImageGallery items={base.images} alt={base.title} stopPropagation />
+                                  ) : (
+                                    <img src={base.image} alt={base.title} className="w-full h-full object-cover" />
+                                  )}
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{base.title}</span>
                                 <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.baseOption === base.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
@@ -1829,7 +1910,7 @@ export default function Home() {
 
                       {contentStep === 3 && (
                         <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy charms:</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
                           <div className={imageGridClass(charmsList.length)}>
                             {charmsList.map((charm) => (
                               <div
@@ -1854,7 +1935,7 @@ export default function Home() {
 
                       {contentStep === 4 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Czy chcesz wybrać dodatkowe, płatne charms?</p>
+                          <p className="font-bold text-base text-[#161616]">Dodaj kolejne zawieszki, aby adresówka była jeszcze bardziej stylowa i przyciągała wzrok na spacerach</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },
@@ -1911,7 +1992,7 @@ export default function Home() {
 
                       {contentStep === 5 && (
                         <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk:</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk do mocowania:</p>
                           <div className={imageGridClass(karabinersList.length)}>
                             {karabinersList.map((karabiner) => (
                               <div
@@ -1936,7 +2017,7 @@ export default function Home() {
 
                       {contentStep === 6 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Czy chcesz wybrać dodatkowe, płatne karabińczyki?</p>
+                          <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },
@@ -1994,7 +2075,7 @@ export default function Home() {
                       {/* KROK 7: Sznurek */}
                       {contentStep === 7 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Czy chcesz dodać sznurek?</p>
+                          <p className="font-bold text-base text-[#161616]">Dodaj dedykowany, lekki i trwały sznurek na szyję, aby adresówka była zawsze na swoim miejscu (nawet bez obroży):</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },
@@ -2008,6 +2089,7 @@ export default function Home() {
                                   stringLength: option.id === 'nie' ? '' : formData.stringLength,
                                   premiumStrings: option.id === 'nie' ? [] : formData.premiumStrings,
                                   classicStrings: option.id === 'nie' ? [] : formData.classicStrings,
+                                  glowStrings: option.id === 'nie' ? [] : formData.glowStrings,
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                   formData.wantString === option.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -2043,6 +2125,37 @@ export default function Home() {
                                   </div>
                                 )}
                               </div>
+
+                              {isGlowTagConfigurator && (
+                                <div className="space-y-4 pt-4">
+                                  <h3 className="font-bold text-lg text-[#161616]">
+                                    Dodaj sznurek Glow (możesz wybrać wiele)
+                                    {glowStringPrice ? ` — ${glowStringPrice} zł/szt` : ''}
+                                  </h3>
+                                  <div className={imageGridClass(glowStringsList.length)}>
+                                    {glowStringsList.map((item) => {
+                                      const isSelected = formData.glowStrings.includes(item.id);
+                                      return (
+                                        <div
+                                          key={item.id}
+                                          onClick={() => toggleGlowString(item.id)}
+                                          className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                            isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                          }`}
+                                        >
+                                          <div className="w-full mb-3 md:mb-5">
+                                            <ImageGallery items={item.images} alt={item.title} stopPropagation />
+                                          </div>
+                                          <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
 
                               <div className="space-y-4 pt-4">
                                 <h3 className="font-bold text-lg text-[#161616]">
@@ -2108,7 +2221,7 @@ export default function Home() {
 
                       {contentStep === 8 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Czy chcesz dodać stopery?</p>
+                          <p className="font-bold text-base text-[#161616]">Dodaj stopery, aby precyzyjnie regulować długość sznurka i zapewnić psu maksymalny komfort:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },
@@ -2162,7 +2275,7 @@ export default function Home() {
 
                       {contentStep === 9 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Czy chcesz dodać naklejkę Twojego pieska?</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz naklejkę z grafiką rasy Twojego pupila, którą umieścimy na adresówce, nadając jej niepowtarzalny wygląd:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },

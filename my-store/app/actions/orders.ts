@@ -4,7 +4,7 @@ import { sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
 import { getPaymentRecipient } from "@/app/actions/settings"
 import { createClient } from "@/lib/supabase/server"
-import { CLASSIC_TAG_PRODUCT } from "@/lib/catalog"
+import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
 import type {
   CreateOrderInput,
   CreateOrderResult,
@@ -75,6 +75,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     extra_carabiner: item.extraCarabiner,
     string_premium: item.stringPremium,
     string_classic: item.stringClassic,
+    string_glow: item.stringGlow,
     dog_neck: item.dogNeck,
     stoppers: item.stoppers,
     sticker: item.sticker,
@@ -166,6 +167,7 @@ type OrderItemRow = {
   extra_carabiner: unknown
   string_premium: unknown
   string_classic: unknown
+  string_glow?: unknown
   base_carabiner: string
   dog_neck: string | null
   stoppers: string | null
@@ -238,8 +240,8 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   unitPrice: toMoney(row.unit_price),
   lineTotal: toMoney(row.line_total),
   imageUrl: row.image_url,
-  productSlug: row.product_slug || CLASSIC_TAG_PRODUCT.slug,
-  productName: row.product_name || CLASSIC_TAG_PRODUCT.name,
+  productSlug: normalizeProductSlug(row.product_slug || CLASSIC_TAG_PRODUCT.slug),
+  productName: normalizeProductName(row.product_name || CLASSIC_TAG_PRODUCT.name),
   ringColor: row.ring_color,
   baseColor: row.base_color,
   baseCharms: row.base_charms,
@@ -248,6 +250,7 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   extraCarabiner: toStringArray(row.extra_carabiner),
   stringPremium: toStringArray(row.string_premium),
   stringClassic: toStringArray(row.string_classic),
+  stringGlow: toStringArray(row.string_glow),
   dogNeck: row.dog_neck,
   stoppers: row.stoppers,
   sticker: row.sticker,

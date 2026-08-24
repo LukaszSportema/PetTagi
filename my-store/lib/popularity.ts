@@ -2,6 +2,7 @@ import {
   BASE_OPTIONS,
   CHARM_OPTIONS,
   CLASSIC_STRING_OPTIONS,
+  GLOW_STRING_OPTIONS,
   KARABINER_OPTIONS,
   PREMIUM_STRING_OPTIONS,
   RING_OPTIONS,
@@ -23,6 +24,7 @@ export type PopularityItem = {
   extraCarabiner: string[]
   stringClassic: string[]
   stringPremium: string[]
+  stringGlow: string[]
   stoppers: string | null
   sticker: string | null
 }
@@ -75,6 +77,12 @@ const GROUPS: GroupDef[] = [
     label: "Sznurek Premium",
     options: PREMIUM_STRING_OPTIONS,
     values: (item) => item.stringPremium,
+  },
+  {
+    key: "glow-string",
+    label: "Sznurek Glow",
+    options: GLOW_STRING_OPTIONS,
+    values: (item) => item.stringGlow,
   },
   {
     key: "stopper",

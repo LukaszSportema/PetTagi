@@ -1,5 +1,5 @@
 import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
-import { BASE_OPTIONS, CLASSIC_STRING_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS } from "@/lib/catalog-options"
+import { BASE_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS } from "@/lib/catalog-options"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
@@ -67,6 +67,7 @@ export type OrderItemOptionsSource = Pick<
   | "extraCarabiner"
   | "stringPremium"
   | "stringClassic"
+  | "stringGlow"
   | "dogNeck"
   | "stoppers"
   | "sticker"
@@ -122,6 +123,13 @@ export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
     options.push({
       label: "Sznurek Klasyczny",
       values: item.stringClassic.map((id) => optionLabel(CLASSIC_STRING_OPTIONS, id)),
+    })
+  }
+
+  if (item.stringGlow.length > 0) {
+    options.push({
+      label: "Sznurek Glow",
+      values: item.stringGlow.map((id) => optionLabel(GLOW_STRING_OPTIONS, id)),
     })
   }
 

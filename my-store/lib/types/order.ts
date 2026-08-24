@@ -16,6 +16,7 @@ export type CreateOrderItemInput = {
   extraCarabiner: string[]
   stringPremium: string[]
   stringClassic: string[]
+  stringGlow: string[]
   dogNeck: string | null
   stoppers: string | null
   sticker: string | null
@@ -95,6 +96,7 @@ export type OrderItemRecord = {
   extraCarabiner: string[]
   stringPremium: string[]
   stringClassic: string[]
+  stringGlow: string[]
   dogNeck: string | null
   stoppers: string | null
   sticker: string | null

@@ -19,6 +19,7 @@ type PopularityItemRow = {
   extra_carabiner: unknown
   string_classic: unknown
   string_premium: unknown
+  string_glow?: unknown
   stoppers: string | null
   sticker: string | null
 }
@@ -65,6 +66,7 @@ const mapItem = (row: PopularityItemRow): PopularityItem => ({
   extraCarabiner: toStringArray(row.extra_carabiner),
   stringClassic: toStringArray(row.string_classic),
   stringPremium: toStringArray(row.string_premium),
+  stringGlow: toStringArray(row.string_glow),
   stoppers: row.stoppers,
   sticker: row.sticker,
 })

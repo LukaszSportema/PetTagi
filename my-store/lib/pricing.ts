@@ -42,12 +42,16 @@ export const premiumStringUnitPrice = (size: StringSize | null): number | null =
 export const classicStringUnitPrice = (size: StringSize | null): number | null =>
   size ? CLASSIC_STRING_PRICES[size] : null
 
+export const glowStringUnitPrice = (size: StringSize | null): number | null =>
+  premiumStringUnitPrice(size)
+
 export type PricedOrderItem = {
   quantity: number
   extraCharms: string[]
   extraCarabiner: string[]
   stringPremium: string[]
   stringClassic: string[]
+  stringGlow: string[]
   dogNeck?: string | null
   stoppers: string | null
   sticker: string | null
@@ -59,11 +63,12 @@ export const itemRevenueParts = (item: PricedOrderItem) => {
   const size = stringSizeFromNeckCm(item.dogNeck)
   const premiumPrice = premiumStringUnitPrice(size) ?? 0
   const classicPrice = classicStringUnitPrice(size) ?? 0
+  const glowPrice = premiumPrice
   return {
     base: BASE_TAG_PRICE * qty,
     charms: item.extraCharms.length * EXTRA_CHARM_PRICE * qty,
     karabiners: item.extraCarabiner.length * EXTRA_KARABINER_PRICE * qty,
-    strings: (item.stringPremium.length * premiumPrice + item.stringClassic.length * classicPrice) * qty,
+    strings: (item.stringPremium.length * premiumPrice + item.stringClassic.length * classicPrice + item.stringGlow.length * glowPrice) * qty,
     stoppers: item.stoppers ? STOPPER_PRICE * qty : 0,
     stickers: item.sticker ? STICKER_PRICE * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,

@@ -1,11 +1,14 @@
--- PetTagi — produkt na pozycji zamówienia (osobny konfigurator per produkt)
+-- PetTagi — sznurek Glow na pozycji zamówienia
 -- Wklej w Supabase: SQL Editor → Run
 
 alter table public.order_items
-  add column if not exists product_slug text not null default 'adresowka-bizuteryjna';
+  add column if not exists string_glow jsonb not null default '[]'::jsonb;
 
 alter table public.order_items
-  add column if not exists product_name text not null default 'Adresówka biżuteryjna';
+  drop constraint if exists order_items_string_glow_array;
+
+alter table public.order_items
+  add constraint order_items_string_glow_array check (jsonb_typeof(string_glow) = 'array');
 
 create or replace function public.place_order(order_row jsonb, items jsonb)
 returns jsonb
@@ -77,6 +80,7 @@ begin
     extra_carabiner,
     string_premium,
     string_classic,
+    string_glow,
     dog_neck,
     stoppers,
     sticker,
@@ -101,6 +105,7 @@ begin
     coalesce(item->'extra_carabiner', '[]'::jsonb),
     coalesce(item->'string_premium', '[]'::jsonb),
     coalesce(item->'string_classic', '[]'::jsonb),
+    coalesce(item->'string_glow', '[]'::jsonb),
     nullif(item->>'dog_neck', ''),
     nullif(item->>'stoppers', ''),
     nullif(item->>'sticker', ''),
@@ -115,3 +120,87 @@ $$;
 
 revoke all on function public.place_order(jsonb, jsonb) from public;
 grant execute on function public.place_order(jsonb, jsonb) to anon, authenticated;
+
+create or replace function public.admin_popularity_items()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (
+      select jsonb_agg(row_data order by created_at)
+      from (
+        select jsonb_build_object(
+          'created_at', o.created_at,
+          'quantity', i.quantity,
+          'ring_color', i.ring_color,
+          'base_color', i.base_color,
+          'base_charms', i.base_charms,
+          'extra_charms', i.extra_charms,
+          'base_carabiner', i.base_carabiner,
+          'extra_carabiner', i.extra_carabiner,
+          'string_classic', i.string_classic,
+          'string_premium', i.string_premium,
+          'string_glow', i.string_glow,
+          'stoppers', i.stoppers,
+          'sticker', i.sticker
+        ) as row_data,
+        o.created_at
+        from public.orders o
+        join public.order_items i on i.order_id = o.id
+        where o.status not in ('pending', 'cancelled')
+      ) t
+    ),
+    '[]'::jsonb
+  );
+$$;
+
+revoke all on function public.admin_popularity_items() from public;
+grant execute on function public.admin_popularity_items() to anon, authenticated;
+
+create or replace function public.admin_revenue_orders()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (
+      select jsonb_agg(row_data order by created_at)
+      from (
+        select jsonb_build_object(
+          'created_at', o.created_at,
+          'total', o.total,
+          'shipping_cost', o.shipping_cost,
+          'fast_delivery_cost', o.fast_delivery_cost,
+          'items', coalesce((
+            select jsonb_agg(jsonb_build_object(
+              'quantity', i.quantity,
+              'extra_charms', i.extra_charms,
+              'extra_carabiner', i.extra_carabiner,
+              'string_premium', i.string_premium,
+              'string_classic', i.string_classic,
+              'string_glow', i.string_glow,
+              'dog_neck', i.dog_neck,
+              'stoppers', i.stoppers,
+              'sticker', i.sticker,
+              'dial_code_info', i.dial_code_info
+            ) order by i.sort_order, i.created_at)
+            from public.order_items i
+            where i.order_id = o.id
+          ), '[]'::jsonb)
+        ) as row_data,
+        o.created_at
+        from public.orders o
+        where o.status not in ('pending', 'cancelled')
+      ) t
+    ),
+    '[]'::jsonb
+  );
+$$;
+
+revoke all on function public.admin_revenue_orders() from public;
+grant execute on function public.admin_revenue_orders() to anon, authenticated;
