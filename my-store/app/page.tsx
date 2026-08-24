@@ -599,6 +599,7 @@ export default function Home() {
   const glowBases = GLOW_BASE_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
+    image: item.images[0],
     images: item.images,
   }));
 
@@ -610,6 +611,9 @@ export default function Home() {
   };
 
   const selectedBases = isGlowTagConfigurator ? glowBases : basesForRing(formData.ringColor);
+
+  const basePreviewImage = (base: { image: string; images?: string[] }) =>
+    base.images?.[0] ?? base.image;
 
   const oprawaLabel = (ringColor: string) => {
     if (ringColor === 'złoty') return 'Złoty';
@@ -766,11 +770,9 @@ export default function Home() {
       productName: activeProduct.name,
       quantity: 1,
       price: totalPrice,
-      image: (() => {
-        const base = selectedBases.find((item) => item.id === formData.baseOption) ?? selectedBases[0];
-        if (!base) return '';
-        return 'images' in base && base.images?.length ? base.images[0] : base.image ?? '';
-      })(),
+      image: basePreviewImage(
+        selectedBases.find((item) => item.id === formData.baseOption) ?? selectedBases[0] ?? { image: '' },
+      ),
       options,
       config: { ...formData },
     };
@@ -1892,10 +1894,10 @@ export default function Home() {
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                  {'images' in base && base.images?.length ? (
+                                  {base.images && base.images.length > 1 ? (
                                     <ImageGallery items={base.images} alt={base.title} stopPropagation />
                                   ) : (
-                                    <img src={base.image} alt={base.title} className="w-full h-full object-cover" />
+                                    <img src={basePreviewImage(base)} alt={base.title} className="w-full h-full object-cover" />
                                   )}
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{base.title}</span>
