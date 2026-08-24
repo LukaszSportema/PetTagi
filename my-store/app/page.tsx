@@ -64,6 +64,13 @@ type CartItem = {
   config: FormDataState;
 };
 
+type ConfiguratorBaseOption = {
+  id: string;
+  title: string;
+  image: string;
+  images?: string[];
+};
+
 type CheckoutData = {
   firstName: string;
   lastName: string;
@@ -578,32 +585,32 @@ export default function Home() {
     },
   ];
 
-  const goldBases = GOLD_BASE_CATALOG.map((item) => ({
+  const goldBases: ConfiguratorBaseOption[] = GOLD_BASE_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
     image: item.image,
   }));
 
-  const silverBases = SILVER_BASE_CATALOG.map((item) => ({
+  const silverBases: ConfiguratorBaseOption[] = SILVER_BASE_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
     image: item.image,
   }));
 
-  const flowerBases = FLOWER_BASE_CATALOG.map((item) => ({
+  const flowerBases: ConfiguratorBaseOption[] = FLOWER_BASE_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
     image: item.image,
   }));
 
-  const glowBases = GLOW_BASE_CATALOG.map((item) => ({
+  const glowBases: ConfiguratorBaseOption[] = GLOW_BASE_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
     image: item.images[0],
     images: item.images,
   }));
 
-  const basesForRing = (ringColor: string) => {
+  const basesForRing = (ringColor: string): ConfiguratorBaseOption[] => {
     if (ringColor === 'srebrny') return silverBases;
     if (ringColor === 'kwiat') return flowerBases;
     if (ringColor === 'glow') return glowBases;
@@ -612,7 +619,7 @@ export default function Home() {
 
   const selectedBases = isGlowTagConfigurator ? glowBases : basesForRing(formData.ringColor);
 
-  const basePreviewImage = (base: { image: string; images?: string[] }) =>
+  const basePreviewImage = (base: ConfiguratorBaseOption) =>
     base.images?.[0] ?? base.image;
 
   const oprawaLabel = (ringColor: string) => {
@@ -771,7 +778,7 @@ export default function Home() {
       quantity: 1,
       price: totalPrice,
       image: basePreviewImage(
-        selectedBases.find((item) => item.id === formData.baseOption) ?? selectedBases[0] ?? { image: '' },
+        selectedBases.find((item) => item.id === formData.baseOption) ?? selectedBases[0] ?? { id: '', title: '', image: '' },
       ),
       options,
       config: { ...formData },
