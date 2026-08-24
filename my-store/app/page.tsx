@@ -114,19 +114,19 @@ const initialFormData: FormDataState = {
   ringColor: 'złoty',
   baseOption: '1',
   charmOption: '1',
-  wantExtraCharms: 'nie',
+  wantExtraCharms: 'tak',
   extraCharms: [],
   karabinerOption: '1',
-  wantExtraKarabiners: 'nie',
+  wantExtraKarabiners: 'tak',
   extraKarabiners: [],
-  wantString: 'nie',
+  wantString: 'tak',
   stringLength: '',
   premiumStrings: [],
   classicStrings: [],
   glowStrings: [],
-  wantStopers: 'nie',
+  wantStopers: 'tak',
   extraStopers: '',
-  wantSticker: 'nie',
+  wantSticker: 'tak',
   stickerOption: '',
   accessoryType: 'szelki',
   petName: '',
@@ -374,16 +374,16 @@ export default function Home() {
 
   const allStepsInfo = [
     { id: 1, label: 'Oprawa', icon: '💍' },
-    { id: 2, label: 'Baza', icon: '🎨' },
+    { id: 2, label: 'Baza', icon: '🎨', thumbnail: '/miniatury/baza.jpg' },
     { id: 3, label: 'Darmowy charms', icon: '🦮' },
     { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝' },
     { id: 5, label: 'Darmowy karabińczyk', icon: '✍️' },
     { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨' },
-    { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏' },
+    { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
     { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵' },
-    { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'Naklejka', icon: '🏷️' },
+    { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'Naklejka', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
     { id: 10, label: 'Dane na adresówce', icon: '📝' },
-    { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒' },
+    { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
   ];
   const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [];
   const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
@@ -1167,12 +1167,17 @@ export default function Home() {
           </p>
         </div>
         {/* Navbar z zakładkami */}
-        <header className="border-b border-[#D6C7AE] bg-[#F4EFE6]/90 backdrop-blur-md">
-              <div className="max-w-6xl mx-auto px-5 md:px-12 h-14 md:h-16 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-4 cursor-pointer min-w-0" onClick={() => goToTab('home')}>
-                  <span className="font-serif font-light text-xl md:text-2xl tracking-[0.12em] md:tracking-[0.18em] uppercase text-[#161616]">
-                    PetTagi
-                  </span>
+        <header className="border-b border-[#D6C7AE] bg-[#F4EFE6]/90 backdrop-blur-md overflow-hidden">
+              <div className="max-w-6xl mx-auto px-5 md:px-12 h-16 md:h-[4.75rem] flex items-center justify-between gap-3">
+                <div
+                  className="relative h-full w-[11.5rem] md:w-[13.75rem] cursor-pointer shrink-0"
+                  onClick={() => goToTab('home')}
+                >
+                  <img
+                    src="/logo.png"
+                    alt="PetTagi"
+                    className="absolute left-1/2 top-1/2 h-[360%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
+                  />
                 </div>
 
                 <nav className="hidden md:flex items-center gap-10">
@@ -1228,27 +1233,31 @@ export default function Home() {
             </header>
 
         {activeTab === 'configurator' && isTagConfigurator && (
-          <div className="bg-white border-b border-[#D6C7AE] py-2 shadow-xs">
+          <div className="bg-white border-b border-[#D6C7AE] py-2.5 shadow-xs">
             <div className="px-2 md:px-4 flex items-center gap-2 md:gap-4">
               {renderBackButton()}
               <div className="flex-1 min-w-0">
                 <div
                   ref={stepsScrollRef}
-                  className="overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1.5"
                 >
-                  <div className="flex items-center gap-3 md:gap-0 md:justify-between w-max md:w-full mb-1.5 px-1">
+                  <div className="flex items-center gap-3 md:gap-0 md:justify-between w-max md:w-full mb-1.5 px-1 pt-0.5">
                     {stepsInfo.map((step) => (
                       <div
                         key={step.id}
                         data-step={step.id}
-                        className={`flex flex-col items-center gap-0.5 shrink-0 w-9 md:w-auto transition-all duration-300 ${
-                          step.id === currentStep ? 'scale-105 opacity-100' : 'opacity-40'
+                        className={`flex flex-col items-center gap-0.5 shrink-0 w-9 md:w-auto transition-opacity duration-300 ${
+                          step.id === currentStep ? 'opacity-100' : 'opacity-40'
                         }`}
                       >
-                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm border-2 ${
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm border-2 overflow-hidden shrink-0 ${
                           step.id === currentStep ? 'border-[#161616] bg-[#F4EFE6]' : 'border-[#D6C7AE] bg-white'
                         }`}>
-                          {step.icon}
+                          {'thumbnail' in step && step.thumbnail ? (
+                            <img src={step.thumbnail} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            step.icon
+                          )}
                         </div>
                         <span className="text-[7px] md:text-[8px] font-medium uppercase tracking-wider hidden md:block">{'shortLabel' in step && step.shortLabel ? step.shortLabel : step.label}</span>
                       </div>
@@ -1318,16 +1327,19 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20">
               {CATALOG_PRODUCTS.map((product) => (
-                <div key={product.slug} className="space-y-6">
+                <div key={product.slug} className="space-y-6 text-center">
                   <ProductGallery items={product.gallery} alt={product.name} />
                   <h3 className="text-2xl md:text-3xl font-serif font-light">{product.name}</h3>
                   <p className="text-sm text-[#7A736C] font-light leading-relaxed">{product.description}</p>
-                  <button
-                    onClick={() => openConfigurator(product.slug)}
-                    className="text-[11px] uppercase tracking-[0.22em] font-light text-[#161616] border-b border-[#161616] pb-1 hover:text-[#C4A574] hover:border-[#C4A574] transition-colors"
-                  >
-                    {product.cta}
-                  </button>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => openConfigurator(product.slug)}
+                      className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-5 md:px-6 py-2.5 md:py-3 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300"
+                    >
+                      {product.cta}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

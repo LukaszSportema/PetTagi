@@ -23,7 +23,10 @@ export const CLASSIC_TAG_PRODUCT: CatalogProduct = {
   emoji: "💍",
   cta: "Skonfiguruj własną",
   configuratorId: "classic-tag",
-  gallery: [{ type: "image", src: "/produkty/gold1.jpg" }],
+  gallery: [
+    { type: "image", src: "/produkty/glowneklasyczne1.jpg" },
+    { type: "image", src: "/produkty/glowneklasyczne2.jpg" },
+  ],
 }
 
 export const LEGACY_CLASSIC_TAG_SLUG = "adresowka-klasyczna"
@@ -44,8 +47,8 @@ export const GLOW_TAG_PRODUCT: CatalogProduct = {
   cta: "Skonfiguruj własną",
   configuratorId: "glow-tag",
   gallery: [
-    { type: "video", src: "/produkty/glow1vid.mp4" },
     { type: "video", src: "/produkty/glow2vid.mp4" },
+    { type: "video", src: "/produkty/glow1vid.mp4" },
   ],
 }
 
