@@ -373,16 +373,16 @@ export default function Home() {
   const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator;
 
   const allStepsInfo = [
-    { id: 1, label: 'Oprawa', icon: '💍' },
+    { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/oprawa.jpg' },
     { id: 2, label: 'Baza', icon: '🎨', thumbnail: '/miniatury/baza.jpg' },
-    { id: 3, label: 'Darmowy charms', icon: '🦮' },
-    { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝' },
-    { id: 5, label: 'Darmowy karabińczyk', icon: '✍️' },
-    { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨' },
+    { id: 3, label: 'Darmowy charms', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
+    { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝', thumbnail: '/miniatury/dodatkowycharms.jpg' },
+    { id: 5, label: 'Darmowy karabińczyk', icon: '✍️', thumbnail: '/miniatury/darmowykarabinczyk.jpg' },
+    { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨', thumbnail: '/miniatury/dodatkowykarabinczyk.jpg' },
     { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
-    { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵' },
+    { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵', thumbnail: '/miniatury/stopery.jpg' },
     { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'Naklejka', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
-    { id: 10, label: 'Dane na adresówce', icon: '📝' },
+    { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
   ];
   const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [];
