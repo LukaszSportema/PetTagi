@@ -287,7 +287,7 @@ export default function FurgonetkaMap({
           />
           <button
             type="submit"
-            className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-4 md:px-5 py-2 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
+            className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-4 md:px-5 py-2 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
           >
             Szukaj
           </button>

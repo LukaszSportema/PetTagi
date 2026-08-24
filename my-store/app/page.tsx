@@ -531,7 +531,7 @@ export default function Home() {
   };
 
   const backButtonClass = "px-2.5 sm:px-5 py-2.5 rounded-none border border-[#D6C7AE] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light text-[#161616] hover:bg-[#EBE4D6] transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shrink-0";
-  const nextButtonClass = "px-2.5 sm:px-7 py-2.5 rounded-none bg-[#161616] text-[#F4EFE6] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light hover:bg-[#3A3A3A] transition-colors duration-300 whitespace-nowrap shrink-0";
+  const nextButtonClass = "px-2.5 sm:px-7 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light hover:bg-[#2E4833] transition-colors duration-300 whitespace-nowrap shrink-0";
 
   const renderBackButton = () => (
     <button
@@ -1145,7 +1145,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={goToCartAfterAdd}
-                className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
+                className="w-full bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
               >
                 Przejdź do koszyka
               </button>
@@ -1161,7 +1161,7 @@ export default function Home() {
         </div>
       )}
       <div ref={topStackRef} className="sticky top-0 z-50 bg-[#F4EFE6] pt-[env(safe-area-inset-top)]">
-        <div className="bg-[#161616] text-[#F4EFE6] px-4 md:px-6 py-2 md:py-2.5 text-center">
+        <div className="bg-[#3A5A40] text-[#F4EFE6] px-4 md:px-6 py-2 md:py-2.5 text-center">
           <p className="text-[10px] md:text-[11px] uppercase tracking-[0.14em] md:tracking-[0.28em] font-light">
             Darmowa dostawa od 299 zł
           </p>
@@ -1201,7 +1201,7 @@ export default function Home() {
                     onClick={() => goToTab('admin')}
                     className={`px-3 md:px-4 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 ${
                       activeTab === 'admin'
-                        ? 'bg-[#161616] text-[#F4EFE6]'
+                        ? 'bg-[#3A5A40] text-[#F4EFE6]'
                         : 'bg-transparent text-[#161616] border border-[#D6C7AE] hover:border-[#161616]'
                     }`}
                   >
@@ -1209,10 +1209,10 @@ export default function Home() {
                   </button>
                   <button 
                     onClick={() => goToTab('cart')}
-                    className={`bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-3 md:px-5 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
+                    className={`bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-3 md:px-5 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
                   >
                     <span>Koszyk</span>
-                    <span className="bg-[#3A3A3A] text-[#F4EFE6] px-2 py-0.5 rounded-full text-xs">{cartCount}</span>
+                    <span className="bg-[#2E4833] text-[#F4EFE6] px-2 py-0.5 rounded-full text-xs">{cartCount}</span>
                   </button>
                 </div>
               </div>
@@ -1294,7 +1294,7 @@ export default function Home() {
             <div className="pt-4">
               <button 
                 onClick={() => goToTab('products')}
-                className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
+                className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
               >
                 Zobacz produkty
               </button>
@@ -1335,7 +1335,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => openConfigurator(product.slug)}
-                      className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-5 md:px-6 py-2.5 md:py-3 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300"
+                      className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-5 md:px-6 py-2.5 md:py-3 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300"
                     >
                       {product.cta}
                     </button>
@@ -1356,7 +1356,7 @@ export default function Home() {
                 <p className="text-[#7A736C]">Twój koszyk jest pusty.</p>
                 <button
                   onClick={() => goToTab('products')}
-                  className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
+                  className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-6 sm:px-10 py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
                 >
                   Zobacz produkty
                 </button>
@@ -1429,7 +1429,7 @@ export default function Home() {
                       goToTab('checkout');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 flex items-center justify-center gap-2"
+                    className="w-full bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 flex items-center justify-center gap-2"
                   >
                     Przejdź do kasy
                     <span aria-hidden>→</span>
@@ -1759,7 +1759,7 @@ export default function Home() {
                     />
                     <button
                       onClick={() => setAppliedDiscount(discountInput.trim())}
-                      className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-4 md:px-6 py-2.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
+                      className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-4 md:px-6 py-2.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
                     >
                       Zastosuj
                     </button>
@@ -1808,7 +1808,7 @@ export default function Home() {
                 <button
                   onClick={submitCheckout}
                   disabled={isPlacingOrder}
-                  className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isPlacingOrder ? 'Składanie zamówienia...' : 'Złóż zamówienie'}
                 </button>
@@ -1831,7 +1831,7 @@ export default function Home() {
             <div className="pt-4">
               <button
                 onClick={() => goToTab('products')}
-                className="bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
+                className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-6 sm:px-10 py-4 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 w-full sm:w-auto"
               >
                 Wróć do produktów
               </button>
@@ -1867,15 +1867,15 @@ export default function Home() {
                                   ringColor: item.id,
                                   baseOption: basesForRing(item.id)[0]?.id ?? '1',
                                 })}
-                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-stretch ${
                                   formData.ringColor === item.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                                 </div>
-                                <span className="text-base font-medium text-[#161616]">{item.title}</span>
-                                <ul className="mt-1 text-[10px] md:text-[11px] text-[#7A736C] space-y-0.5">
+                                <span className="text-base font-medium text-[#161616] text-center">{item.title}</span>
+                                <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
                                   {item.details.map((detail) => (
                                     <li key={detail.label} className="whitespace-nowrap">
                                       <span className="font-semibold text-[#161616]">{detail.label}:</span>{' '}
@@ -1883,7 +1883,7 @@ export default function Home() {
                                     </li>
                                   ))}
                                 </ul>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.ringColor === item.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${formData.ringColor === item.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
                                   {formData.ringColor === item.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2360,7 +2360,7 @@ export default function Home() {
                             className={`w-full py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 ${
                               showAddedToCart
                                 ? 'bg-[#C4A574] text-[#161616] cursor-default'
-                                : 'bg-[#161616] text-[#F4EFE6] hover:bg-[#3A3A3A]'
+                                : 'bg-[#3A5A40] text-[#F4EFE6] hover:bg-[#2E4833]'
                             }`}
                           >
                             {showAddedToCart ? 'Dodano do koszyka' : 'Dodaj do koszyka'}

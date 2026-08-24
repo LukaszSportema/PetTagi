@@ -850,7 +850,7 @@ function OrderDetailView({
                   <button
                     type="button"
                     onClick={copyCode}
-                    className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
+                    className="w-full bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] py-3 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
                   >
                     {copied ? 'Skopiowano' : 'Kopiuj kod'}
                   </button>
@@ -860,7 +860,7 @@ function OrderDetailView({
                   type="button"
                   onClick={() => generateCode(detail.id)}
                   disabled={isGeneratingCode}
-                  className="w-full bg-[#161616] hover:bg-[#3A3A3A] text-[#F4EFE6] py-3 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] py-3 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isGeneratingCode ? 'Generowanie kodu...' : 'Generuj kod InPost'}
                 </button>
