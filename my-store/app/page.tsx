@@ -1516,7 +1516,7 @@ export default function Home() {
                             className="h-12 md:h-16 w-auto max-w-full object-contain"
                           />
                           <span className="mt-3 font-bold text-sm md:text-base text-[#161616]">{formatPrice(option.price)}</span>
-                          <span className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                          <span className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                             {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
                           </span>
                         </button>
@@ -1868,7 +1868,7 @@ export default function Home() {
                                   baseOption: basesForRing(item.id)[0]?.id ?? '1',
                                 })}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-stretch ${
-                                  formData.ringColor === item.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.ringColor === item.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
@@ -1883,7 +1883,7 @@ export default function Home() {
                                     </li>
                                   ))}
                                 </ul>
-                                <div className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${formData.ringColor === item.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${formData.ringColor === item.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.ringColor === item.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -1909,7 +1909,7 @@ export default function Home() {
                                 key={base.id}
                                 onClick={() => setFormData({...formData, baseOption: base.id})}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                  formData.baseOption === base.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.baseOption === base.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
@@ -1920,7 +1920,7 @@ export default function Home() {
                                   )}
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{base.title}</span>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.baseOption === base.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.baseOption === base.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.baseOption === base.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -1938,14 +1938,14 @@ export default function Home() {
                                 key={charm.id}
                                 onClick={() => setFormData({...formData, charmOption: charm.id})}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                  formData.charmOption === charm.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.charmOption === charm.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{charm.title}</span>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.charmOption === charm.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.charmOption === charm.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.charmOption === charm.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -1970,11 +1970,11 @@ export default function Home() {
                                   extraCharms: option.id === 'nie' ? [] : formData.extraCharms
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantExtraCharms === option.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraCharms === option.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantExtraCharms === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -1992,14 +1992,14 @@ export default function Home() {
                                       key={charm.id}
                                       onClick={() => toggleExtraCharm(charm.id)}
                                       className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                        isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                        isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                       }`}
                                     >
                                       <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                         <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
                                       </div>
                                       <span className="text-base font-medium text-[#161616]">{charm.title}</span>
-                                      <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                      <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                         {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                       </div>
                                     </div>
@@ -2020,14 +2020,14 @@ export default function Home() {
                                 key={karabiner.id}
                                 onClick={() => setFormData({...formData, karabinerOption: karabiner.id})}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                  formData.karabinerOption === karabiner.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.karabinerOption === karabiner.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
                                 </div>
                                 <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.karabinerOption === karabiner.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.karabinerOption === karabiner.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.karabinerOption === karabiner.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2052,11 +2052,11 @@ export default function Home() {
                                   extraKarabiners: option.id === 'nie' ? [] : formData.extraKarabiners
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantExtraKarabiners === option.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraKarabiners === option.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantExtraKarabiners === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2074,14 +2074,14 @@ export default function Home() {
                                       key={karabiner.id}
                                       onClick={() => toggleExtraKarabiner(karabiner.id)}
                                       className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                        isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                        isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                       }`}
                                     >
                                       <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                         <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
                                       </div>
                                       <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-                                      <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                      <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                         {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                       </div>
                                     </div>
@@ -2113,11 +2113,11 @@ export default function Home() {
                                   glowStrings: option.id === 'nie' ? [] : formData.glowStrings,
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantString === option.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantString === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantString === option.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantString === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantString === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2161,14 +2161,14 @@ export default function Home() {
                                           key={item.id}
                                           onClick={() => toggleGlowString(item.id)}
                                           className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                            isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                            isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                           }`}
                                         >
                                           <div className="w-full mb-3 md:mb-5">
                                             <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                           </div>
                                           <span className="text-base font-medium text-[#161616]">{item.title}</span>
-                                          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                             {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                           </div>
                                         </div>
@@ -2191,14 +2191,14 @@ export default function Home() {
                                         key={item.id}
                                         onClick={() => togglePremiumString(item.id)}
                                         className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                          isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                         }`}
                                       >
                                         <div className="w-full mb-3 md:mb-5">
                                           <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                         </div>
                                         <span className="text-base font-medium text-[#161616]">{item.title}</span>
-                                        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                           {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                         </div>
                                       </div>
@@ -2220,14 +2220,14 @@ export default function Home() {
                                         key={item.id}
                                         onClick={() => toggleClassicString(item.id)}
                                         className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                          isSelected ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                         }`}
                                       >
                                         <div className="w-full mb-3 md:mb-5">
                                           <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                         </div>
                                         <span className="text-base font-medium text-[#161616]">{item.title}</span>
-                                        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                           {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                         </div>
                                       </div>
@@ -2256,11 +2256,11 @@ export default function Home() {
                                   extraStopers: option.id === 'nie' ? '' : formData.extraStopers
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantStopers === option.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantStopers === option.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantStopers === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2276,14 +2276,14 @@ export default function Home() {
                                     key={stoper.id}
                                     onClick={() => setFormData({ ...formData, extraStopers: stoper.id })}
                                     className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                      formData.extraStopers === stoper.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                      formData.extraStopers === stoper.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                     }`}
                                   >
                                     <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                       <img src={stoper.image} alt={stoper.title} className="w-full h-full object-cover" />
                                     </div>
                                     <span className="text-base font-medium text-[#161616]">{stoper.title}</span>
-                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.extraStopers === stoper.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.extraStopers === stoper.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                       {formData.extraStopers === stoper.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                   </div>
@@ -2310,11 +2310,11 @@ export default function Home() {
                                   stickerOption: option.id === 'nie' ? '' : formData.stickerOption
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantSticker === option.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantSticker === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantSticker === option.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantSticker === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantSticker === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2330,14 +2330,14 @@ export default function Home() {
                                     key={sticker.id}
                                     onClick={() => setFormData({ ...formData, stickerOption: sticker.id })}
                                     className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                      formData.stickerOption === sticker.id ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                      formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                     }`}
                                   >
                                     <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                       <img src={sticker.image} alt={sticker.title} className="w-full h-full object-cover" />
                                     </div>
                                     <span className="text-base font-medium text-[#161616]">{sticker.title}</span>
-                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.stickerOption === sticker.id ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                       {formData.stickerOption === sticker.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                   </div>
@@ -2425,14 +2425,14 @@ export default function Home() {
                           <div
                             onClick={() => updateFormField('includePhoneCode', formData.includePhoneCode === 'tak' ? 'nie' : 'tak')}
                                 className={`cursor-pointer rounded-none p-4 border transition-colors duration-300 flex items-center justify-between ${
-                              formData.includePhoneCode === 'tak' ? 'border-[#161616] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                              formData.includePhoneCode === 'tak' ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                             }`}
                           >
                             <span className="text-base font-medium text-[#161616] pr-4">
                               Umieść numer kierunkowy na adresówce
                               <span className="block text-sm font-normal text-[#7A736C] mt-1">+{DIAL_CODE_PRICE} zł</span>
                             </span>
-                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${formData.includePhoneCode === 'tak' ? 'border-[#161616] bg-[#161616]' : 'border-zinc-300'}`}>
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${formData.includePhoneCode === 'tak' ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                               {formData.includePhoneCode === 'tak' && <span className="text-white text-xs font-bold">✓</span>}
                             </div>
                           </div>
