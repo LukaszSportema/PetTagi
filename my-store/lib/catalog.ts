@@ -19,7 +19,7 @@ export const CLASSIC_TAG_PRODUCT: CatalogProduct = {
   slug: "adresowka-bizuteryjna",
   name: "Adresówka biżuteryjna",
   description:
-    "W pełni personalizowane zawieszki z imieniem i numerem telefonu, dostępne w wielu wzorach.",
+    "W pełni personalizowana zawieszka z imieniem i numerem telefonu, wykończona złotą lub srebrną oprawą. Elegancka jak biżuteria, stworzona z myślą o Twoim pupilu.",
   emoji: "💍",
   cta: "Skonfiguruj własną",
   configuratorId: "classic-tag",
@@ -42,7 +42,7 @@ export const GLOW_TAG_PRODUCT: CatalogProduct = {
   slug: "adresowka-glow",
   name: "Adresówka glow",
   description:
-    "Personalizowana adresówka, która świeci w ciemności. Z imieniem i numerem telefonu — dobrze widoczna po zmroku.",
+    "Personalizowana adresówka, która świeci w ciemności. Z imieniem i numerem telefonu — zapewnia lepszą widoczność pupila po zmroku.",
   emoji: "✨",
   cta: "Skonfiguruj własną",
   configuratorId: "glow-tag",

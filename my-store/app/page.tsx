@@ -26,14 +26,17 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GOLD_BASE_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, type CharmMountingId } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
+  glowTextColor: string;
   baseOption: string;
   charmOption: string;
+  charmMounting: CharmMountingId;
   wantExtraCharms: string;
   extraCharms: string[];
+  extraCharmMountings: Record<string, CharmMountingId>;
   karabinerOption: string;
   wantExtraKarabiners: string;
   extraKarabiners: string[];
@@ -112,10 +115,13 @@ const shippingOptions = [
 
 const initialFormData: FormDataState = {
   ringColor: 'złoty',
+  glowTextColor: 'zloty',
   baseOption: '1',
-  charmOption: '1',
+  charmOption: 'kostkabiala',
+  charmMounting: 'oddzielne',
   wantExtraCharms: 'tak',
   extraCharms: [],
+  extraCharmMountings: {},
   karabinerOption: '1',
   wantExtraKarabiners: 'tak',
   extraKarabiners: [],
@@ -137,7 +143,7 @@ const initialFormData: FormDataState = {
 
 const formDataForProduct = (slug: string): FormDataState => {
   if (slug === GLOW_TAG_PRODUCT.slug) {
-    return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1', wantSticker: 'nie', stickerOption: '' };
+    return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1', glowTextColor: 'zloty', wantSticker: 'nie', stickerOption: '' };
   }
   return initialFormData;
 };
@@ -329,6 +335,7 @@ export default function Home() {
   const [discountInput, setDiscountInput] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState('');
   const [showAddedToCart, setShowAddedToCart] = useState(false);
+  const [charmMountingTarget, setCharmMountingTarget] = useState<{ type: 'free' | 'extra'; charmId: string } | null>(null);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
@@ -375,6 +382,7 @@ export default function Home() {
   const allStepsInfo = [
     { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/oprawa.jpg' },
     { id: 2, label: 'Baza', icon: '🎨', thumbnail: '/miniatury/baza.jpg' },
+    { id: 12, label: 'NAPIS', shortLabel: 'NAPIS', icon: '✨' },
     { id: 3, label: 'Darmowy charms', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
     { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝', thumbnail: '/miniatury/dodatkowycharms.jpg' },
     { id: 5, label: 'Darmowy karabińczyk', icon: '✍️', thumbnail: '/miniatury/darmowykarabinczyk.jpg' },
@@ -385,7 +393,7 @@ export default function Home() {
     { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
   ];
-  const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [];
+  const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [12];
   const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
   const stepsInfo = visibleClassicSteps.map((step, index) => ({ ...step, id: index + 1 }));
   const totalSteps = stepsInfo.length;
@@ -530,7 +538,7 @@ export default function Home() {
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
 
-  const backButtonClass = "px-2.5 sm:px-5 py-2.5 rounded-none border border-[#D6C7AE] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light text-[#161616] hover:bg-[#EBE4D6] transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shrink-0";
+  const backButtonClass = "px-2.5 sm:px-5 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light hover:bg-[#2E4833] transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shrink-0";
   const nextButtonClass = "px-2.5 sm:px-7 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-[10px] md:text-[11px] uppercase tracking-[0.18em] md:tracking-[0.22em] font-light hover:bg-[#2E4833] transition-colors duration-300 whitespace-nowrap shrink-0";
 
   const renderBackButton = () => (
@@ -629,11 +637,19 @@ export default function Home() {
     return ringColor;
   };
 
-  const charmsList = Array.from({ length: 53 }, (_, i) => ({
-    id: String(i + 1),
-    title: `Podpis ${i + 1}`,
-    image: `/charms/${i + 1}.jpg`,
-  }));
+  const mapCharmItem = (item: { id: string; label: string; image: string; unavailable?: boolean; hit?: boolean }) => ({
+    id: item.id,
+    title: item.label,
+    image: item.image,
+    unavailable: item.unavailable,
+    hit: item.hit,
+  });
+
+  const charmBestsellersList = CHARM_BESTSELLERS.map(mapCharmItem);
+  const charmCatalogList = CHARM_CATALOG.map(mapCharmItem);
+  const charmSilverList = CHARM_SILVER_CATALOG.map(mapCharmItem);
+  const charmLargeList = CHARM_LARGE_CATALOG.map(mapCharmItem);
+  const charmsList = [...charmBestsellersList, ...charmCatalogList, ...charmSilverList, ...charmLargeList];
 
   const karabinersList = Array.from({ length: 12 }, (_, i) => ({
     id: String(i + 1),
@@ -682,6 +698,167 @@ export default function Home() {
   const findTitle = (list: { id: string; title: string }[], id: string, fallback: string) =>
     list.find((item) => item.id === id)?.title ?? fallback;
 
+  const selectFreeCharm = (charmId: string) => {
+    if (charmsList.find((item) => item.id === charmId)?.unavailable) return;
+    setFormData((prev) => ({ ...prev, charmOption: charmId }));
+    setCharmMountingTarget({ type: 'free', charmId });
+  };
+
+  const selectExtraCharm = (charmId: string) => {
+    if (charmsList.find((item) => item.id === charmId)?.unavailable) return;
+    setCharmMountingTarget({ type: 'extra', charmId });
+  };
+
+  const deselectExtraCharm = (charmId: string) => {
+    setFormData((prev) => {
+      const { [charmId]: _removed, ...restMountings } = prev.extraCharmMountings;
+      return {
+        ...prev,
+        extraCharms: prev.extraCharms.filter((item) => item !== charmId),
+        extraCharmMountings: restMountings,
+      };
+    });
+  };
+
+  const modalSelectedMounting = (): CharmMountingId => {
+    if (!charmMountingTarget) return formData.charmMounting;
+    if (charmMountingTarget.type === 'free') return formData.charmMounting;
+    return formData.extraCharmMountings[charmMountingTarget.charmId] ?? 'oddzielne';
+  };
+
+  const selectCharmMounting = (mounting: CharmMountingId) => {
+    if (!charmMountingTarget) return;
+
+    if (charmMountingTarget.type === 'free') {
+      setFormData((prev) => ({ ...prev, charmMounting: mounting, charmOption: charmMountingTarget.charmId }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        extraCharms: prev.extraCharms.includes(charmMountingTarget.charmId)
+          ? prev.extraCharms
+          : [...prev.extraCharms, charmMountingTarget.charmId],
+        extraCharmMountings: {
+          ...prev.extraCharmMountings,
+          [charmMountingTarget.charmId]: mounting,
+        },
+      }));
+    }
+
+    setCharmMountingTarget(null);
+  };
+
+  const extraCharmDisplayValue = (id: string) => {
+    const title = findTitle(charmsList, id, id);
+    const mounting = formData.extraCharmMountings[id];
+    return mounting ? `${title} (${charmMountingTileLabel(mounting)})` : title;
+  };
+
+  const renderFreeCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
+    const isSelected = formData.charmOption === charm.id;
+    const isDisabled = charm.unavailable;
+
+    return (
+      <div
+        key={charm.id}
+        onClick={isDisabled ? undefined : () => selectFreeCharm(charm.id)}
+        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+          isDisabled
+            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
+            : isSelected
+              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+        }`}
+      >
+        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+          {charm.hit && (
+            <span className="absolute top-3 -left-5 z-10 w-24 -rotate-45 bg-[#3A5A40] text-[#F4EFE6] text-[9px] md:text-[10px] uppercase tracking-[0.22em] font-bold text-center py-0.5 shadow-sm pointer-events-none">
+              HIT
+            </span>
+          )}
+          <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
+        </div>
+        <span className="text-base font-medium text-[#161616]">{charm.title}</span>
+        {isSelected && (
+          <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(formData.charmMounting)}</span>
+        )}
+        {!isDisabled && (
+          <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderExtraCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
+    const isSelected = formData.extraCharms.includes(charm.id);
+    const isDisabled = charm.unavailable;
+    const mounting = formData.extraCharmMountings[charm.id];
+
+    return (
+      <div
+        key={charm.id}
+        onClick={isDisabled ? undefined : () => selectExtraCharm(charm.id)}
+        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+          isDisabled
+            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
+            : isSelected
+              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+        }`}
+      >
+        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+          {charm.hit && (
+            <span className="absolute top-3 -left-5 z-10 w-24 -rotate-45 bg-[#3A5A40] text-[#F4EFE6] text-[9px] md:text-[10px] uppercase tracking-[0.22em] font-bold text-center py-0.5 shadow-sm pointer-events-none">
+              HIT
+            </span>
+          )}
+          <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
+        </div>
+        <span className="text-base font-medium text-[#161616]">{charm.title}</span>
+        {isSelected && mounting && (
+          <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(mounting)}</span>
+        )}
+        {!isDisabled && (
+          <div
+            onClick={(event) => {
+              event.stopPropagation();
+              if (isSelected) deselectExtraCharm(charm.id);
+              else selectExtraCharm(charm.id);
+            }}
+            className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all cursor-pointer ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
+          >
+            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderExtraCharmSections = () => (
+    <div className="space-y-6">
+      <div className={imageGridClass(charmBestsellersList.length + charmCatalogList.length)}>
+        {[...charmBestsellersList, ...charmCatalogList].map(renderExtraCharmCard)}
+      </div>
+
+      <div className="space-y-4">
+        <p className="font-bold text-base text-[#161616]">🤍 Srebrne w srebrnym kolorze</p>
+        <div className={imageGridClass(charmSilverList.length)}>
+          {charmSilverList.map(renderExtraCharmCard)}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <p className="font-bold text-base text-[#161616]">
+          🐾 Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)
+        </p>
+        <div className={imageGridClass(charmLargeList.length)}>
+          {charmLargeList.map(renderExtraCharmCard)}
+        </div>
+      </div>
+    </div>
+  );
+
   const buildCartItem = (): CartItem => {
     const bases = selectedBases;
     const options: { label: string; values: string[] }[] = [];
@@ -690,13 +867,26 @@ export default function Home() {
     }
     options.push(
       { label: 'Baza', values: [findTitle(bases, formData.baseOption, `Opcja nr ${formData.baseOption}`)] },
-      { label: 'Darmowy charms', values: [findTitle(charmsList, formData.charmOption, `Opcja nr ${formData.charmOption}`)] },
     );
+    if (isGlowTagConfigurator) {
+      const glowText = GLOW_TEXT_OPTIONS.find((option) => option.id === formData.glowTextColor);
+      options.push({
+        label: 'Napis',
+        values: [glowText ? glowText.label : formData.glowTextColor],
+      });
+    }
+    options.push(
+      { label: 'Darmowy charms', values: [findTitle(charmsList, formData.charmOption, formData.charmOption)] },
+    );
+    options.push({
+      label: 'Mocowanie charmsa',
+      values: [CHARM_MOUNTING_OPTIONS.find((option) => option.id === formData.charmMounting)?.label ?? formData.charmMounting],
+    });
 
     if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0) {
       options.push({
         label: 'Dodatkowe charms',
-        values: formData.extraCharms.map((id) => findTitle(charmsList, id, id)),
+        values: formData.extraCharms.map((id) => extraCharmDisplayValue(id)),
       });
     }
 
@@ -943,17 +1133,6 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const toggleExtraCharm = (id: string) => {
-    setFormData((prev) => {
-      const exists = prev.extraCharms.includes(id);
-      if (exists) {
-        return { ...prev, extraCharms: prev.extraCharms.filter((item) => item !== id) };
-      } else {
-        return { ...prev, extraCharms: [...prev.extraCharms, id] };
-      }
-    });
-  };
-
   const toggleExtraKarabiner = (id: string) => {
     setFormData((prev) => {
       const exists = prev.extraKarabiners.includes(id);
@@ -1156,6 +1335,44 @@ export default function Home() {
               >
                 Wróć do konfiguratora
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {charmMountingTarget && (
+        <div className="fixed inset-0 z-[80] bg-[#161616]/40 flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="charm-mounting-title"
+            className="w-full max-w-4xl bg-[#F9F5ED] border border-[#D6C7AE] p-5 md:p-8 space-y-5 md:space-y-6 max-h-[90vh] overflow-y-auto"
+          >
+            <h3 id="charm-mounting-title" className="font-serif font-light text-xl md:text-2xl text-[#161616] text-center">
+              Wybierz sposób mocowania charmsa
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {CHARM_MOUNTING_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => selectCharmMounting(option.id)}
+                  className={`text-left rounded-none border p-4 md:p-5 transition-colors duration-300 ${
+                    modalSelectedMounting() === option.id
+                      ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                      : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                  }`}
+                >
+                  <div className="w-full aspect-[4/3] bg-[#EFE8DC] mb-4 overflow-hidden border border-[#D6C7AE]">
+                    <img src={option.image} alt={option.label} className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-base font-medium text-[#161616] mb-3">{option.label}</p>
+                  <ul className="space-y-1.5 text-sm text-[#7A736C]">
+                    {option.benefits.map((benefit) => (
+                      <li key={benefit}>✔️ {benefit}</li>
+                    ))}
+                  </ul>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -1878,7 +2095,7 @@ export default function Home() {
                                 <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
                                   {item.details.map((detail) => (
                                     <li key={detail.label} className="whitespace-nowrap">
-                                      <span className="font-semibold text-[#161616]">{detail.label}:</span>{' '}
+                                      <span className="text-[#161616]">{detail.label}:</span>{' '}
                                       {detail.value}
                                     </li>
                                   ))}
@@ -1929,27 +2146,56 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 3 && (
+                      {contentStep === 12 && (
                         <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
-                          <div className={imageGridClass(charmsList.length)}>
-                            {charmsList.map((charm) => (
+                          <p className="font-bold text-base text-[#161616]">Wybierz kolor napisu</p>
+                          <div className={imageGridClass(GLOW_TEXT_OPTIONS.length)}>
+                            {GLOW_TEXT_OPTIONS.map((option) => (
                               <div
-                                key={charm.id}
-                                onClick={() => setFormData({...formData, charmOption: charm.id})}
+                                key={option.id}
+                                onClick={() => updateFormField('glowTextColor', option.id)}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                  formData.charmOption === charm.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.glowTextColor === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                  <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
+                                  <img src={option.image} alt={option.label} className="w-full h-full object-cover" />
                                 </div>
-                                <span className="text-base font-medium text-[#161616]">{charm.title}</span>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.charmOption === charm.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.charmOption === charm.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                                <span className="text-base font-medium text-[#161616]">
+                                  {option.label}
+                                </span>
+                                <p className="mt-1 text-sm text-[#7A736C]">— {option.recommendation}</p>
+                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.glowTextColor === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                  {formData.glowTextColor === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {contentStep === 3 && (
+                        <div className="space-y-6">
+                          <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
+
+                          <div className={imageGridClass(charmBestsellersList.length + charmCatalogList.length)}>
+                            {[...charmBestsellersList, ...charmCatalogList].map(renderFreeCharmCard)}
+                          </div>
+
+                          <div className="space-y-4">
+                            <p className="font-bold text-base text-[#161616]">🤍 Srebrne w srebrnym kolorze</p>
+                            <div className={imageGridClass(charmSilverList.length)}>
+                              {charmSilverList.map(renderFreeCharmCard)}
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <p className="font-bold text-base text-[#161616]">
+                              🐾 Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)
+                            </p>
+                            <div className={imageGridClass(charmLargeList.length)}>
+                              {charmLargeList.map(renderFreeCharmCard)}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1967,7 +2213,8 @@ export default function Home() {
                                 onClick={() => setFormData({
                                   ...formData, 
                                   wantExtraCharms: option.id,
-                                  extraCharms: option.id === 'nie' ? [] : formData.extraCharms
+                                  extraCharms: option.id === 'nie' ? [] : formData.extraCharms,
+                                  extraCharmMountings: option.id === 'nie' ? {} : formData.extraCharmMountings,
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                   formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -1984,28 +2231,7 @@ export default function Home() {
                           {formData.wantExtraCharms === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
-                              <div className={imageGridClass(charmsList.length)}>
-                                {charmsList.map((charm) => {
-                                  const isSelected = formData.extraCharms.includes(charm.id);
-                                  return (
-                                    <div
-                                      key={charm.id}
-                                      onClick={() => toggleExtraCharm(charm.id)}
-                                      className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                        isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                      }`}
-                                    >
-                                      <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                        <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
-                                      </div>
-                                      <span className="text-base font-medium text-[#161616]">{charm.title}</span>
-                                      <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                        {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              {renderExtraCharmSections()}
                             </div>
                           )}
                         </div>
@@ -2385,6 +2611,15 @@ export default function Home() {
                             {showOrderErrors && orderErrors.petName && (
                               <p className="text-xs text-red-500">Wpisz imię psa (tylko litery).</p>
                             )}
+                          </div>
+
+                          <div className="space-y-2 flex flex-col items-center text-center">
+                            <label className="block font-bold text-base text-[#161616]">Układ liter na adresówce</label>
+                            <img
+                              src={formData.petName.trim().length <= 6 ? '/imie6.jpg' : '/imie6plus.jpg'}
+                              alt="Układ liter na adresówce"
+                              className="w-full max-w-[9.33rem] border border-[#D6C7AE] bg-[#EFE8DC]"
+                            />
                           </div>
 
                           <div className="space-y-2">
