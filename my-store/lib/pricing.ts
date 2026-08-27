@@ -4,6 +4,15 @@ export const EXTRA_KARABINER_PRICE = 5
 export const STOPPER_PRICE = 5
 export const STICKER_PRICE = 5
 export const DIAL_CODE_PRICE = 2
+export const FREE_SHIPPING_THRESHOLD = 299
+export const SHIPPING_PACZKOMAT_PRICE = 16.49
+export const SHIPPING_KURIER_PRICE = 19.49
+
+export const qualifiesForFreeShipping = (productsValue: number) =>
+  productsValue >= FREE_SHIPPING_THRESHOLD
+
+export const shippingCostForOrder = (productsValue: number, methodPrice: number) =>
+  qualifiesForFreeShipping(productsValue) ? 0 : methodPrice
 
 export type StringSize = "S" | "M" | "L" | "XL"
 

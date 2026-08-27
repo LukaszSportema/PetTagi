@@ -22,11 +22,15 @@ import {
   premiumStringUnitPrice,
   STICKER_PRICE,
   DIAL_CODE_PRICE,
+  qualifiesForFreeShipping,
+  SHIPPING_KURIER_PRICE,
+  SHIPPING_PACZKOMAT_PRICE,
+  shippingCostForOrder,
   STOPPER_PRICE,
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, type CharmMountingId } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, type CharmMountingId } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
@@ -51,6 +55,7 @@ type FormDataState = {
   stickerOption: string;
   accessoryType: string;
   petName: string;
+  nameLayout: 'imie6' | 'imie6plus';
   phoneCode: string;
   phoneNumber: string;
   includePhoneCode: string;
@@ -109,8 +114,8 @@ const initialCheckoutData: CheckoutData = {
 const FAST_DELIVERY_COST = 15;
 
 const shippingOptions = [
-  { id: 'paczkomat', title: 'Paczkomat 24/7', price: 16.49, image: '/inpost-paczkomat.svg' },
-  { id: 'kurier', title: 'Kurier', price: 19.49, image: '/inpost-kurier.svg' },
+  { id: 'paczkomat', title: 'Paczkomat 24/7', price: SHIPPING_PACZKOMAT_PRICE, image: '/inpost-paczkomat.svg' },
+  { id: 'kurier', title: 'Kurier', price: SHIPPING_KURIER_PRICE, image: '/inpost-kurier.svg' },
 ];
 
 const initialFormData: FormDataState = {
@@ -122,7 +127,7 @@ const initialFormData: FormDataState = {
   wantExtraCharms: 'tak',
   extraCharms: [],
   extraCharmMountings: {},
-  karabinerOption: '1',
+  karabinerOption: 'klasyczny',
   wantExtraKarabiners: 'tak',
   extraKarabiners: [],
   wantString: 'tak',
@@ -136,6 +141,7 @@ const initialFormData: FormDataState = {
   stickerOption: '',
   accessoryType: 'szelki',
   petName: '',
+  nameLayout: 'imie6',
   phoneCode: '+48',
   phoneNumber: '',
   includePhoneCode: 'nie',
@@ -651,10 +657,10 @@ export default function Home() {
   const charmLargeList = CHARM_LARGE_CATALOG.map(mapCharmItem);
   const charmsList = [...charmBestsellersList, ...charmCatalogList, ...charmSilverList, ...charmLargeList];
 
-  const karabinersList = Array.from({ length: 12 }, (_, i) => ({
-    id: String(i + 1),
-    title: `Podpis ${i + 1}`,
-    image: `/karabinczyk/${i + 1}.jpg`,
+  const karabinersList = KARABINER_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    image: item.image,
   }));
 
   const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
@@ -706,7 +712,16 @@ export default function Home() {
 
   const selectExtraCharm = (charmId: string) => {
     if (charmsList.find((item) => item.id === charmId)?.unavailable) return;
-    setCharmMountingTarget({ type: 'extra', charmId });
+    setFormData((prev) => ({
+      ...prev,
+      extraCharms: prev.extraCharms.includes(charmId)
+        ? prev.extraCharms
+        : [...prev.extraCharms, charmId],
+      extraCharmMountings: {
+        ...prev.extraCharmMountings,
+        [charmId]: 'oddzielne',
+      },
+    }));
   };
 
   const deselectExtraCharm = (charmId: string) => {
@@ -720,37 +735,19 @@ export default function Home() {
     });
   };
 
-  const modalSelectedMounting = (): CharmMountingId => {
-    if (!charmMountingTarget) return formData.charmMounting;
-    if (charmMountingTarget.type === 'free') return formData.charmMounting;
-    return formData.extraCharmMountings[charmMountingTarget.charmId] ?? 'oddzielne';
-  };
+  const modalSelectedMounting = (): CharmMountingId => formData.charmMounting;
 
   const selectCharmMounting = (mounting: CharmMountingId) => {
-    if (!charmMountingTarget) return;
+    if (!charmMountingTarget || charmMountingTarget.type !== 'free') return;
 
-    if (charmMountingTarget.type === 'free') {
-      setFormData((prev) => ({ ...prev, charmMounting: mounting, charmOption: charmMountingTarget.charmId }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        extraCharms: prev.extraCharms.includes(charmMountingTarget.charmId)
-          ? prev.extraCharms
-          : [...prev.extraCharms, charmMountingTarget.charmId],
-        extraCharmMountings: {
-          ...prev.extraCharmMountings,
-          [charmMountingTarget.charmId]: mounting,
-        },
-      }));
-    }
-
+    setFormData((prev) => ({ ...prev, charmMounting: mounting, charmOption: charmMountingTarget.charmId }));
     setCharmMountingTarget(null);
   };
 
   const extraCharmDisplayValue = (id: string) => {
     const title = findTitle(charmsList, id, id);
-    const mounting = formData.extraCharmMountings[id];
-    return mounting ? `${title} (${charmMountingTileLabel(mounting)})` : title;
+    const mounting = formData.extraCharmMountings[id] ?? 'oddzielne';
+    return `${title} (${charmMountingTileLabel(mounting)})`;
   };
 
   const renderFreeCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
@@ -793,7 +790,7 @@ export default function Home() {
   const renderExtraCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
     const isSelected = formData.extraCharms.includes(charm.id);
     const isDisabled = charm.unavailable;
-    const mounting = formData.extraCharmMountings[charm.id];
+    const mounting = formData.extraCharmMountings[charm.id] ?? 'oddzielne';
 
     return (
       <div
@@ -816,7 +813,7 @@ export default function Home() {
           <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-medium text-[#161616]">{charm.title}</span>
-        {isSelected && mounting && (
+        {isSelected && (
           <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(mounting)}</span>
         )}
         {!isDisabled && (
@@ -834,6 +831,62 @@ export default function Home() {
       </div>
     );
   };
+
+  const renderFreeKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
+    const isSelected = formData.karabinerOption === karabiner.id;
+
+    return (
+      <div
+        key={karabiner.id}
+        onClick={() => setFormData({ ...formData, karabinerOption: karabiner.id })}
+        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+        }`}
+      >
+        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+          <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
+        </div>
+        <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
+        <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+          {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+        </div>
+      </div>
+    );
+  };
+
+  const renderExtraKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
+    const isSelected = formData.extraKarabiners.includes(karabiner.id);
+
+    return (
+      <div
+        key={karabiner.id}
+        onClick={() => toggleExtraKarabiner(karabiner.id)}
+        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+        }`}
+      >
+        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+          <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
+        </div>
+        <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
+        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+        </div>
+      </div>
+    );
+  };
+
+  const renderFreeKarabinerGrid = () => (
+    <div className={imageGridClass(karabinersList.length)}>
+      {karabinersList.map(renderFreeKarabinerCard)}
+    </div>
+  );
+
+  const renderExtraKarabinerGrid = () => (
+    <div className={imageGridClass(karabinersList.length)}>
+      {karabinersList.map(renderExtraKarabinerCard)}
+    </div>
+  );
 
   const renderExtraCharmSections = () => (
     <div className="space-y-6">
@@ -953,6 +1006,14 @@ export default function Home() {
 
     options.push({ label: 'Imię pupila', values: [formData.petName] });
     options.push({
+      label: 'Układ liter na adresówce',
+      values: [
+        formData.petName.trim().length > 6 || formData.nameLayout === 'imie6plus'
+          ? 'Rozszerzony'
+          : 'Standardowy',
+      ],
+    });
+    options.push({
       label: 'Nr telefonu',
       values: [
         formData.includePhoneCode === 'tak'
@@ -1009,8 +1070,11 @@ export default function Home() {
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartProductsValue = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const hasFreeShipping = qualifiesForFreeShipping(cartProductsValue);
   const selectedShipping = shippingOptions.find((option) => option.id === checkoutData.shippingMethod);
-  const shippingCost = selectedShipping?.price ?? 0;
+  const shippingCost = selectedShipping
+    ? shippingCostForOrder(cartProductsValue, selectedShipping.price)
+    : 0;
   const fastDeliveryCost = checkoutData.fastDelivery ? FAST_DELIVERY_COST : 0;
   const checkoutTotal = cartProductsValue + shippingCost + fastDeliveryCost;
 
@@ -1339,7 +1403,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      {charmMountingTarget && (
+      {charmMountingTarget?.type === 'free' && (
         <div className="fixed inset-0 z-[80] bg-[#161616]/40 flex items-center justify-center p-4">
           <div
             role="dialog"
@@ -1732,7 +1796,9 @@ export default function Home() {
                             alt={`InPost ${option.title}`}
                             className="h-12 md:h-16 w-auto max-w-full object-contain"
                           />
-                          <span className="mt-3 font-bold text-sm md:text-base text-[#161616]">{formatPrice(option.price)}</span>
+                          <span className="mt-3 font-bold text-sm md:text-base text-[#161616]">
+                            {formatPrice(shippingCostForOrder(cartProductsValue, option.price))}
+                          </span>
                           <span className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                             {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
                           </span>
@@ -1993,7 +2059,13 @@ export default function Home() {
                   </div>
                   <div className="flex justify-between gap-3">
                     <span>Dostawa</span>
-                    <span className="text-right min-w-0">{selectedShipping ? formatPrice(selectedShipping.price) : 'wybierz metodę wysyłki'}</span>
+                    <span className="text-right min-w-0">
+                      {selectedShipping
+                        ? formatPrice(shippingCost)
+                        : hasFreeShipping
+                          ? '0,00 zł'
+                          : 'wybierz metodę wysyłki'}
+                    </span>
                   </div>
                   {checkoutData.fastDelivery && (
                     <div className="flex justify-between gap-3">
@@ -2240,25 +2312,7 @@ export default function Home() {
                       {contentStep === 5 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk do mocowania:</p>
-                          <div className={imageGridClass(karabinersList.length)}>
-                            {karabinersList.map((karabiner) => (
-                              <div
-                                key={karabiner.id}
-                                onClick={() => setFormData({...formData, karabinerOption: karabiner.id})}
-                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                  formData.karabinerOption === karabiner.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                }`}
-                              >
-                                <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                  <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
-                                </div>
-                                <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.karabinerOption === karabiner.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.karabinerOption === karabiner.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          {renderFreeKarabinerGrid()}
                         </div>
                       )}
 
@@ -2292,28 +2346,7 @@ export default function Home() {
                           {formData.wantExtraKarabiners === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
-                              <div className={imageGridClass(karabinersList.length)}>
-                                {karabinersList.map((karabiner) => {
-                                  const isSelected = formData.extraKarabiners.includes(karabiner.id);
-                                  return (
-                                    <div
-                                      key={karabiner.id}
-                                      onClick={() => toggleExtraKarabiner(karabiner.id)}
-                                      className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                        isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                      }`}
-                                    >
-                                      <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                        <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
-                                      </div>
-                                      <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-                                      <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                        {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              {renderExtraKarabinerGrid()}
                             </div>
                           )}
                         </div>
@@ -2603,7 +2636,13 @@ export default function Home() {
                               value={formData.petName}
                               onChange={(e) => {
                                 const value = e.target.value.toLocaleUpperCase('pl-PL');
-                                if (isLettersOnly(value)) updateFormField('petName', value);
+                                if (!isLettersOnly(value)) return;
+                                const nameLength = value.trim().length;
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  petName: value,
+                                  nameLayout: nameLength > 6 ? 'imie6plus' : prev.nameLayout,
+                                }));
                               }}
                               placeholder="Wpisz imię"
                               className={`w-full p-3 rounded-xl border bg-white text-base md:text-sm focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.petName ? 'border-red-400' : 'border-[#D6C7AE]'}`}
@@ -2613,13 +2652,43 @@ export default function Home() {
                             )}
                           </div>
 
-                          <div className="space-y-2 flex flex-col items-center text-center">
+                          <div className="space-y-3 flex flex-col items-center text-center">
                             <label className="block font-bold text-base text-[#161616]">Układ liter na adresówce</label>
-                            <img
-                              src={formData.petName.trim().length <= 6 ? '/imie6.jpg' : '/imie6plus.jpg'}
-                              alt="Układ liter na adresówce"
-                              className="w-full max-w-[9.33rem] border border-[#D6C7AE] bg-[#EFE8DC]"
-                            />
+                            {formData.petName.trim().length > 6 ? (
+                              <img
+                                src="/imie6plus.jpg"
+                                alt="Układ liter na adresówce — powyżej 6 liter"
+                                className="w-full max-w-[9.33rem] border border-[#D6C7AE] bg-[#EFE8DC]"
+                              />
+                            ) : (
+                              <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                                {[
+                                  { id: 'imie6' as const, image: '/imie6.jpg', alt: 'Układ liter — do 6 liter, wariant 1' },
+                                  { id: 'imie6plus' as const, image: '/imie6plus.jpg', alt: 'Układ liter — do 6 liter, wariant 2' },
+                                ].map((option) => (
+                                  <div
+                                    key={option.id}
+                                    onClick={() => updateFormField('nameLayout', option.id)}
+                                    className={`cursor-pointer rounded-none p-3 border transition-colors duration-300 flex flex-col items-center ${
+                                      formData.nameLayout === option.id
+                                        ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                        : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                    }`}
+                                  >
+                                    <img
+                                      src={option.image}
+                                      alt={option.alt}
+                                      className="w-full max-w-[9.33rem] border border-[#D6C7AE] bg-[#EFE8DC]"
+                                    />
+                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${
+                                      formData.nameLayout === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+                                    }`}>
+                                      {formData.nameLayout === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           <div className="space-y-2">

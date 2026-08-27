@@ -1,5 +1,5 @@
 import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
-import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS } from "@/lib/catalog-options"
+import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS } from "@/lib/catalog-options"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
@@ -50,7 +50,7 @@ export const ADMIN_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
 export const statusLabel = (status: OrderStatus) =>
   STATUS_LABELS[status] ?? status
 
-const optionTitle = (id: string) => `Podpis ${id}`
+const optionTitle = (id: string) => optionLabel(KARABINER_OPTIONS, id)
 
 const capitalize = (value: string) =>
   value ? value.charAt(0).toLocaleUpperCase("pl-PL") + value.slice(1) : value

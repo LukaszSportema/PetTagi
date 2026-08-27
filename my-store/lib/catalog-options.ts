@@ -250,7 +250,74 @@ export const charmMountingLabel = (id: string) =>
 export const charmMountingTileLabel = (id: string) =>
   CHARM_MOUNTING_OPTIONS.find((option) => option.id === id)?.tileLabel ?? id
 
-export const KARABINER_OPTIONS = numbered(12)
+export type KarabinerOption = CatalogOption & {
+  image: string
+}
+
+export const KARABINER_CATALOG: KarabinerOption[] = [
+  {
+    id: "klasyczny",
+    label: "Klasyczny",
+    image: "/karabinczyk/karabinczykklasyczny.jpg",
+  },
+  {
+    id: "serduszko",
+    label: "Serduszko",
+    image: "/karabinczyk/karabinczykserduszko.jpg",
+  },
+  {
+    id: "duzy",
+    label: "Duży",
+    image: "/karabinczyk/karabinczykduzy.jpg",
+  },
+  {
+    id: "klasycznysrebrny",
+    label: "Klasyczny srebrny",
+    image: "/karabinczyk/karabinczykklasycznysrebrny.jpg",
+  },
+  {
+    id: "serduszkosrebrne",
+    label: "Serduszko srebrne",
+    image: "/karabinczyk/karabinczykserduszkosrebrne.jpg",
+  },
+  {
+    id: "duzysrebrny",
+    label: "Duży srebrny",
+    image: "/karabinczyk/karabinczykduzysrebrny.jpg",
+  },
+  {
+    id: "pomaranczowyklasyczny",
+    label: "Pomarańczowy klasyczny",
+    image: "/karabinczyk/karabinczykpomaranczowyklasyczny.jpg",
+  },
+  {
+    id: "zoltyklasyczny",
+    label: "Zółty klasyczny",
+    image: "/karabinczyk/karabinczykzoltyklasyczny.jpg",
+  },
+  {
+    id: "bialyklasyczny",
+    label: "Biały klasyczny",
+    image: "/karabinczyk/karabinczykbialyklasyczny.jpg",
+  },
+  {
+    id: "zielonyklasyczny",
+    label: "Zielony klasyczny",
+    image: "/karabinczyk/karabinczykzielonyklasyczny.jpg",
+  },
+  {
+    id: "niebieskiklasyczny",
+    label: "Niebieski klasyczny",
+    image: "/karabinczyk/karabinczykniebieskiklasyczny.jpg",
+  },
+  {
+    id: "jasnorozowyklasyczny",
+    label: "Jasnoróżowy klasyczny",
+    image: "/karabinczyk/karabinczykjasnorozowyklasyczny.jpg",
+  },
+]
+
+export const KARABINER_OPTIONS: CatalogOption[] = KARABINER_CATALOG.map(({ id, label }) => ({ id, label }))
 
 export const PREMIUM_STRING_CATALOG: StringOption[] = [
   {

@@ -5,6 +5,11 @@ import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/paymen
 import { getPaymentRecipient } from "@/app/actions/settings"
 import { createClient } from "@/lib/supabase/server"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
+import {
+  shippingCostForOrder,
+  SHIPPING_KURIER_PRICE,
+  SHIPPING_PACZKOMAT_PRICE,
+} from "@/lib/pricing"
 import type {
   CreateOrderInput,
   CreateOrderResult,
@@ -31,6 +36,13 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
   if (input.deliveryType === "paczkomat" && !input.inpostId?.trim()) {
     return { ok: false, message: "Wybierz paczkomat." }
+  }
+
+  const baseShippingPrice =
+    input.deliveryType === "paczkomat" ? SHIPPING_PACZKOMAT_PRICE : SHIPPING_KURIER_PRICE
+  const expectedShippingCost = shippingCostForOrder(input.productsValue, baseShippingPrice)
+  if (roundMoney(input.shippingCost) !== roundMoney(expectedShippingCost)) {
+    return { ok: false, message: "Nieprawidłowy koszt dostawy." }
   }
 
   const supabase = await createClient()
