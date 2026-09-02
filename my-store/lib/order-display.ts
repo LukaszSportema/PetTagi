@@ -1,5 +1,5 @@
 import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
-import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS } from "@/lib/catalog-options"
+import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel } from "@/lib/catalog-options"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
@@ -138,7 +138,11 @@ export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
   }
 
   if (item.stoppers) {
-    options.push({ label: "Stopery", values: [capitalize(item.stoppers)] })
+    const stopperIds = stopperIdsFromStored(item.stoppers)
+    options.push({
+      label: "Stopery",
+      values: [stopperIds.length > 0 ? stopperSelectionLabel(stopperIds) : item.stoppers],
+    })
   }
 
   if (item.sticker) {

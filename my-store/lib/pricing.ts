@@ -1,3 +1,5 @@
+import { stopperCountFromStored } from "@/lib/catalog-options"
+
 export const BASE_TAG_PRICES = {
   złoty: 60,
   srebrny: 60,
@@ -16,8 +18,8 @@ export const STOPPER_PRICE = 5
 export const STICKER_PRICE = 5
 export const DIAL_CODE_PRICE = 2
 export const FREE_SHIPPING_THRESHOLD = 299
-export const SHIPPING_PACZKOMAT_PRICE = 16.49
-export const SHIPPING_KURIER_PRICE = 19.49
+export const SHIPPING_PACZKOMAT_PRICE = 12
+export const SHIPPING_KURIER_PRICE = 16
 
 export const qualifiesForFreeShipping = (productsValue: number) =>
   productsValue >= FREE_SHIPPING_THRESHOLD
@@ -103,7 +105,7 @@ export const itemRevenueParts = (item: PricedOrderItem) => {
     charms: item.extraCharms.length * EXTRA_CHARM_PRICE * qty,
     karabiners: item.extraCarabiner.length * EXTRA_KARABINER_PRICE * qty,
     strings: (item.stringPremium.length * premiumPrice + item.stringClassic.length * classicPrice + item.stringGlow.length * glowPrice) * qty,
-    stoppers: item.stoppers ? STOPPER_PRICE * qty : 0,
+    stoppers: stopperCountFromStored(item.stoppers) * STOPPER_PRICE * qty,
     stickers: item.sticker ? STICKER_PRICE * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }

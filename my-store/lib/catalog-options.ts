@@ -458,6 +458,29 @@ export const STOPPER_OPTIONS: CatalogOption[] = [
   { id: "2", label: "Srebrne" },
 ]
 
+export const stopperLabel = (id: string) =>
+  STOPPER_OPTIONS.find((option) => option.id === id)?.label ?? id
+
+export const stopperSelectionLabel = (ids: string[]) => {
+  const counts = new Map<string, number>()
+  for (const id of ids) {
+    counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([id, count]) => (count > 1 ? `${stopperLabel(id)} ×${count}` : stopperLabel(id)))
+    .join(", ")
+}
+
+export const stopperIdsFromStored = (value: string | null) => {
+  if (!value) return []
+  if (value === "złote") return ["1"]
+  if (value === "srebrne") return ["2"]
+  return value.split(",").map((part) => part.trim()).filter(Boolean)
+}
+
+export const stopperCountFromStored = (value: string | null) =>
+  stopperIdsFromStored(value).length
+
 export const STICKER_OPTIONS: CatalogOption[] = Array.from({ length: 6 }, (_, index) => ({
   id: String(index + 1),
   label: `Pies ${index + 1}`,
