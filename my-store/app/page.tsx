@@ -14,11 +14,13 @@ import {
   type CatalogMedia,
 } from '@/lib/catalog';
 import {
-  BASE_TAG_PRICE,
+  baseTagPrice,
   classicStringUnitPrice,
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
   glowStringUnitPrice,
+  NECK_CIRCUMFERENCE_MAX,
+  NECK_CIRCUMFERENCE_MIN,
   premiumStringUnitPrice,
   STICKER_PRICE,
   DIAL_CODE_PRICE,
@@ -350,8 +352,12 @@ export default function Home() {
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [checkoutSubmitError, setCheckoutSubmitError] = useState('');
 
+  const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
+  const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
+  const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
+
   // --- LOGIKA OBLICZANIA CENY ---
-  const basePrice = BASE_TAG_PRICE;
+  const basePrice = baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
   const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
   const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
   const extraStopersCost = formData.wantStopers === 'tak' && formData.extraStopers ? STOPPER_PRICE : 0;
@@ -380,9 +386,6 @@ export default function Home() {
   const goToTab = (tab: string) => {
     setActiveTab(tab);
   };
-  const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
-  const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
-  const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
   const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator;
 
   const allStepsInfo = [
@@ -395,7 +398,7 @@ export default function Home() {
     { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨', thumbnail: '/miniatury/dodatkowykarabinczyk.jpg' },
     { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
     { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵', thumbnail: '/miniatury/stopery.jpg' },
-    { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'Naklejka', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
+    { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'GRAFIKA', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
     { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
   ];
@@ -1246,7 +1249,7 @@ export default function Home() {
       <div className="space-y-3 text-sm text-[#7A736C]">
         <div className="flex justify-between items-start gap-4">
           <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
-          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">50 zł</span>
+          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{basePrice} zł</span>
         </div>
 
         <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -1495,6 +1498,17 @@ export default function Home() {
                     <span>Koszyk</span>
                     <span className="bg-[#2E4833] text-[#F4EFE6] px-2 py-0.5 rounded-full text-xs">{cartCount}</span>
                   </button>
+                  <a
+                    href="https://www.instagram.com/pet.tagi/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Instagram PetTagi"
+                    className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 text-[#161616] hover:text-[#3A5A40] transition-colors duration-300"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-[1.35rem] md:h-[1.35rem]" aria-hidden="true">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                    </svg>
+                  </a>
                 </div>
               </div>
               <nav className="md:hidden flex flex-col gap-3 px-5 pb-5 pt-3 border-t border-[#D6C7AE]">
@@ -2389,14 +2403,27 @@ export default function Home() {
                                 <label className="block font-bold text-base text-[#161616]">Wpisz obwód szyi Twojego pieska w centymetrach:</label>
                                 <input
                                   type="text"
+                                  inputMode="numeric"
                                   value={formData.stringLength}
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    if (/^\d*$/.test(val)) {
+                                    if (!/^\d*$/.test(val)) return;
+                                    if (val === '') {
+                                      setFormData({ ...formData, stringLength: '' });
+                                      return;
+                                    }
+                                    if (val.length > 2) return;
+                                    const num = Number(val);
+                                    if (num > NECK_CIRCUMFERENCE_MAX) return;
+                                    if (val.length === 1 && num >= 1 && num <= 9) {
+                                      setFormData({ ...formData, stringLength: val });
+                                      return;
+                                    }
+                                    if (num >= NECK_CIRCUMFERENCE_MIN && num <= NECK_CIRCUMFERENCE_MAX) {
                                       setFormData({ ...formData, stringLength: val });
                                     }
                                   }}
-                                  placeholder="wpisz obwód szyi"
+                                  placeholder="wpisz obwód szyi (15–99 cm)"
                                   className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
                                 />
                                 {stringSizeText && (
