@@ -1,12 +1,25 @@
-export const BASE_TAG_PRICE = 50
+import { stopperCountFromStored } from "@/lib/catalog-options"
+
+export const BASE_TAG_PRICES = {
+  złoty: 60,
+  srebrny: 60,
+  kwiat: 61,
+  glow: 50,
+} as const
+
+export const baseTagPrice = (ringColor: string) =>
+  BASE_TAG_PRICES[ringColor as keyof typeof BASE_TAG_PRICES] ?? 50
+
+/** @deprecated Użyj baseTagPrice(ringColor) */
+export const BASE_TAG_PRICE = BASE_TAG_PRICES.złoty
 export const EXTRA_CHARM_PRICE = 5
 export const EXTRA_KARABINER_PRICE = 5
 export const STOPPER_PRICE = 5
 export const STICKER_PRICE = 5
 export const DIAL_CODE_PRICE = 2
 export const FREE_SHIPPING_THRESHOLD = 299
-export const SHIPPING_PACZKOMAT_PRICE = 16.49
-export const SHIPPING_KURIER_PRICE = 19.49
+export const SHIPPING_PACZKOMAT_PRICE = 12
+export const SHIPPING_KURIER_PRICE = 16
 
 export const qualifiesForFreeShipping = (productsValue: number) =>
   productsValue >= FREE_SHIPPING_THRESHOLD
@@ -30,16 +43,29 @@ export const CLASSIC_STRING_PRICES: Record<StringSize, number> = {
   XL: 13,
 }
 
-export const stringSizeFromNeckCm = (value: string | null | undefined): StringSize | null => {
+export const NECK_CIRCUMFERENCE_MIN = 15
+export const NECK_CIRCUMFERENCE_MAX = 99
+
+export const parseNeckCircumferenceCm = (value: string | null | undefined): number | null => {
   if (!value) return null
   const match = String(value).match(/(\d+(?:\.\d+)?)/)
   const cm = match ? Number(match[1]) : Number.NaN
-  if (!Number.isFinite(cm) || cm <= 0) return null
-  if (cm <= 25) return "S"
-  if (cm <= 35) return "M"
-  if (cm <= 45) return "L"
-  if (cm <= 55) return "XL"
-  return null
+  if (!Number.isFinite(cm)) return null
+  return cm
+}
+
+export const isValidNeckCircumference = (value: string | null | undefined) => {
+  const cm = parseNeckCircumferenceCm(value)
+  return cm !== null && cm >= NECK_CIRCUMFERENCE_MIN && cm <= NECK_CIRCUMFERENCE_MAX
+}
+
+export const stringSizeFromNeckCm = (value: string | null | undefined): StringSize | null => {
+  const cm = parseNeckCircumferenceCm(value)
+  if (cm === null || cm < NECK_CIRCUMFERENCE_MIN || cm > NECK_CIRCUMFERENCE_MAX) return null
+  if (cm <= 24) return "S"
+  if (cm <= 34) return "M"
+  if (cm <= 44) return "L"
+  return "XL"
 }
 
 export const stringSizeLabel = (size: StringSize | null): string | null =>
@@ -56,6 +82,7 @@ export const glowStringUnitPrice = (size: StringSize | null): number | null =>
 
 export type PricedOrderItem = {
   quantity: number
+  ringColor?: string
   extraCharms: string[]
   extraCarabiner: string[]
   stringPremium: string[]
@@ -74,11 +101,11 @@ export const itemRevenueParts = (item: PricedOrderItem) => {
   const classicPrice = classicStringUnitPrice(size) ?? 0
   const glowPrice = premiumPrice
   return {
-    base: BASE_TAG_PRICE * qty,
+    base: baseTagPrice(item.ringColor ?? "złoty") * qty,
     charms: item.extraCharms.length * EXTRA_CHARM_PRICE * qty,
     karabiners: item.extraCarabiner.length * EXTRA_KARABINER_PRICE * qty,
     strings: (item.stringPremium.length * premiumPrice + item.stringClassic.length * classicPrice + item.stringGlow.length * glowPrice) * qty,
-    stoppers: item.stoppers ? STOPPER_PRICE * qty : 0,
+    stoppers: stopperCountFromStored(item.stoppers) * STOPPER_PRICE * qty,
     stickers: item.sticker ? STICKER_PRICE * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
+import { expressFulfillmentRangeLabel, standardFulfillmentRangeLabel } from '@/lib/fulfillment-dates';
 import { createOrder } from './actions/orders';
 import AdminPanel from './AdminPanel';
 import FurgonetkaMap from './FurgonetkaMap';
@@ -14,11 +15,13 @@ import {
   type CatalogMedia,
 } from '@/lib/catalog';
 import {
-  BASE_TAG_PRICE,
+  baseTagPrice,
   classicStringUnitPrice,
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
   glowStringUnitPrice,
+  NECK_CIRCUMFERENCE_MAX,
+  NECK_CIRCUMFERENCE_MIN,
   premiumStringUnitPrice,
   STICKER_PRICE,
   DIAL_CODE_PRICE,
@@ -30,7 +33,7 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, type CharmMountingId } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
@@ -50,7 +53,7 @@ type FormDataState = {
   classicStrings: string[];
   glowStrings: string[];
   wantStopers: string;
-  extraStopers: string;
+  extraStopers: string[];
   wantSticker: string;
   stickerOption: string;
   accessoryType: string;
@@ -77,6 +80,7 @@ type ConfiguratorBaseOption = {
   title: string;
   image: string;
   images?: string[];
+  details?: { label: string; value: string }[];
 };
 
 type CheckoutData = {
@@ -136,7 +140,7 @@ const initialFormData: FormDataState = {
   classicStrings: [],
   glowStrings: [],
   wantStopers: 'tak',
-  extraStopers: '',
+  extraStopers: [],
   wantSticker: 'tak',
   stickerOption: '',
   accessoryType: 'szelki',
@@ -350,11 +354,15 @@ export default function Home() {
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [checkoutSubmitError, setCheckoutSubmitError] = useState('');
 
+  const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
+  const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
+  const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
+
   // --- LOGIKA OBLICZANIA CENY ---
-  const basePrice = BASE_TAG_PRICE;
+  const basePrice = baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
   const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
   const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
-  const extraStopersCost = formData.wantStopers === 'tak' && formData.extraStopers ? STOPPER_PRICE : 0;
+  const extraStopersCost = formData.wantStopers === 'tak' ? formData.extraStopers.length * STOPPER_PRICE : 0;
   const stickerCost = activeProductSlug === GLOW_TAG_PRODUCT.slug
     ? 0
     : formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
@@ -377,12 +385,30 @@ export default function Home() {
 
   const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + glowStringsCost + dialCodeCost;
 
+  const countSelectedStrings = (data: Pick<FormDataState, 'wantString' | 'premiumStrings' | 'classicStrings' | 'glowStrings'>) =>
+    data.wantString === 'tak'
+      ? data.premiumStrings.length + data.classicStrings.length + data.glowStrings.length
+      : 0;
+
+  const trimStopersToStringCount = (data: FormDataState): FormDataState => {
+    const max = countSelectedStrings(data);
+    if (data.extraStopers.length <= max) return data;
+    return { ...data, extraStopers: data.extraStopers.slice(0, max) };
+  };
+
+  const selectedStringsCount = countSelectedStrings(formData);
+  const stringSelectionSummaryParts = [
+    formData.premiumStrings.length > 0 ? `Premium ×${formData.premiumStrings.length}` : null,
+    formData.classicStrings.length > 0 ? `Klasyczny ×${formData.classicStrings.length}` : null,
+    formData.glowStrings.length > 0 ? `Glow ×${formData.glowStrings.length}` : null,
+  ].filter(Boolean) as string[];
+  const stopperSelectionRequired = formData.wantStopers === 'tak' && selectedStringsCount > 0;
+  const isStopperSelectionComplete =
+    !stopperSelectionRequired || formData.extraStopers.length === selectedStringsCount;
+
   const goToTab = (tab: string) => {
     setActiveTab(tab);
   };
-  const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
-  const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
-  const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
   const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator;
 
   const allStepsInfo = [
@@ -395,13 +421,19 @@ export default function Home() {
     { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨', thumbnail: '/miniatury/dodatkowykarabinczyk.jpg' },
     { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
     { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵', thumbnail: '/miniatury/stopery.jpg' },
-    { id: 9, label: 'Naklejka na adresówkę. Personalizacja z grafiką Twojego pieska!', shortLabel: 'Naklejka', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
+    { id: 9, label: 'Dodaj pieska', shortLabel: 'GRAFIKA', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
     { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
   ];
   const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [12];
   const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
-  const stepsInfo = visibleClassicSteps.map((step, index) => ({ ...step, id: index + 1 }));
+  const stepsInfo = visibleClassicSteps.map((step, index) => {
+    const normalizedStep = { ...step, id: index + 1 };
+    if (isGlowTagConfigurator && step.id === 2) {
+      return { ...normalizedStep, label: 'Kolor' };
+    }
+    return normalizedStep;
+  });
   const totalSteps = stepsInfo.length;
   const contentStep = visibleClassicSteps[currentStep - 1]?.id ?? currentStep;
 
@@ -530,6 +562,7 @@ export default function Home() {
   };
 
   const [showOrderErrors, setShowOrderErrors] = useState(false);
+  const [showStopperErrors, setShowStopperErrors] = useState(false);
   const orderErrors = {
     petName: !formData.petName.trim(),
     phoneNumber: !isValidPhoneNumber(formData.phoneCode, formData.phoneNumber),
@@ -537,6 +570,11 @@ export default function Home() {
   const isOrderValid = !Object.values(orderErrors).some(Boolean);
 
   const nextStep = () => {
+    if (contentStep === 8) {
+      setShowStopperErrors(true);
+      if (formData.wantStopers === 'tak' && selectedStringsCount === 0) return;
+      if (stopperSelectionRequired && !isStopperSelectionComplete) return;
+    }
     if (contentStep === 10) {
       setShowOrderErrors(true);
       if (!isOrderValid) return;
@@ -622,6 +660,10 @@ export default function Home() {
     title: item.label,
     image: item.images[0],
     images: item.images,
+    details: [
+      { label: '', value: 'Bez oprawy' },
+      { label: 'Rozmiar', value: '25 mm' },
+    ],
   }));
 
   const basesForRing = (ringColor: string): ConfiguratorBaseOption[] => {
@@ -895,7 +937,7 @@ export default function Home() {
       </div>
 
       <div className="space-y-4">
-        <p className="font-bold text-base text-[#161616]">🤍 Srebrne w srebrnym kolorze</p>
+        <p className="font-bold text-base text-[#161616]">Charmsy w srebrnym kolorze</p>
         <div className={imageGridClass(charmSilverList.length)}>
           {charmSilverList.map(renderExtraCharmCard)}
         </div>
@@ -903,7 +945,7 @@ export default function Home() {
 
       <div className="space-y-4">
         <p className="font-bold text-base text-[#161616]">
-          🐾 Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)
+          Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)
         </p>
         <div className={imageGridClass(charmLargeList.length)}>
           {charmLargeList.map(renderExtraCharmCard)}
@@ -983,10 +1025,10 @@ export default function Home() {
       });
     }
 
-    if (formData.wantStopers === 'tak' && formData.extraStopers) {
+    if (formData.wantStopers === 'tak' && formData.extraStopers.length > 0) {
       options.push({
         label: 'Stopery',
-        values: [formData.extraStopers === '1' ? 'Złote' : 'Srebrne'],
+        values: [stopperSelectionLabel(formData.extraStopers)],
       });
     }
 
@@ -1161,8 +1203,8 @@ export default function Home() {
           stringClassic: config.wantString === 'tak' ? config.classicStrings : [],
           stringGlow: config.wantString === 'tak' ? config.glowStrings : [],
           dogNeck: config.wantString === 'tak' && config.stringLength ? `${config.stringLength} cm` : null,
-          stoppers: config.wantStopers === 'tak' && config.extraStopers
-            ? (config.extraStopers === '1' ? 'złote' : 'srebrne')
+          stoppers: config.wantStopers === 'tak' && config.extraStopers.length > 0
+            ? config.extraStopers.join(',')
             : null,
           sticker: item.productSlug === GLOW_TAG_PRODUCT.slug
             ? null
@@ -1211,33 +1253,57 @@ export default function Home() {
   const togglePremiumString = (id: string) => {
     setFormData((prev) => {
       const exists = prev.premiumStrings.includes(id);
-      if (exists) {
-        return { ...prev, premiumStrings: prev.premiumStrings.filter((item) => item !== id) };
-      } else {
-        return { ...prev, premiumStrings: [...prev.premiumStrings, id] };
-      }
+      const next = {
+        ...prev,
+        premiumStrings: exists
+          ? prev.premiumStrings.filter((item) => item !== id)
+          : [...prev.premiumStrings, id],
+      };
+      return trimStopersToStringCount(next);
     });
   };
 
   const toggleClassicString = (id: string) => {
     setFormData((prev) => {
       const exists = prev.classicStrings.includes(id);
-      if (exists) {
-        return { ...prev, classicStrings: prev.classicStrings.filter((item) => item !== id) };
-      } else {
-        return { ...prev, classicStrings: [...prev.classicStrings, id] };
-      }
+      const next = {
+        ...prev,
+        classicStrings: exists
+          ? prev.classicStrings.filter((item) => item !== id)
+          : [...prev.classicStrings, id],
+      };
+      return trimStopersToStringCount(next);
     });
   };
 
   const toggleGlowString = (id: string) => {
     setFormData((prev) => {
       const exists = prev.glowStrings.includes(id);
-      if (exists) {
-        return { ...prev, glowStrings: prev.glowStrings.filter((item) => item !== id) };
-      } else {
-        return { ...prev, glowStrings: [...prev.glowStrings, id] };
-      }
+      const next = {
+        ...prev,
+        glowStrings: exists
+          ? prev.glowStrings.filter((item) => item !== id)
+          : [...prev.glowStrings, id],
+      };
+      return trimStopersToStringCount(next);
+    });
+  };
+
+  const addStopper = (id: string) => {
+    setFormData((prev) => {
+      if (prev.extraStopers.length >= countSelectedStrings(prev)) return prev;
+      return { ...prev, extraStopers: [...prev.extraStopers, id] };
+    });
+  };
+
+  const removeStopper = (id: string) => {
+    setFormData((prev) => {
+      const index = prev.extraStopers.lastIndexOf(id);
+      if (index === -1) return prev;
+      return {
+        ...prev,
+        extraStopers: prev.extraStopers.filter((_, itemIndex) => itemIndex !== index),
+      };
     });
   };
 
@@ -1246,7 +1312,7 @@ export default function Home() {
       <div className="space-y-3 text-sm text-[#7A736C]">
         <div className="flex justify-between items-start gap-4">
           <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
-          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">50 zł</span>
+          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{basePrice} zł</span>
         </div>
 
         <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -1303,10 +1369,10 @@ export default function Home() {
           </div>
         )}
 
-        {formData.wantStopers === 'tak' && formData.extraStopers && (
+        {formData.wantStopers === 'tak' && formData.extraStopers.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Stopery ({formData.extraStopers === '1' ? 'Złote' : 'Srebrne'})</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
+            <span className="min-w-0 pl-3">Stopery ({stopperSelectionLabel(formData.extraStopers)})</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraStopers.length * 5} zł ({formData.extraStopers.length}×5 zł)</span>
           </div>
         )}
 
@@ -1495,6 +1561,17 @@ export default function Home() {
                     <span>Koszyk</span>
                     <span className="bg-[#2E4833] text-[#F4EFE6] px-2 py-0.5 rounded-full text-xs">{cartCount}</span>
                   </button>
+                  <a
+                    href="https://www.instagram.com/pet.tagi/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Instagram PetTagi"
+                    className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 text-[#161616] hover:text-[#3A5A40] transition-colors duration-300"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-[1.35rem] md:h-[1.35rem]" aria-hidden="true">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                    </svg>
+                  </a>
                 </div>
               </div>
               <nav className="md:hidden flex flex-col gap-3 px-5 pb-5 pt-3 border-t border-[#D6C7AE]">
@@ -1987,7 +2064,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-4">
                     <p className="bg-[#EBE4D6] rounded-2xl px-5 py-4 text-sm text-[#7A736C]">
-                      Standardowy czas realizacji adresówki wynosi 7-10 dni roboczych
+                      {standardFulfillmentRangeLabel()}
                     </p>
                     <label
                       className={`flex items-start gap-3 cursor-pointer bg-white rounded-2xl border-2 px-5 py-4 transition-all ${
@@ -2003,7 +2080,7 @@ export default function Home() {
                         className="mt-1 w-4 h-4 accent-[#161616]"
                       />
                       <span className="text-sm font-medium text-[#161616]">
-                        Skróć czas realizacji do 3-5 dni roboczych - 15 zł
+                        {expressFulfillmentRangeLabel()}
                       </span>
                     </label>
                   </div>
@@ -2185,7 +2262,7 @@ export default function Home() {
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">
                             {isGlowTagConfigurator ? (
-                              'Wybierz bazę'
+                              'Wybierz kolor adresówki'
                             ) : (
                               <>
                                 Wybierz bazę (dla oprawy: <span className="uppercase text-[#C4A574]">{oprawaLabel(formData.ringColor)}</span>):
@@ -2197,7 +2274,9 @@ export default function Home() {
                               <div
                                 key={base.id}
                                 onClick={() => setFormData({...formData, baseOption: base.id})}
-                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col ${
+                                  base.details ? 'items-stretch' : 'items-center text-center'
+                                } ${
                                   formData.baseOption === base.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
@@ -2208,8 +2287,24 @@ export default function Home() {
                                     <img src={basePreviewImage(base)} alt={base.title} className="w-full h-full object-cover" />
                                   )}
                                 </div>
-                                <span className="text-base font-medium text-[#161616]">{base.title}</span>
-                                <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.baseOption === base.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                <span className={`text-base font-medium text-[#161616] ${base.details ? 'text-center' : ''}`}>{base.title}</span>
+                                {base.details && (
+                                  <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
+                                    {base.details.map((detail, detailIndex) => (
+                                      <li key={`${base.id}-${detailIndex}`} className="whitespace-nowrap">
+                                        {detail.label ? (
+                                          <>
+                                            <span className="text-[#161616]">{detail.label}:</span>{' '}
+                                            {detail.value}
+                                          </>
+                                        ) : (
+                                          <span className="text-[#161616]">{detail.value}</span>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                <div className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${formData.baseOption === base.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.baseOption === base.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
@@ -2255,7 +2350,7 @@ export default function Home() {
                           </div>
 
                           <div className="space-y-4">
-                            <p className="font-bold text-base text-[#161616]">🤍 Srebrne w srebrnym kolorze</p>
+                            <p className="font-bold text-base text-[#161616]">Charmsy w srebrnym kolorze</p>
                             <div className={imageGridClass(charmSilverList.length)}>
                               {charmSilverList.map(renderFreeCharmCard)}
                             </div>
@@ -2363,14 +2458,15 @@ export default function Home() {
                             ].map((option) => (
                               <div
                                 key={option.id}
-                                onClick={() => setFormData({
-                                  ...formData, 
+                                onClick={() => setFormData(trimStopersToStringCount({
+                                  ...formData,
                                   wantString: option.id,
                                   stringLength: option.id === 'nie' ? '' : formData.stringLength,
                                   premiumStrings: option.id === 'nie' ? [] : formData.premiumStrings,
                                   classicStrings: option.id === 'nie' ? [] : formData.classicStrings,
                                   glowStrings: option.id === 'nie' ? [] : formData.glowStrings,
-                                })}
+                                  extraStopers: option.id === 'nie' ? [] : formData.extraStopers,
+                                }))}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                   formData.wantString === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
@@ -2389,14 +2485,27 @@ export default function Home() {
                                 <label className="block font-bold text-base text-[#161616]">Wpisz obwód szyi Twojego pieska w centymetrach:</label>
                                 <input
                                   type="text"
+                                  inputMode="numeric"
                                   value={formData.stringLength}
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    if (/^\d*$/.test(val)) {
+                                    if (!/^\d*$/.test(val)) return;
+                                    if (val === '') {
+                                      setFormData({ ...formData, stringLength: '' });
+                                      return;
+                                    }
+                                    if (val.length > 2) return;
+                                    const num = Number(val);
+                                    if (num > NECK_CIRCUMFERENCE_MAX) return;
+                                    if (val.length === 1 && num >= 1 && num <= 9) {
+                                      setFormData({ ...formData, stringLength: val });
+                                      return;
+                                    }
+                                    if (num >= NECK_CIRCUMFERENCE_MIN && num <= NECK_CIRCUMFERENCE_MAX) {
                                       setFormData({ ...formData, stringLength: val });
                                     }
                                   }}
-                                  placeholder="wpisz obwód szyi"
+                                  placeholder="wpisz obwód szyi (15–99 cm)"
                                   className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
                                 />
                                 {stringSizeText && (
@@ -2407,18 +2516,55 @@ export default function Home() {
                               </div>
 
                               {isGlowTagConfigurator && (
-                                <div className="space-y-4 pt-4">
+                                <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+                                  <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
+                                    <h3 className="font-bold text-lg text-[#161616]">
+                                      Dodaj sznurek Glow (możesz wybrać wiele)
+                                      {glowStringPrice ? ` — ${glowStringPrice} zł/szt` : ''}
+                                    </h3>
+                                  </div>
+                                  <div className="p-4 md:p-6">
+                                    <div className={imageGridClass(glowStringsList.length)}>
+                                      {glowStringsList.map((item) => {
+                                        const isSelected = formData.glowStrings.includes(item.id);
+                                        return (
+                                          <div
+                                            key={item.id}
+                                            onClick={() => toggleGlowString(item.id)}
+                                            className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                              isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                            }`}
+                                          >
+                                            <div className="w-full mb-3 md:mb-5">
+                                              <ImageGallery items={item.images} alt={item.title} stopPropagation />
+                                            </div>
+                                            <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                            <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                              {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </section>
+                              )}
+
+                              <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+                                <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                   <h3 className="font-bold text-lg text-[#161616]">
-                                    Dodaj sznurek Glow (możesz wybrać wiele)
-                                    {glowStringPrice ? ` — ${glowStringPrice} zł/szt` : ''}
+                                    Dodaj sznurek Premium (możesz wybrać wiele)
+                                    {premiumStringPrice ? ` — ${premiumStringPrice} zł/szt` : ''}
                                   </h3>
-                                  <div className={imageGridClass(glowStringsList.length)}>
-                                    {glowStringsList.map((item) => {
-                                      const isSelected = formData.glowStrings.includes(item.id);
+                                </div>
+                                <div className="p-4 md:p-6">
+                                  <div className={imageGridClass(premiumStringsList.length)}>
+                                    {premiumStringsList.map((item) => {
+                                      const isSelected = formData.premiumStrings.includes(item.id);
                                       return (
                                         <div
                                           key={item.id}
-                                          onClick={() => toggleGlowString(item.id)}
+                                          onClick={() => togglePremiumString(item.id)}
                                           className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                             isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                           }`}
@@ -2435,65 +2581,40 @@ export default function Home() {
                                     })}
                                   </div>
                                 </div>
-                              )}
+                              </section>
 
-                              <div className="space-y-4 pt-4">
-                                <h3 className="font-bold text-lg text-[#161616]">
-                                  Dodaj sznurek Premium (możesz wybrać wiele)
-                                  {premiumStringPrice ? ` — ${premiumStringPrice} zł/szt` : ''}
-                                </h3>
-                                <div className={imageGridClass(premiumStringsList.length)}>
-                                  {premiumStringsList.map((item) => {
-                                    const isSelected = formData.premiumStrings.includes(item.id);
-                                    return (
-                                      <div
-                                        key={item.id}
-                                        onClick={() => togglePremiumString(item.id)}
-                                        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                        }`}
-                                      >
-                                        <div className="w-full mb-3 md:mb-5">
-                                          <ImageGallery items={item.images} alt={item.title} stopPropagation />
-                                        </div>
-                                        <span className="text-base font-medium text-[#161616]">{item.title}</span>
-                                        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                              <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+                                <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
+                                  <h3 className="font-bold text-lg text-[#161616]">
+                                    Dodaj sznurek Klasyczny (możesz wybrać wiele)
+                                    {classicStringPrice ? ` — ${classicStringPrice} zł/szt` : ''}
+                                  </h3>
                                 </div>
-                              </div>
-
-                              <div className="space-y-4 pt-4">
-                                <h3 className="font-bold text-lg text-[#161616]">
-                                  Dodaj sznurek Klasyczny (możesz wybrać wiele)
-                                  {classicStringPrice ? ` — ${classicStringPrice} zł/szt` : ''}
-                                </h3>
-                                <div className={imageGridClass(classicStringsList.length)}>
-                                  {classicStringsList.map((item) => {
-                                    const isSelected = formData.classicStrings.includes(item.id);
-                                    return (
-                                      <div
-                                        key={item.id}
-                                        onClick={() => toggleClassicString(item.id)}
-                                        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                        }`}
-                                      >
-                                        <div className="w-full mb-3 md:mb-5">
-                                          <ImageGallery items={item.images} alt={item.title} stopPropagation />
+                                <div className="p-4 md:p-6">
+                                  <div className={imageGridClass(classicStringsList.length)}>
+                                    {classicStringsList.map((item) => {
+                                      const isSelected = formData.classicStrings.includes(item.id);
+                                      return (
+                                        <div
+                                          key={item.id}
+                                          onClick={() => toggleClassicString(item.id)}
+                                          className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                            isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                          }`}
+                                        >
+                                          <div className="w-full mb-3 md:mb-5">
+                                            <ImageGallery items={item.images} alt={item.title} stopPropagation />
+                                          </div>
+                                          <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                                          </div>
                                         </div>
-                                        <span className="text-base font-medium text-[#161616]">{item.title}</span>
-                                        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
+                              </section>
                             </div>
                           )}
                         </div>
@@ -2502,6 +2623,18 @@ export default function Home() {
                       {contentStep === 8 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Dodaj stopery, aby precyzyjnie regulować długość sznurka i zapewnić psu maksymalny komfort:</p>
+
+                          <div className="rounded-none border border-[#D6C7AE] bg-[#F4EFE6] p-4 space-y-1">
+                            <p className="font-bold text-base text-[#161616]">
+                              Sznurki do kompletu: {selectedStringsCount}
+                            </p>
+                            {stringSelectionSummaryParts.length > 0 ? (
+                              <p className="text-sm text-[#7A736C]">{stringSelectionSummaryParts.join(' · ')}</p>
+                            ) : (
+                              <p className="text-sm text-[#7A736C]">Brak dobranych sznurków — wróć do poprzedniego kroku, aby je dodać.</p>
+                            )}
+                          </div>
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },
@@ -2510,9 +2643,9 @@ export default function Home() {
                               <div
                                 key={option.id}
                                 onClick={() => setFormData({
-                                  ...formData, 
+                                  ...formData,
                                   wantStopers: option.id,
-                                  extraStopers: option.id === 'nie' ? '' : formData.extraStopers
+                                  extraStopers: option.id === 'nie' ? [] : formData.extraStopers,
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                   formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -2526,28 +2659,71 @@ export default function Home() {
                             ))}
                           </div>
 
-                          {formData.wantStopers === 'tak' && (
+                          {formData.wantStopers === 'tak' && selectedStringsCount === 0 && (
+                            <p className="text-sm text-red-500">Najpierw dodaj sznurek w poprzednim kroku.</p>
+                          )}
+
+                          {formData.wantStopers === 'tak' && selectedStringsCount > 0 && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
-                              <p className="font-bold text-base text-[#161616]">Wybierz stopery:</p>
+                              <p className="font-bold text-base text-[#161616]">Wybierz stopery (możesz powtórzyć ten sam wariant):</p>
                               <div className={imageGridClass(stopersList.length)}>
-                                {stopersList.map((stoper) => (
-                                  <div
-                                    key={stoper.id}
-                                    onClick={() => setFormData({ ...formData, extraStopers: stoper.id })}
-                                    className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                      formData.extraStopers === stoper.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                    }`}
-                                  >
-                                    <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                      <img src={stoper.image} alt={stoper.title} className="w-full h-full object-cover" />
+                                {stopersList.map((stoper) => {
+                                  const count = formData.extraStopers.filter((id) => id === stoper.id).length;
+                                  const isSelected = count > 0;
+                                  const canAdd = formData.extraStopers.length < selectedStringsCount;
+                                  const stepperButtonClass =
+                                    'w-8 h-8 border flex items-center justify-center text-lg font-light transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed';
+
+                                  return (
+                                    <div
+                                      key={stoper.id}
+                                      className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                        isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white'
+                                      }`}
+                                    >
+                                      <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+                                        <img src={stoper.image} alt={stoper.title} className="w-full h-full object-cover" />
+                                      </div>
+                                      <span className="text-base font-medium text-[#161616]">{stoper.title}</span>
+                                      {isSelected ? (
+                                        <div className="mt-3 flex items-center gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => removeStopper(stoper.id)}
+                                            className={`${stepperButtonClass} border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6]`}
+                                            aria-label={`Usuń ${stoper.title}`}
+                                          >
+                                            −
+                                          </button>
+                                          <span className="min-w-[1.25rem] text-base font-medium text-[#161616] tabular-nums">{count}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => addStopper(stoper.id)}
+                                            disabled={!canAdd}
+                                            className={`${stepperButtonClass} border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6]`}
+                                            aria-label={`Dodaj ${stoper.title}`}
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => addStopper(stoper.id)}
+                                          disabled={!canAdd}
+                                          className={`${stepperButtonClass} mt-3 border-[#D6C7AE] text-[#161616] hover:border-[#3A5A40] hover:text-[#3A5A40]`}
+                                          aria-label={`Dodaj ${stoper.title}`}
+                                        >
+                                          +
+                                        </button>
+                                      )}
                                     </div>
-                                    <span className="text-base font-medium text-[#161616]">{stoper.title}</span>
-                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.extraStopers === stoper.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                      {formData.extraStopers === stoper.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
+                              <p className={`text-sm ${showStopperErrors && !isStopperSelectionComplete ? 'text-red-500' : 'text-[#7A736C]'}`}>
+                                Wybrano stopery: {formData.extraStopers.length} / {selectedStringsCount}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -2555,7 +2731,7 @@ export default function Home() {
 
                       {contentStep === 9 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Wybierz naklejkę z grafiką rasy Twojego pupila, którą umieścimy na adresówce, nadając jej niepowtarzalny wygląd:</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz ulubioną grafikę pieska i stwórz wyjątkową adresówkę dla swojego pupila.</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },

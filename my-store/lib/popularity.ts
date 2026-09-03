@@ -9,6 +9,7 @@ import {
   STICKER_OPTIONS,
   STOPPER_OPTIONS,
   optionLabel,
+  stopperIdsFromStored,
   type CatalogOption,
 } from "@/lib/catalog-options"
 import { inPeriod, popularityPeriods, warsawYmd, type ReportPeriod } from "@/lib/report-periods"
@@ -88,7 +89,7 @@ const GROUPS: GroupDef[] = [
     key: "stopper",
     label: "Stopery",
     options: STOPPER_OPTIONS,
-    values: (item) => (item.stoppers ? [item.stoppers] : []),
+    values: (item) => stopperIdsFromStored(item.stoppers),
   },
   {
     key: "sticker",
