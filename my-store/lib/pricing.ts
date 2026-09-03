@@ -4,7 +4,7 @@ export const BASE_TAG_PRICES = {
   złoty: 60,
   srebrny: 60,
   kwiat: 61,
-  glow: 50,
+  glow: 61,
 } as const
 
 export const baseTagPrice = (ringColor: string) =>
