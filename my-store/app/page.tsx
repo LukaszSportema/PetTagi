@@ -414,7 +414,7 @@ export default function Home() {
   const allStepsInfo = [
     { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/oprawa.jpg' },
     { id: 2, label: 'Baza', icon: '🎨', thumbnail: '/miniatury/baza.jpg' },
-    { id: 12, label: 'NAPIS', shortLabel: 'NAPIS', icon: '✨' },
+    { id: 12, label: 'NAPIS', shortLabel: 'NAPIS', icon: '✨', thumbnail: '/miniatury/napis.png' },
     { id: 3, label: 'Darmowy charms', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
     { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝', thumbnail: '/miniatury/dodatkowycharms.jpg' },
     { id: 5, label: 'Darmowy karabińczyk', icon: '✍️', thumbnail: '/miniatury/darmowykarabinczyk.jpg' },
@@ -874,6 +874,25 @@ export default function Home() {
     );
   };
 
+  type CharmCardItem = { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean };
+
+  const renderCharmSection = (
+    title: string,
+    items: CharmCardItem[],
+    renderCard: (charm: CharmCardItem) => React.ReactNode,
+  ) => (
+    <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
+        <h3 className="font-bold text-lg text-[#161616]">{title}</h3>
+      </div>
+      <div className="p-4 md:p-6">
+        <div className={imageGridClass(items.length)}>
+          {items.map(renderCard)}
+        </div>
+      </div>
+    </section>
+  );
+
   const renderFreeKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
     const isSelected = formData.karabinerOption === karabiner.id;
 
@@ -932,25 +951,13 @@ export default function Home() {
 
   const renderExtraCharmSections = () => (
     <div className="space-y-6">
-      <div className={imageGridClass(charmBestsellersList.length + charmCatalogList.length)}>
-        {[...charmBestsellersList, ...charmCatalogList].map(renderExtraCharmCard)}
-      </div>
-
-      <div className="space-y-4">
-        <p className="font-bold text-base text-[#161616]">Charmsy w srebrnym kolorze</p>
-        <div className={imageGridClass(charmSilverList.length)}>
-          {charmSilverList.map(renderExtraCharmCard)}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <p className="font-bold text-base text-[#161616]">
-          Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)
-        </p>
-        <div className={imageGridClass(charmLargeList.length)}>
-          {charmLargeList.map(renderExtraCharmCard)}
-        </div>
-      </div>
+      {renderCharmSection('Charmsy główne', [...charmBestsellersList, ...charmCatalogList], renderExtraCharmCard)}
+      {renderCharmSection('Charmsy w srebrnym kolorze', charmSilverList, renderExtraCharmCard)}
+      {renderCharmSection(
+        'Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)',
+        charmLargeList,
+        renderExtraCharmCard,
+      )}
     </div>
   );
 
@@ -2345,25 +2352,13 @@ export default function Home() {
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
 
-                          <div className={imageGridClass(charmBestsellersList.length + charmCatalogList.length)}>
-                            {[...charmBestsellersList, ...charmCatalogList].map(renderFreeCharmCard)}
-                          </div>
-
-                          <div className="space-y-4">
-                            <p className="font-bold text-base text-[#161616]">Charmsy w srebrnym kolorze</p>
-                            <div className={imageGridClass(charmSilverList.length)}>
-                              {charmSilverList.map(renderFreeCharmCard)}
-                            </div>
-                          </div>
-
-                          <div className="space-y-4">
-                            <p className="font-bold text-base text-[#161616]">
-                              🐾 Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)
-                            </p>
-                            <div className={imageGridClass(charmLargeList.length)}>
-                              {charmLargeList.map(renderFreeCharmCard)}
-                            </div>
-                          </div>
+                          {renderCharmSection('Charmsy główne', [...charmBestsellersList, ...charmCatalogList], renderFreeCharmCard)}
+                          {renderCharmSection('Charmsy w srebrnym kolorze', charmSilverList, renderFreeCharmCard)}
+                          {renderCharmSection(
+                            'Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)',
+                            charmLargeList,
+                            renderFreeCharmCard,
+                          )}
                         </div>
                       )}
 
@@ -2396,7 +2391,7 @@ export default function Home() {
                           </div>
 
                           {formData.wantExtraCharms === 'tak' && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
+                            <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
                               {renderExtraCharmSections()}
                             </div>
