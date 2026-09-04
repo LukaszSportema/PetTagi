@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
-import { expressFulfillmentRangeLabel, standardFulfillmentRangeLabel } from '@/lib/fulfillment-dates';
+import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { createOrder } from './actions/orders';
 import AdminPanel from './AdminPanel';
 import FurgonetkaMap from './FurgonetkaMap';
@@ -19,6 +19,7 @@ import {
   classicStringUnitPrice,
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
+  FAST_DELIVERY_COST,
   glowStringUnitPrice,
   NECK_CIRCUMFERENCE_MAX,
   NECK_CIRCUMFERENCE_MIN,
@@ -114,8 +115,6 @@ const initialCheckoutData: CheckoutData = {
   pickupPointAddress: '',
   acceptTerms: false,
 };
-
-const FAST_DELIVERY_COST = 15;
 
 const shippingOptions = [
   { id: 'paczkomat', title: 'Paczkomat 24/7', price: SHIPPING_PACZKOMAT_PRICE, image: '/inpost-paczkomat.svg' },
@@ -2067,29 +2066,49 @@ export default function Home() {
                 <section>
                   <div className="flex items-center gap-3 mb-6">
                     <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">3</span>
-                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Czas realizacji</h2>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Termin realizacji zamówienia</h2>
                   </div>
-                  <div className="space-y-4">
-                    <p className="bg-[#EBE4D6] rounded-2xl px-5 py-4 text-sm text-[#7A736C]">
-                      {standardFulfillmentRangeLabel()}
+                  <div className="space-y-3">
+                    {[
+                      {
+                        value: false,
+                        title: `Standardowy — ${standardFulfillmentRangeCompact()}`,
+                        subtitle: 'Bez dodatkowej opłaty',
+                      },
+                      {
+                        value: true,
+                        title: `Przyspieszony — ${expressFulfillmentRangeCompact()}`,
+                        subtitle: `Dopłata: ${formatPrice(FAST_DELIVERY_COST)}`,
+                      },
+                    ].map((option) => {
+                      const isSelected = checkoutData.fastDelivery === option.value;
+                      return (
+                        <label
+                          key={option.value ? 'express' : 'standard'}
+                          className={`flex items-start gap-3 cursor-pointer bg-white rounded-2xl border-2 px-5 py-4 transition-all ${
+                            isSelected ? 'border-[#161616] shadow-md' : 'border-[#D6C7AE] hover:border-[#C4A574]'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="fulfillment"
+                            checked={isSelected}
+                            onChange={() => updateCheckoutField('fastDelivery', option.value)}
+                            className="sr-only"
+                          />
+                          <span className={`mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                            {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-[#161616]">{option.title}</span>
+                            <span className="block mt-1 text-sm font-normal text-[#7A736C]">{option.subtitle}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                    <p className="text-sm font-normal text-[#7A736C] pt-1">
+                      Termin realizacji oznacza czas potrzebny na przygotowanie zamówienia do wysyłki. Czas dostawy należy kalkulować oddzielnie - zależy od firmy kurierskiej.
                     </p>
-                    <label
-                      className={`flex items-start gap-3 cursor-pointer bg-white rounded-2xl border-2 px-5 py-4 transition-all ${
-                        checkoutData.fastDelivery
-                          ? 'border-[#161616] shadow-md'
-                          : 'border-[#D6C7AE] hover:border-[#C4A574]'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checkoutData.fastDelivery}
-                        onChange={(e) => updateCheckoutField('fastDelivery', e.target.checked)}
-                        className="mt-1 w-4 h-4 accent-[#161616]"
-                      />
-                      <span className="text-sm font-medium text-[#161616]">
-                        {expressFulfillmentRangeLabel()}
-                      </span>
-                    </label>
                   </div>
                 </section>
               </div>
@@ -2153,7 +2172,7 @@ export default function Home() {
                   </div>
                   {checkoutData.fastDelivery && (
                     <div className="flex justify-between gap-3">
-                      <span className="min-w-0">Ekspresowy czas realizacji</span>
+                      <span className="min-w-0">Przyspieszony termin realizacji</span>
                       <span className="font-medium text-[#161616] shrink-0">{formatPrice(fastDeliveryCost)}</span>
                     </div>
                   )}
@@ -2350,7 +2369,14 @@ export default function Home() {
 
                       {contentStep === 3 && (
                         <div className="space-y-6">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
+                          <div className="space-y-2">
+                            <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
+                            {isGlowTagConfigurator && (
+                              <p className="text-base font-normal text-[#161616]">
+                                Rekomendujemy wybór małych charmsów, aby nie zasłaniały powierzchni adresówki i nie ograniczały efektu świecenia w ciemności.
+                              </p>
+                            )}
+                          </div>
 
                           {renderCharmSection('Charmsy główne', [...charmBestsellersList, ...charmCatalogList], renderFreeCharmCard)}
                           {renderCharmSection('Charmsy w srebrnym kolorze', charmSilverList, renderFreeCharmCard)}
@@ -2392,7 +2418,14 @@ export default function Home() {
 
                           {formData.wantExtraCharms === 'tak' && (
                             <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
-                              <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
+                              <div className="space-y-2">
+                                <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
+                                {isGlowTagConfigurator && (
+                                  <p className="text-base font-normal text-[#161616]">
+                                    Rekomendujemy wybór małych charmsów, aby nie zasłaniały powierzchni adresówki i nie ograniczały efektu świecenia w ciemności.
+                                  </p>
+                                )}
+                              </div>
                               {renderExtraCharmSections()}
                             </div>
                           )}

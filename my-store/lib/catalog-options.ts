@@ -83,6 +83,7 @@ export const GOLD_BASE_CATALOG: SingleBaseOption[] = [
   { id: "13", label: "Oliwkowy", image: "/baza/goldoliwkowy.jpg" },
   { id: "16", label: "Zielony", image: "/baza/goldzielony.jpg" },
   { id: "14", label: "Pastelowy róż", image: "/baza/goldpastelowyroz.jpg" },
+  { id: "28", label: "Jasnoróżowy", image: "/baza/goldjasnorozowy.jpg" },
   { id: "7", label: "Czerwony", image: "/baza/goldczerwony.jpg" },
   { id: "15", label: "Winny", image: "/baza/goldwinny.jpg" },
   { id: "3", label: "Bordowy", image: "/baza/goldbordowy.jpg" },

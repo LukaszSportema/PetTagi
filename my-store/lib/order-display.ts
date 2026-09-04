@@ -28,7 +28,7 @@ export const deliveryLabel = (type: DeliveryType) =>
   type === "paczkomat" ? "Paczkomat 24/7" : "Kurier"
 
 export const fulfillmentLabel = (fastDelivery: boolean) =>
-  fastDelivery ? "Ekspresowy (3-5 dni roboczych)" : "Standardowy (7-10 dni roboczych)"
+  fastDelivery ? "Przyspieszony (3-4 dni robocze)" : "Standardowy (6-10 dni roboczych)"
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Oczekuje na płatność",

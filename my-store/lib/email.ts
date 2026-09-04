@@ -26,8 +26,8 @@ const escapeHtml = (value: string) =>
 
 const fulfillmentCopy = (fastDelivery: boolean) =>
   fastDelivery
-    ? "Twoje zamówienie zostanie zrealizowane w czasie 3-5 roboczych po dokonaniu płatności."
-    : "Twoje zamówienie zostanie zrealizowane w czasie 7-10 roboczych po dokonaniu płatności."
+    ? "Twoje zamówienie zostanie zrealizowane w czasie 3-4 dni roboczych po dokonaniu płatności."
+    : "Twoje zamówienie zostanie zrealizowane w czasie 6-10 dni roboczych po dokonaniu płatności."
 
 const shippingCopy = (order: CreateOrderInput) => {
   const name = order.deliveryType === "paczkomat" ? "Paczkomat InPost" : deliveryLabel(order.deliveryType)
