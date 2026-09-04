@@ -1331,7 +1331,7 @@ export default function Home() {
         {formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Dodatkowe charms x{formData.extraCharms.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraCharms.length * 5} zł (5 zł/szt)</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraCharms.length * EXTRA_CHARM_PRICE} zł ({EXTRA_CHARM_PRICE} zł/szt)</span>
           </div>
         )}
 
