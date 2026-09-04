@@ -62,5 +62,5 @@ export const persistPaymentRecipient = (recipient: PaymentRecipientId) => {
 
 export const fulfillmentMessage = (orderId: string, fastDelivery: boolean) =>
   `Twoje zamówienie numer ${orderId} zostanie zrealizowane w ${
-    fastDelivery ? "3-5" : "7-10"
+    fastDelivery ? "3-4" : "6-10"
   } dni roboczych po zaksięgowaniu płatności`

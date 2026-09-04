@@ -20,6 +20,7 @@ export const DIAL_CODE_PRICE = 2
 export const FREE_SHIPPING_THRESHOLD = 299
 export const SHIPPING_PACZKOMAT_PRICE = 12
 export const SHIPPING_KURIER_PRICE = 16
+export const FAST_DELIVERY_COST = 10
 
 export const qualifiesForFreeShipping = (productsValue: number) =>
   productsValue >= FREE_SHIPPING_THRESHOLD
