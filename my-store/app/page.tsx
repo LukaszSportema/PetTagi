@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { createOrder } from './actions/orders';
-import AdminPanel from './AdminPanel';
+import AdminNavButton from './components/AdminNavButton';
 import FurgonetkaMap from './FurgonetkaMap';
 import { fulfillmentMessage, ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
 import {
@@ -1559,17 +1559,7 @@ export default function Home() {
                 </nav>
 
                 <div className="shrink-0 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => goToTab('admin')}
-                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 ${
-                      activeTab === 'admin'
-                        ? 'bg-[#3A5A40] text-[#F4EFE6]'
-                        : 'bg-transparent text-[#161616] border border-[#D6C7AE] hover:border-[#161616]'
-                    }`}
-                  >
-                    Panel
-                  </button>
+                  <AdminNavButton />
                   <button 
                     onClick={() => goToTab('cart')}
                     className={`bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-3 md:px-5 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
@@ -2224,9 +2214,6 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        {/* ZAKŁADKA: Panel administratora */}
-        {activeTab === 'admin' && <AdminPanel />}
 
         {/* ZAKŁADKA: Konfigurator produktu */}
         {activeTab === 'configurator' && !isTagConfigurator && (

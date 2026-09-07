@@ -2,6 +2,7 @@
 
 import { buildAnalyticsRows, type AnalyticsOrder, type AnalyticsRow, type AnalyticsVisitDay } from "@/lib/analytics-report"
 import { syncVercelAnalytics } from "@/lib/analytics-sync"
+import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 
 export type AnalyticsReportResult =
@@ -37,6 +38,9 @@ const asArray = <T>(value: unknown): T[] => {
 }
 
 export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   const supabase = await createClient()
   const sync = await syncVercelAnalytics(supabase)
   const warning = sync.ok ? undefined : sync.message

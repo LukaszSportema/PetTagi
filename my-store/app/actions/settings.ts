@@ -1,6 +1,7 @@
 "use server"
 
 import { cookies } from "next/headers"
+import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import {
   asPaymentRecipientId,
@@ -56,6 +57,9 @@ export async function getPaymentRecipient(): Promise<GetPaymentRecipientResult> 
 export async function setPaymentRecipient(
   recipient: PaymentRecipientId,
 ): Promise<SetPaymentRecipientResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   const value = asPaymentRecipientId(recipient)
   await writeRecipientCookie(value)
 

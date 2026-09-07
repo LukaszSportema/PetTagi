@@ -2,6 +2,7 @@
 
 import { buildPopularityRows, type PopularityItem, type PopularityRow } from "@/lib/popularity"
 import type { ReportPeriod } from "@/lib/report-periods"
+import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 
 export type PopularityReportResult =
@@ -72,6 +73,9 @@ const mapItem = (row: PopularityItemRow): PopularityItem => ({
 })
 
 export async function getPopularityReport(): Promise<PopularityReportResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   const supabase = await createClient()
   const { data, error } = await supabase.rpc("admin_popularity_items")
 
