@@ -75,6 +75,14 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
 
   if (error) {
     console.error("admin_revenue_orders failed", error)
+    const normalized = error.message.toLowerCase()
+    if (normalized.includes("string_glow")) {
+      return {
+        ok: false,
+        message:
+          "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260911_order_item_string_glow_column.sql w Supabase SQL Editor.",
+      }
+    }
     return {
       ok: false,
       message: error.message.includes("admin_revenue_orders")
