@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'r
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { isPolishMobilePhone } from '@/lib/phone';
 import { createOrder } from './actions/orders';
+import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import FurgonetkaMap from './FurgonetkaMap';
 import { fulfillmentMessage, ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
 import {
@@ -440,6 +441,14 @@ export default function Home() {
   });
   const totalSteps = stepsInfo.length;
   const contentStep = visibleClassicSteps[currentStep - 1]?.id ?? currentStep;
+
+  const configuratorAnalytics = useConfiguratorAnalytics({
+    enabled: activeTab === 'configurator' && isTagConfigurator,
+    productSlug: activeProduct.slug,
+    currentStep,
+    contentStep,
+    formData,
+  });
 
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
   const openConfigurator = (slug: string = CLASSIC_TAG_PRODUCT.slug) => {
@@ -1094,6 +1103,7 @@ export default function Home() {
     if (!isOrderValid || showAddedToCart) return;
     setCartItems((prev) => [...prev, buildCartItem()]);
     setShowAddedToCart(true);
+    configuratorAnalytics.trackCartAdd();
   };
 
   const resetConfigurator = () => {
@@ -1265,6 +1275,8 @@ export default function Home() {
       setCheckoutSubmitError(result.message);
       return;
     }
+
+    configuratorAnalytics.trackOrderPlaced();
 
     setPlacedOrder({
       orderId: result.orderId,

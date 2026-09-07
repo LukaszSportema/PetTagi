@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getConfiguratorAnalyticsReport } from './actions/configurator-analytics';
 import { getAnalyticsReport } from './actions/analytics';
 import { getOrder, listOrders, updateOrderClientPhone, updateOrderStatus } from './actions/orders';
 import { getPopularityReport } from './actions/popularity';
@@ -28,6 +29,8 @@ import {
 } from '@/lib/payment';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
 import type { AnalyticsRow } from '@/lib/analytics-report';
+import type { ConfiguratorAnalyticsReport } from '@/lib/configurator-analytics';
+import { formatDuration, formatPercent } from '@/lib/configurator-analytics';
 import { formatPolishMobile, isPolishMobilePhone, normalizePolishPhone } from '@/lib/phone';
 import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from '@/lib/popularity';
 import type { ReportPeriod } from '@/lib/report-periods';
@@ -38,6 +41,7 @@ const adminTabs = [
   { id: 'revenue', label: 'Przychody' },
   { id: 'analytics', label: 'Analityka' },
   { id: 'popularity', label: 'Popularność' },
+  { id: 'configurator-analytics', label: 'Analityka Konfiguratora' },
 ] as const;
 
 const statusClass: Record<OrderStatus, string> = {
@@ -78,6 +82,9 @@ export default function AdminPanel() {
   const [popularityPeriods, setPopularityPeriods] = useState<ReportPeriod[]>([]);
   const [popularityError, setPopularityError] = useState('');
   const [isLoadingPopularity, setIsLoadingPopularity] = useState(false);
+  const [configuratorReport, setConfiguratorReport] = useState<ConfiguratorAnalyticsReport | null>(null);
+  const [configuratorError, setConfiguratorError] = useState('');
+  const [isLoadingConfigurator, setIsLoadingConfigurator] = useState(false);
   const paymentRecipientVersion = useRef(0);
 
   useEffect(() => {
@@ -213,6 +220,28 @@ export default function AdminPanel() {
         setPopularityPeriods(result.periods);
       }
       setIsLoadingPopularity(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAdminTab]);
+
+  useEffect(() => {
+    if (activeAdminTab !== 'configurator-analytics') return;
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingConfigurator(true);
+      const result = await getConfiguratorAnalyticsReport();
+      if (cancelled) return;
+      if (!result.ok) {
+        setConfiguratorError(result.message);
+        setConfiguratorReport(null);
+      } else {
+        setConfiguratorError('');
+        setConfiguratorReport(result.report);
+      }
+      setIsLoadingConfigurator(false);
     };
     load();
     return () => {
@@ -358,6 +387,159 @@ export default function AdminPanel() {
           isLoading={isLoadingPopularity}
         />
       )}
+
+      {activeAdminTab === 'configurator-analytics' && (
+        <ConfiguratorAnalyticsPanel
+          report={configuratorReport}
+          error={configuratorError}
+          isLoading={isLoadingConfigurator}
+        />
+      )}
+    </div>
+  );
+}
+
+function ConfiguratorAnalyticsPanel({
+  report,
+  error,
+  isLoading,
+}: {
+  report: ConfiguratorAnalyticsReport | null;
+  error: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return <p className="text-sm text-[#7A736C]">Ładowanie analityki konfiguratora...</p>;
+  }
+
+  if (error) {
+    return <p className="text-sm text-red-500">{error}</p>;
+  }
+
+  if (!report) {
+    return <p className="text-sm text-[#7A736C]">Brak danych analityki konfiguratora.</p>;
+  }
+
+  const formatCount = (value: number) => value.toLocaleString('pl-PL');
+  const maxFunnelUsers = Math.max(...report.funnel.map((step) => step.users), 1);
+
+  const choicesByStep = report.choices.reduce<
+    Record<string, { stepLabel: string; items: typeof report.choices }>
+  >((acc, choice) => {
+    if (!acc[choice.stepKey]) {
+      acc[choice.stepKey] = { stepLabel: choice.stepLabel, items: [] };
+    }
+    acc[choice.stepKey].items.push(choice);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl md:text-4xl font-serif font-light text-[#161616]">Analityka Konfiguratora</h2>
+        <p className="text-sm text-[#7A736C] mt-2">
+          Analiza czasu spędzonego na krokach oraz wskaźniki porzuceń (drop-off)
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-[#D6C7AE] rounded-2xl p-5">
+          <p className="text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
+            Rozpoczęte konfiguracje
+          </p>
+          <p className="text-3xl font-serif text-[#161616] mt-2">{formatCount(report.startedSessions)}</p>
+        </div>
+        <div className="bg-white border border-[#D6C7AE] rounded-2xl p-5">
+          <p className="text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
+            Średni czas do zamówienia
+          </p>
+          <p className="text-3xl font-serif text-[#161616] mt-2">{formatDuration(report.avgCompletionMs)}</p>
+        </div>
+        <div className="bg-white border border-[#D6C7AE] rounded-2xl p-5">
+          <p className="text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
+            Współczynnik konwersji
+          </p>
+          <p className="text-3xl font-serif text-[#161616] mt-2">{formatPercent(report.conversionRate)}</p>
+        </div>
+      </div>
+
+      <section className="space-y-4">
+        <h3 className="text-xl font-serif font-light text-[#161616]">Lejek krokowy</h3>
+        {report.funnel.length === 0 ? (
+          <p className="text-sm text-[#7A736C]">Brak danych o krokach. Przejdź konfigurator, aby zebrać statystyki.</p>
+        ) : (
+          <div className="space-y-4">
+            {report.funnel.map((step) => (
+              <div key={step.stepKey} className="bg-white border border-[#D6C7AE] rounded-2xl p-5 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-[#9A9288]">Krok {step.stepIndex}</p>
+                    <p className="text-lg font-medium text-[#161616]">{step.stepLabel}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm text-[#7A736C]">
+                    <span><span className="font-medium text-[#161616]">{formatCount(step.users)}</span> użytkowników</span>
+                    <span>Średni czas: <span className="font-medium text-[#161616]">{formatDuration(step.avgDurationMs)}</span></span>
+                    <span>
+                      Drop-off:{' '}
+                      <span className="font-medium text-[#161616]">
+                        {step.dropOffRate === null ? '—' : formatPercent(step.dropOffRate)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div className="h-3 bg-[#EFE8DC] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#3A5A40] transition-all"
+                    style={{ width: `${Math.max((step.users / maxFunnelUsers) * 100, step.users > 0 ? 4 : 0)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-xl font-serif font-light text-[#161616]">Popularne wybory w krokach</h3>
+        {Object.keys(choicesByStep).length === 0 ? (
+          <p className="text-sm text-[#7A736C]">Brak zapisanych wyborów użytkowników.</p>
+        ) : (
+          <div className="space-y-6">
+            {Object.entries(choicesByStep)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([stepKey, group]) => {
+                const maxCount = Math.max(...group.items.map((item) => item.count), 1);
+                return (
+                  <div key={stepKey} className="bg-white border border-[#D6C7AE] rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-[#D6C7AE] bg-[#F9F5ED]">
+                      <p className="text-[11px] uppercase tracking-wider text-[#9A9288]">Krok {stepKey}</p>
+                      <p className="font-medium text-[#161616]">{group.stepLabel}</p>
+                    </div>
+                    <div className="divide-y divide-[#D6C7AE]">
+                      {group.items.slice(0, 8).map((choice) => (
+                        <div key={`${choice.choiceKey}-${choice.choiceValue}`} className="px-5 py-3 space-y-2">
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <span className="text-[#161616]">
+                              <span className="text-[#9A9288]">{choice.choiceKey}: </span>
+                              {choice.choiceValue}
+                            </span>
+                            <span className="tabular-nums font-medium text-[#161616]">{formatCount(choice.count)}</span>
+                          </div>
+                          <div className="h-2 bg-[#EFE8DC] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#C4A574]"
+                              style={{ width: `${Math.max((choice.count / maxCount) * 100, choice.count > 0 ? 4 : 0)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
