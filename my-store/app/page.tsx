@@ -830,6 +830,9 @@ export default function Home() {
           <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-medium text-[#161616]">{charm.title}</span>
+        {isDisabled && (
+          <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
+        )}
         {isSelected && (
           <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(formData.charmMounting)}</span>
         )}
@@ -868,6 +871,9 @@ export default function Home() {
           <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-medium text-[#161616]">{charm.title}</span>
+        {isDisabled && (
+          <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
+        )}
         {isSelected && (
           <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(mounting)}</span>
         )}
