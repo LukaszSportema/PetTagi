@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
+import { isPolishMobilePhone } from '@/lib/phone';
 import { createOrder } from './actions/orders';
 import FurgonetkaMap from './FurgonetkaMap';
 import { fulfillmentMessage, ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
@@ -1139,11 +1140,32 @@ export default function Home() {
     setCheckoutData((prev) => ({ ...prev, [key]: value }));
   };
 
+  const isCheckoutPhoneValid = () => {
+    if (!isValidPhoneNumber(checkoutData.phoneCode, checkoutData.phone)) return false;
+    if (checkoutData.phoneCode === '+48') {
+      return isPolishMobilePhone(checkoutData.phone);
+    }
+    return true;
+  };
+
+  const checkoutPhoneErrorMessage = () => {
+    if (!checkoutData.phone.trim()) return 'Pole obowiązkowe';
+    if (!isValidPhoneNumber(checkoutData.phoneCode, checkoutData.phone)) {
+      return checkoutData.phoneCode === '+48'
+        ? 'Podaj poprawny numer telefonu (9 cyfr, bez zera na początku).'
+        : 'Podaj poprawny numer telefonu dla Twojego kraju.';
+    }
+    if (checkoutData.phoneCode === '+48') {
+      return 'Podaj numer komórkowy (9 cyfr, np. 500 600 700). Numery stacjonarne nie są obsługiwane.';
+    }
+    return 'Pole obowiązkowe';
+  };
+
   const checkoutErrors = {
     firstName: !checkoutData.firstName.trim(),
     lastName: !checkoutData.lastName.trim(),
     email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutData.email.trim()),
-    phone: !isValidPhoneNumber(checkoutData.phoneCode, checkoutData.phone),
+    phone: !isCheckoutPhoneValid(),
     street: checkoutData.shippingMethod === 'kurier' && !checkoutData.street.trim(),
     postalCode: checkoutData.shippingMethod === 'kurier' && checkoutData.postalCode.replace(/\D/g, '').length !== 5,
     city: checkoutData.shippingMethod === 'kurier' && !checkoutData.city.trim(),
@@ -1986,7 +2008,7 @@ export default function Home() {
                         {checkoutFieldError(showCheckoutErrors && checkoutErrors.email, 'Pole obowiązkowe')}
                       </div>
                       <div>
-                        <label className={checkoutLabelClass}>Nr telefonu{requiredMark}</label>
+                        <label className={checkoutLabelClass}>Nr telefonu komórkowego{requiredMark}</label>
                         <div className="flex gap-2 min-w-0">
                           <select
                             value={checkoutData.phoneCode}
@@ -2010,11 +2032,11 @@ export default function Home() {
                               const digits = e.target.value.replace(/\D/g, '').slice(0, max);
                               if (isDigitsOnly(digits)) updateCheckoutField('phone', digits);
                             }}
-                            placeholder="Twój numer telefonu"
+                            placeholder="Numer komórkowy, np. 500 600 700"
                             className={`${checkoutInputClass(checkoutErrors.phone)} min-w-0 flex-1 rounded-xl`}
                           />
                         </div>
-                        {checkoutFieldError(showCheckoutErrors && checkoutErrors.phone, 'Pole obowiązkowe')}
+                        {checkoutFieldError(showCheckoutErrors && checkoutErrors.phone, checkoutPhoneErrorMessage())}
                       </div>
                     </div>
 
