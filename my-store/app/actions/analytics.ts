@@ -1,7 +1,7 @@
 "use server"
 
 import { buildAnalyticsRows, type AnalyticsOrder, type AnalyticsRow, type AnalyticsVisitDay } from "@/lib/analytics-report"
-import { isOnOrAfterVisitsSince, analyticsVisitsSince } from "@/lib/analytics-visits-since"
+import { isOnOrAfterVisitsSince, resolveAnalyticsVisitsSince } from "@/lib/analytics-visits-since"
 import { syncVercelAnalytics } from "@/lib/analytics-sync"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
@@ -43,7 +43,8 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
   if (!auth.ok) return { ok: false, message: auth.message }
 
   const supabase = await createClient()
-  const sync = await syncVercelAnalytics(supabase)
+  const visitsSince = await resolveAnalyticsVisitsSince(supabase)
+  const sync = await syncVercelAnalytics(supabase, visitsSince)
   const warning = sync.ok ? undefined : sync.message
 
   const [visitsResult, ordersResult] = await Promise.all([
@@ -71,7 +72,6 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
     }
   }
 
-  const visitsSince = analyticsVisitsSince()
   const visits: AnalyticsVisitDay[] = asArray<AnalyticsDayRow>(visitsResult.data)
     .map((row) => ({
       day: String(row.day).slice(0, 10),

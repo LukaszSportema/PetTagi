@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
-import { analyticsVisitsSince, isOnOrAfterVisitsSince } from "@/lib/analytics-visits-since"
+import { isOnOrAfterVisitsSince, resolveAnalyticsVisitsSince } from "@/lib/analytics-visits-since"
 import { warsawYmd } from "@/lib/report-periods"
 import { fetchVercelDailyVisits, vercelAnalyticsWindowStart } from "@/lib/vercel-analytics"
 
@@ -63,7 +63,7 @@ const pruneVisitsBeforeSince = async (supabase: SupabaseClient, sinceYmd: string
       return {
         ok: false as const,
         message:
-          "Brak funkcji czyszczenia analityki. Wklej migrację supabase/migrations/20260909_analytics_visits_since.sql w Supabase SQL Editor.",
+          "Brak funkcji czyszczenia analityki. Wklej migrację supabase/migrations/20260910_store_settings_analytics_visits_since.sql w Supabase SQL Editor.",
       }
     }
     return {
@@ -77,8 +77,8 @@ const pruneVisitsBeforeSince = async (supabase: SupabaseClient, sinceYmd: string
 
 export async function syncVercelAnalytics(
   supabase: SupabaseClient,
+  visitsSince: string | null,
 ): Promise<{ ok: true; saved: number } | { ok: false; message: string }> {
-  const visitsSince = analyticsVisitsSince()
   const until = warsawYmd(new Date().toISOString())
   const since = visitsSince ?? vercelAnalyticsWindowStart()
   const fetched = await fetchVercelDailyVisits(since, until)
@@ -111,5 +111,5 @@ export async function syncVercelAnalyticsWithServiceRole(): Promise<
     }
   }
 
-  return syncVercelAnalytics(supabase)
+  return syncVercelAnalytics(supabase, await resolveAnalyticsVisitsSince(supabase))
 }
