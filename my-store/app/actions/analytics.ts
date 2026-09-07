@@ -42,7 +42,7 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
   if (!auth.ok) return { ok: false, message: auth.message }
 
   const supabase = await createClient()
-  const sync = await syncVercelAnalytics()
+  const sync = await syncVercelAnalytics(supabase)
   const warning = sync.ok ? undefined : sync.message
 
   const [visitsResult, ordersResult] = await Promise.all([
