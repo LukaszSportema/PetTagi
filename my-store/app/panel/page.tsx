@@ -4,6 +4,8 @@ import AdminPanel from "@/app/AdminPanel"
 import { signOut } from "@/app/actions/auth"
 import { getAuthUser, isAdminUser } from "@/lib/supabase/auth"
 
+export const dynamic = "force-dynamic"
+
 export default async function PanelPage() {
   const user = await getAuthUser()
   if (!user) redirect("/login?redirect=/panel")
