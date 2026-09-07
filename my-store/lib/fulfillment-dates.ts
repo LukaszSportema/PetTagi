@@ -18,6 +18,8 @@ export const addBusinessDays = (start: Date, businessDays: number) => {
   return result
 }
 
+export const nextBusinessDay = (from = new Date()) => addBusinessDays(from, 1)
+
 const warsawDateParts = (date: Date) => {
   const parts = new Intl.DateTimeFormat("pl-PL", {
     timeZone: WARSAW_TIME_ZONE,
@@ -53,13 +55,24 @@ export const formatFulfillmentRangeCompact = (start: Date, end: Date) => {
 }
 
 export const standardFulfillmentRangeCompact = (from = new Date()) => {
-  const start = addBusinessDays(from, STANDARD_FULFILLMENT_START_DAYS)
-  const end = addBusinessDays(from, STANDARD_FULFILLMENT_END_DAYS)
+  const anchor = nextBusinessDay(from)
+  const start = addBusinessDays(anchor, STANDARD_FULFILLMENT_START_DAYS)
+  const end = addBusinessDays(anchor, STANDARD_FULFILLMENT_END_DAYS)
   return formatFulfillmentRangeCompact(start, end)
 }
 
 export const expressFulfillmentRangeCompact = (from = new Date()) => {
-  const start = addBusinessDays(from, EXPRESS_FULFILLMENT_START_DAYS)
-  const end = addBusinessDays(from, EXPRESS_FULFILLMENT_END_DAYS)
+  const anchor = nextBusinessDay(from)
+  const start = addBusinessDays(anchor, EXPRESS_FULFILLMENT_START_DAYS)
+  const end = addBusinessDays(anchor, EXPRESS_FULFILLMENT_END_DAYS)
   return formatFulfillmentRangeCompact(start, end)
 }
+
+export const fulfillmentRangeCompact = (fastDelivery: boolean, from = new Date()) =>
+  fastDelivery ? expressFulfillmentRangeCompact(from) : standardFulfillmentRangeCompact(from)
+
+export const fulfillmentOrderMessage = (orderId: string, fastDelivery: boolean, from = new Date()) =>
+  `Twoje zamówienie numer ${orderId} zostanie zrealizowane w terminie ${fulfillmentRangeCompact(fastDelivery, from)} po zaksięgowaniu płatności`
+
+export const fulfillmentEmailMessage = (fastDelivery: boolean, from = new Date()) =>
+  `Twoje zamówienie zostanie zrealizowane w terminie ${fulfillmentRangeCompact(fastDelivery, from)} po dokonaniu płatności.`

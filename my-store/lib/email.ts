@@ -6,7 +6,8 @@ import {
   orderItemOptions,
   orderItemTitle,
 } from "@/lib/order-display"
-import { PAYMENT_RECIPIENTS, type PaymentRecipientId } from "@/lib/payment"
+import { fulfillmentEmailMessage } from "@/lib/fulfillment-dates"
+import { ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from "@/lib/payment"
 import type { CreateOrderInput } from "@/lib/types/order"
 
 const FROM = "Pettagi <zamowienia@pettagi.com>"
@@ -24,10 +25,7 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
 
-const fulfillmentCopy = (fastDelivery: boolean) =>
-  fastDelivery
-    ? "Twoje zamówienie zostanie zrealizowane w czasie 3-4 dni roboczych po dokonaniu płatności."
-    : "Twoje zamówienie zostanie zrealizowane w czasie 6-10 dni roboczych po dokonaniu płatności."
+const fulfillmentCopy = (fastDelivery: boolean) => fulfillmentEmailMessage(fastDelivery)
 
 const shippingCopy = (order: CreateOrderInput) => {
   const name = order.deliveryType === "paczkomat" ? "Paczkomat InPost" : deliveryLabel(order.deliveryType)
@@ -94,13 +92,16 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
   })
 
   const text = [
-    "Dziękujemy za zamówienie naszej adresówki!",
+    ORDER_CONFIRMATION_TITLE,
+    ORDER_CONFIRMATION_SUBTITLE,
     "",
     `Dokonaj płatności kwoty ${total}:`,
     `BLIK na numer: ${recipient.blikPhone}`,
     "Przelew na rachunek bankowy:",
     recipient.accountName,
     recipient.accountNumber,
+    "",
+    ORDER_CONFIRMATION_TRANSFER_NOTE,
     "",
     "Szczegóły zamówienia",
     `Numer zamówienia: ${input.orderId}`,
@@ -165,7 +166,8 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
             <tr>
               <td style="padding:36px 32px 24px;background:#F9F5ED;border-bottom:1px solid #D6C7AE">
                 <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#C4A574;font-family:Arial,Helvetica,sans-serif">PetTagi</p>
-                <h1 style="margin:0;font-size:28px;line-height:1.3;font-weight:400;color:#161616">Dziękujemy za zamówienie naszej adresówki!</h1>
+                <h1 style="margin:0;font-size:28px;line-height:1.3;font-weight:400;color:#161616">${escapeHtml(ORDER_CONFIRMATION_TITLE)}</h1>
+                <p style="margin:12px 0 0;font-size:15px;line-height:1.6;color:#7A736C;font-family:Arial,Helvetica,sans-serif;font-weight:400">${escapeHtml(ORDER_CONFIRMATION_SUBTITLE)}</p>
               </td>
             </tr>
             <tr>
@@ -177,6 +179,11 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
                   <strong>${escapeHtml(recipient.accountName)}</strong><br />
                   <strong>${recipient.accountNumber}</strong>
                 </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 8px">
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616;font-weight:500">${escapeHtml(ORDER_CONFIRMATION_TRANSFER_NOTE)}</p>
               </td>
             </tr>
             <tr>

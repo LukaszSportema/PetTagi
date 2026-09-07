@@ -1,3 +1,5 @@
+import { fulfillmentOrderMessage } from "@/lib/fulfillment-dates"
+
 export type PaymentRecipientId = "wiktoria" | "lukasz"
 
 export type PaymentRecipient = {
@@ -61,6 +63,10 @@ export const persistPaymentRecipient = (recipient: PaymentRecipientId) => {
 }
 
 export const fulfillmentMessage = (orderId: string, fastDelivery: boolean) =>
-  `Twoje zamówienie numer ${orderId} zostanie zrealizowane w ${
-    fastDelivery ? "3-4" : "6-10"
-  } dni roboczych po zaksięgowaniu płatności`
+  fulfillmentOrderMessage(orderId, fastDelivery)
+
+export const ORDER_CONFIRMATION_TITLE = "Dziękujemy za zamówienie naszej adresówki!"
+export const ORDER_CONFIRMATION_SUBTITLE =
+  "Od teraz Twój pupil ma swój własny talizman bezpieczeństwa — a Ty możesz czuć się spokojniej."
+export const ORDER_CONFIRMATION_TRANSFER_NOTE =
+  "Ważne: W tytule przelewu (lub płatności BLIK) prosimy wpisać imię pupila."
