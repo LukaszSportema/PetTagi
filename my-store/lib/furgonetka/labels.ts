@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto"
 import type { OrderDetail } from "@/lib/types/order"
+import { defaultDropoffPoint } from "@/lib/furgonetka/config"
 import { FurgonetkaError, furgonetkaRequest } from "@/lib/furgonetka/client"
 
 type AccountService = {
@@ -115,10 +116,8 @@ const fetchLockerAddress = async (pointName: string): Promise<PostalAddress> => 
   return { street: locker.street, city: locker.city, postcode: locker.postcode }
 }
 
-const DEFAULT_DROPOFF_POINT = "POP-WAW500"
-
 const resolveDropoffPointCode = () =>
-  (process.env.FURGONETKA_DROPOFF_POINT?.trim() || DEFAULT_DROPOFF_POINT).toUpperCase()
+  (process.env.FURGONETKA_DROPOFF_POINT?.trim() || defaultDropoffPoint()).toUpperCase()
 
 const customerAddress = (order: OrderDetail): PostalAddress => ({
   street: splitCustomerStreet(order.clientAddress),
@@ -142,7 +141,7 @@ const senderAddress = () => {
 
   if (!name || !email || !phone || !street || !postcode || !city) {
     throw new FurgonetkaError(
-      "Uzupełnij dane nadawcy Furgonetki w .env.local (FURGONETKA_SENDER_*).",
+      "Uzupełnij dane nadawcy Furgonetki w zmiennych środowiskowych (FURGONETKA_SENDER_*).",
     )
   }
 

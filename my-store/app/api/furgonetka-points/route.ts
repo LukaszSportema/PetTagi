@@ -1,3 +1,4 @@
+import { furgonetkaApiBase } from "@/lib/furgonetka/config"
 import { NextRequest, NextResponse } from "next/server"
 
 type MapPoint = {
@@ -8,11 +9,7 @@ type MapPoint = {
   address?: { street?: string; city?: string; postcode?: string }
 }
 
-const apiBase = () =>
-  (process.env.NEXT_PUBLIC_FURGONETKA_MAP_ENV === "sandbox"
-    ? "https://api.sandbox.furgonetka.pl"
-    : "https://api.furgonetka.pl"
-  ).replace(/\/$/, "")
+const apiBase = () => furgonetkaApiBase()
 
 const toNumber = (value: number | string | undefined) => {
   const parsed = typeof value === "number" ? value : Number(value)

@@ -183,7 +183,7 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
             </tr>
             <tr>
               <td style="padding:0 28px 8px">
-                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616;font-weight:500">${escapeHtml(ORDER_CONFIRMATION_TRANSFER_NOTE)}</p>
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616"><strong>${escapeHtml(ORDER_CONFIRMATION_TRANSFER_NOTE)}</strong></p>
               </td>
             </tr>
             <tr>
