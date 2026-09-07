@@ -194,7 +194,12 @@ export const CHARM_SILVER_CATALOG: CharmCatalogItem[] = [
 export const CHARM_LARGE_CATALOG: CharmCatalogItem[] = [
   { id: "duzypiesek", label: "Piesek", image: "/charms/duzypiesek.jpg" },
   { id: "duzalapkaczarna", label: "Łapka – czarna", image: "/charms/duzalapkaczarna.jpg" },
-  { id: "duzykwiatuszekrozowy", label: "Kwiatuszek – różowy", image: "/charms/duzykwiatuszekrozowy.jpg" },
+  {
+    id: "duzykwiatuszekrozowy",
+    label: "Kwiatuszek – różowy",
+    image: "/charms/duzykwiatuszekrozowy.jpg",
+    unavailable: true,
+  },
   { id: "duzykwiatuszekdelikatnierozowy", label: "Kwiatuszek – delikatnie różowy", image: "/charms/duzykwiatuszekdelikatnierozowy.jpg" },
   { id: "duzykwiatuszeklawendowy", label: "Kwiatuszek – lawendowy", image: "/charms/duzykwiatuszeklawendowy.jpg" },
   { id: "duzamuszelka", label: "Muszelka", image: "/charms/duzamuszelka.jpg" },

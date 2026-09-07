@@ -55,6 +55,14 @@ const statusClass: Record<OrderStatus, string> = {
 
 const dash = '—';
 
+const orderRowClass = (status: OrderStatus) => {
+  const base = 'border-t border-[#D6C7AE] cursor-pointer transition-colors';
+  if (status === 'paid') {
+    return `${base} bg-[#E4EDE5] hover:bg-[#D6E4D7]`;
+  }
+  return `${base} hover:bg-[#F4EFE6]`;
+};
+
 export default function AdminPanel() {
   const [activeAdminTab, setActiveAdminTab] = useState<(typeof adminTabs)[number]['id']>('orders');
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -838,7 +846,7 @@ function OrdersTable({
                     onOpen(order.id);
                   }
                 }}
-                className="border-t border-[#D6C7AE] cursor-pointer hover:bg-[#F4EFE6] transition-colors"
+                className={orderRowClass(order.status)}
               >
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{formatOrderDate(order.createdAt)}</td>
                 <td className="px-4 py-3 whitespace-nowrap font-medium text-[#161616]">{order.orderId}</td>
