@@ -349,6 +349,7 @@ export default function Home() {
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
   const [showCheckoutErrors, setShowCheckoutErrors] = useState(false);
+  const [checkoutPhoneTouched, setCheckoutPhoneTouched] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [checkoutSubmitError, setCheckoutSubmitError] = useState('');
@@ -1173,6 +1174,13 @@ export default function Home() {
     pickupPoint: checkoutData.shippingMethod === 'paczkomat' && !checkoutData.pickupPointName,
     acceptTerms: !checkoutData.acceptTerms,
   };
+
+  const checkoutPhoneLength = phoneLengthByCode[checkoutData.phoneCode] ?? { min: 7, max: 15 };
+  const showCheckoutPhoneError =
+    checkoutErrors.phone &&
+    (showCheckoutErrors ||
+      checkoutData.phone.length >= checkoutPhoneLength.max ||
+      (checkoutPhoneTouched && checkoutData.phone.length >= checkoutPhoneLength.min));
   const isCheckoutValid = !Object.values(checkoutErrors).some(Boolean);
 
   const checkoutInputClass = (hasError: boolean) =>
@@ -1918,15 +1926,6 @@ export default function Home() {
                   {checkoutData.shippingMethod === 'paczkomat' && (
                     <div className="mt-6 space-y-3">
                       <p className="font-medium text-[#161616]">Wybierz paczkomat</p>
-                      {checkoutData.pickupPointName && (
-                        <p className="text-sm text-[#7A736C]">
-                          Wybrany paczkomat:{' '}
-                          <span className="font-medium text-[#161616]">
-                            {checkoutData.pickupPointName}
-                            {checkoutData.pickupPointAddress ? `, ${checkoutData.pickupPointAddress}` : ''}
-                          </span>
-                        </p>
-                      )}
                       <div className="rounded-2xl border border-[#D6C7AE] bg-white overflow-hidden">
                         <FurgonetkaMap
                           city={checkoutData.city}
@@ -1955,6 +1954,16 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-4">
+                    {checkoutData.shippingMethod === 'paczkomat' && checkoutData.pickupPointName && (
+                      <div className="rounded-xl border border-[#D6C7AE] bg-[#F9F5ED] px-4 py-3">
+                        <p className={checkoutLabelClass}>Wybrany paczkomat</p>
+                        <p className="text-sm font-medium text-[#161616]">{checkoutData.pickupPointName}</p>
+                        {checkoutData.pickupPointAddress && (
+                          <p className="text-sm text-[#7A736C] mt-1">{checkoutData.pickupPointAddress}</p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className={checkoutLabelClass}>Imię{requiredMark}</label>
@@ -2012,9 +2021,12 @@ export default function Home() {
                         <div className="flex gap-2 min-w-0">
                           <select
                             value={checkoutData.phoneCode}
-                            onChange={(e) => updateCheckoutField('phoneCode', e.target.value)}
+                            onChange={(e) => {
+                              updateCheckoutField('phoneCode', e.target.value);
+                              if (checkoutData.phone.trim()) setCheckoutPhoneTouched(true);
+                            }}
                             className={`w-[3.85rem] shrink-0 appearance-none bg-white rounded-xl border pl-1.5 pr-4 py-3 text-base md:text-sm focus:outline-none bg-[length:10px] bg-[right_5px_center] bg-no-repeat ${
-                              showCheckoutErrors && checkoutErrors.phone ? 'border-red-400' : 'border-[#D6C7AE] focus:border-[#161616]'
+                              showCheckoutPhoneError ? 'border-red-400' : 'border-[#D6C7AE] focus:border-[#161616]'
                             }`}
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
                           >
@@ -2030,13 +2042,19 @@ export default function Home() {
                             onChange={(e) => {
                               const max = phoneLengthByCode[checkoutData.phoneCode]?.max ?? 15;
                               const digits = e.target.value.replace(/\D/g, '').slice(0, max);
-                              if (isDigitsOnly(digits)) updateCheckoutField('phone', digits);
+                              if (isDigitsOnly(digits)) {
+                                updateCheckoutField('phone', digits);
+                                if (digits.length >= max) setCheckoutPhoneTouched(true);
+                              }
                             }}
+                            onBlur={() => setCheckoutPhoneTouched(true)}
                             placeholder="Numer komórkowy, np. 500 600 700"
-                            className={`${checkoutInputClass(checkoutErrors.phone)} min-w-0 flex-1 rounded-xl`}
+                            className={`w-full bg-white rounded-none border px-4 py-3 text-base md:text-sm focus:outline-none min-w-0 flex-1 rounded-xl ${
+                              showCheckoutPhoneError ? 'border-red-400' : 'border-[#D6C7AE] focus:border-[#C4A574]'
+                            }`}
                           />
                         </div>
-                        {checkoutFieldError(showCheckoutErrors && checkoutErrors.phone, checkoutPhoneErrorMessage())}
+                        {checkoutFieldError(showCheckoutPhoneError, checkoutPhoneErrorMessage())}
                       </div>
                     </div>
 

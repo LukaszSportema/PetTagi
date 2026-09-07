@@ -42,7 +42,7 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
   if (!auth.ok) return { ok: false, message: auth.message }
 
   const supabase = await createClient()
-  const sync = await syncVercelAnalytics(supabase)
+  const sync = await syncVercelAnalytics()
   const warning = sync.ok ? undefined : sync.message
 
   const [visitsResult, ordersResult] = await Promise.all([
@@ -54,9 +54,11 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
     console.error("admin_list_analytics_daily failed", visitsResult.error)
     return {
       ok: false,
-      message: visitsResult.error.message.includes("admin_list_analytics_daily")
+      message: visitsResult.error.message.includes("Could not find the function")
         ? "Brak funkcji analityki w Supabase. Wklej skrypt SQL z supabase/migrations/20260819_analytics.sql."
-        : "Nie udało się pobrać analityki. Spróbuj ponownie.",
+        : visitsResult.error.message.includes("Brak uprawnień administratora")
+          ? "Brak uprawnień administratora. Wyloguj się i zaloguj ponownie."
+          : `Nie udało się pobrać analityki: ${visitsResult.error.message}`,
     }
   }
 
