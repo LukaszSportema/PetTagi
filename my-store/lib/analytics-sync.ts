@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
+import { isOnOrAfterVisitsSince, resolveAnalyticsVisitsSince } from "@/lib/analytics-visits-since"
 import { warsawYmd } from "@/lib/report-periods"
 import { fetchVercelDailyVisits, vercelAnalyticsWindowStart } from "@/lib/vercel-analytics"
 
@@ -51,19 +52,52 @@ const upsertDailyVisits = async (
   return { ok: true as const }
 }
 
+const pruneVisitsBeforeSince = async (supabase: SupabaseClient, sinceYmd: string) => {
+  const { error } = await supabase.rpc("admin_delete_analytics_daily_before", {
+    p_before: sinceYmd,
+  })
+
+  if (error) {
+    console.error("admin_delete_analytics_daily_before failed", error)
+    if (error.message.includes("Could not find the function")) {
+      return {
+        ok: false as const,
+        message:
+          "Brak funkcji czyszczenia analityki. Wklej migrację supabase/migrations/20260910_store_settings_analytics_visits_since.sql w Supabase SQL Editor.",
+      }
+    }
+    return {
+      ok: false as const,
+      message: `Nie udało się wyczyścić starych wejść: ${error.message}`,
+    }
+  }
+
+  return { ok: true as const }
+}
+
 export async function syncVercelAnalytics(
   supabase: SupabaseClient,
+  visitsSince: string | null,
 ): Promise<{ ok: true; saved: number } | { ok: false; message: string }> {
   const until = warsawYmd(new Date().toISOString())
-  const since = vercelAnalyticsWindowStart()
+  const since = visitsSince ?? vercelAnalyticsWindowStart()
   const fetched = await fetchVercelDailyVisits(since, until)
   if (!fetched.ok) return fetched
-  if (!fetched.days.length) return { ok: true, saved: 0 }
 
-  const saved = await upsertDailyVisits(supabase, fetched.days)
+  if (visitsSince) {
+    const pruned = await pruneVisitsBeforeSince(supabase, visitsSince)
+    if (!pruned.ok) return pruned
+  }
+
+  const days = visitsSince
+    ? fetched.days.filter((day) => isOnOrAfterVisitsSince(day.day, visitsSince))
+    : fetched.days
+  if (!days.length) return { ok: true, saved: 0 }
+
+  const saved = await upsertDailyVisits(supabase, days)
   if (!saved.ok) return saved
 
-  return { ok: true, saved: fetched.days.length }
+  return { ok: true, saved: days.length }
 }
 
 export async function syncVercelAnalyticsWithServiceRole(): Promise<
@@ -77,5 +111,5 @@ export async function syncVercelAnalyticsWithServiceRole(): Promise<
     }
   }
 
-  return syncVercelAnalytics(supabase)
+  return syncVercelAnalytics(supabase, await resolveAnalyticsVisitsSince(supabase))
 }

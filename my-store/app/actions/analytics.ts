@@ -1,6 +1,7 @@
 "use server"
 
 import { buildAnalyticsRows, type AnalyticsOrder, type AnalyticsRow, type AnalyticsVisitDay } from "@/lib/analytics-report"
+import { isOnOrAfterVisitsSince, resolveAnalyticsVisitsSince } from "@/lib/analytics-visits-since"
 import { syncVercelAnalytics } from "@/lib/analytics-sync"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
@@ -42,7 +43,8 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
   if (!auth.ok) return { ok: false, message: auth.message }
 
   const supabase = await createClient()
-  const sync = await syncVercelAnalytics(supabase)
+  const visitsSince = await resolveAnalyticsVisitsSince(supabase)
+  const sync = await syncVercelAnalytics(supabase, visitsSince)
   const warning = sync.ok ? undefined : sync.message
 
   const [visitsResult, ordersResult] = await Promise.all([
@@ -70,10 +72,12 @@ export async function getAnalyticsReport(): Promise<AnalyticsReportResult> {
     }
   }
 
-  const visits: AnalyticsVisitDay[] = asArray<AnalyticsDayRow>(visitsResult.data).map((row) => ({
-    day: String(row.day).slice(0, 10),
-    uniqueVisitors: toCount(row.unique_visitors),
-  }))
+  const visits: AnalyticsVisitDay[] = asArray<AnalyticsDayRow>(visitsResult.data)
+    .map((row) => ({
+      day: String(row.day).slice(0, 10),
+      uniqueVisitors: toCount(row.unique_visitors),
+    }))
+    .filter((row) => isOnOrAfterVisitsSince(row.day, visitsSince))
 
   const orders: AnalyticsOrder[] = asArray<AnalyticsOrderRow>(ordersResult.data).map((row) => ({
     createdAt: row.created_at,
