@@ -34,3 +34,9 @@ export const isPolishMobilePhone = (value: string) => {
 
 /** 9-cyfrowy numer komórkowy bez prefiksu +48 — format wymagany przez Furgonetkę/InPost. */
 export const toFurgonetkaPhone = (value: string) => normalizePolishPhone(value)
+
+export const formatClientPhoneStorage = (value: string) => {
+  const digits = normalizePolishPhone(value)
+  if (!/^\d{9}$/.test(digits)) return value.trim()
+  return `+48 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
+}
