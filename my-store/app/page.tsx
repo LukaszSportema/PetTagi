@@ -1926,15 +1926,6 @@ export default function Home() {
                   {checkoutData.shippingMethod === 'paczkomat' && (
                     <div className="mt-6 space-y-3">
                       <p className="font-medium text-[#161616]">Wybierz paczkomat</p>
-                      {checkoutData.pickupPointName && (
-                        <p className="text-sm text-[#7A736C]">
-                          Wybrany paczkomat:{' '}
-                          <span className="font-medium text-[#161616]">
-                            {checkoutData.pickupPointName}
-                            {checkoutData.pickupPointAddress ? `, ${checkoutData.pickupPointAddress}` : ''}
-                          </span>
-                        </p>
-                      )}
                       <div className="rounded-2xl border border-[#D6C7AE] bg-white overflow-hidden">
                         <FurgonetkaMap
                           city={checkoutData.city}
@@ -1963,6 +1954,16 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-4">
+                    {checkoutData.shippingMethod === 'paczkomat' && checkoutData.pickupPointName && (
+                      <div className="rounded-xl border border-[#D6C7AE] bg-[#F9F5ED] px-4 py-3">
+                        <p className={checkoutLabelClass}>Wybrany paczkomat</p>
+                        <p className="text-sm font-medium text-[#161616]">{checkoutData.pickupPointName}</p>
+                        {checkoutData.pickupPointAddress && (
+                          <p className="text-sm text-[#7A736C] mt-1">{checkoutData.pickupPointAddress}</p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className={checkoutLabelClass}>Imię{requiredMark}</label>
