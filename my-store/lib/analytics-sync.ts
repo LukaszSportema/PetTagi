@@ -5,9 +5,7 @@ import { fetchVercelDailyVisits, vercelAnalyticsWindowStart } from "@/lib/vercel
 const createServiceClient = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !serviceKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
-  }
+  if (!url || !serviceKey) return null
   return createClient(url, serviceKey)
 }
 
@@ -21,6 +19,13 @@ export async function syncVercelAnalytics(): Promise<
   if (!fetched.days.length) return { ok: true, saved: 0 }
 
   const supabase = createServiceClient()
+  if (!supabase) {
+    return {
+      ok: false,
+      message: "Brak SUPABASE_SERVICE_ROLE_KEY na serwerze. Dodaj klucz w Vercel → Settings → Environment Variables.",
+    }
+  }
+
   const { error } = await supabase.rpc("admin_upsert_analytics_daily", {
     p_rows: fetched.days.map((day) => ({
       day: day.day,
