@@ -1,3 +1,5 @@
+import { furgonetkaApiBase, furgonetkaPanelUrl, isFurgonetkaSandbox } from "@/lib/furgonetka/config"
+
 type FurgonetkaJson = Record<string, unknown> | unknown[] | null
 
 export class FurgonetkaError extends Error {
@@ -18,18 +20,32 @@ type TokenCache = {
 
 let tokenCache: TokenCache | null = null
 
-const apiBase = () =>
-  (process.env.FURGONETKA_API_URL ?? "https://api.sandbox.furgonetka.pl").replace(/\/$/, "")
+const apiBase = () => furgonetkaApiBase()
+
+const trimEnv = (value: string | undefined) => value?.trim() ?? ""
 
 const basicAuth = () => {
-  const clientId = process.env.FURGONETKA_CLIENT_ID
-  const clientSecret = process.env.FURGONETKA_CLIENT_SECRET
+  const clientId = trimEnv(process.env.FURGONETKA_CLIENT_ID)
+  const clientSecret = trimEnv(process.env.FURGONETKA_CLIENT_SECRET)
   if (!clientId || !clientSecret) {
-    throw new FurgonetkaError(
-      "Brak FURGONETKA_CLIENT_ID lub FURGONETKA_CLIENT_SECRET w .env.local.",
-    )
+    throw new FurgonetkaError("Brak FURGONETKA_CLIENT_ID lub FURGONETKA_CLIENT_SECRET w zmiennych środowiskowych.")
   }
   return `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`
+}
+
+const explainOAuthFailure = (status: number, message: string) => {
+  const normalized = message.toLowerCase()
+  if (status === 401 && normalized.includes("client authentication failed")) {
+    const env = isFurgonetkaSandbox() ? "sandbox (api.sandbox.furgonetka.pl)" : "produkcja (api.furgonetka.pl)"
+    return [
+      "Furgonetka odrzuciła Client ID lub Client Secret.",
+      `Aktualne środowisko API: ${env}.`,
+      "Sprawdź na Vercel: FURGONETKA_CLIENT_ID, FURGONETKA_CLIENT_SECRET oraz FURGONETKA_ENV.",
+      "Klucze muszą pochodzić z tego samego środowiska co API (aplikacja OAuth z furgonetka.pl, nie klucz mapy paczkomatów).",
+      "Po zmianie Client Secret w panelu Furgonetki zaktualizuj wartość na Vercel i zrób redeploy.",
+    ].join(" ")
+  }
+  return message
 }
 
 const explainApiError = (path?: string, message?: string, details?: string) => {
@@ -38,14 +54,14 @@ const explainApiError = (path?: string, message?: string, details?: string) => {
   if (isPhonePath && text.includes("zweryfikuj")) {
     return [
       "Konto Furgonetki wymaga weryfikacji numeru telefonu, zanim da się zamówić przesyłkę.",
-      "Zaloguj się na https://sandbox.furgonetka.pl → Dane konta → Zweryfikuj swój numer telefonu (SMS), potem spróbuj ponownie wygenerować kod.",
+      `Zaloguj się na ${furgonetkaPanelUrl()} → Dane konta → Zweryfikuj swój numer telefonu (SMS), potem spróbuj ponownie wygenerować kod.`,
       "Na koncie prywatnym weryfikacja jest obowiązkowa; na firmowym jest opcjonalna.",
     ].join(" ")
   }
   if (text.includes("nadanie bez etykiety") && text.includes("punkcie")) {
     return [
       "Nadanie bez etykiety wymaga paczkomatu lub punktu nadania, nie podjazdu kuriera.",
-      "Ustaw FURGONETKA_DROPOFF_POINT w .env.local (punkt nadania, np. POP-WAW500 na sandboxie).",
+      `Ustaw FURGONETKA_DROPOFF_POINT w zmiennych środowiskowych (punkt nadania, np. POP-WAW500 na sandboxie lub WAW97H na produkcji).`,
     ].join(" ")
   }
   if ((path === "/pickup/point" || path === "pickup/point" || path?.endsWith("/pickup/point")) && text.includes("poprawny")) {
@@ -93,10 +109,10 @@ const parseJson = (text: string): FurgonetkaJson => {
 }
 
 async function fetchAccessToken(): Promise<string> {
-  const username = process.env.FURGONETKA_USERNAME
-  const password = process.env.FURGONETKA_PASSWORD
+  const username = trimEnv(process.env.FURGONETKA_USERNAME)
+  const password = trimEnv(process.env.FURGONETKA_PASSWORD)
   if (!username || !password) {
-    throw new FurgonetkaError("Brak FURGONETKA_USERNAME lub FURGONETKA_PASSWORD w .env.local.")
+    throw new FurgonetkaError("Brak FURGONETKA_USERNAME lub FURGONETKA_PASSWORD w zmiennych środowiskowych.")
   }
 
   const response = await fetch(`${apiBase()}/oauth/token`, {
@@ -116,8 +132,9 @@ async function fetchAccessToken(): Promise<string> {
 
   const body = parseJson(await response.text()) as Record<string, unknown> | null
   if (!response.ok || !body || typeof body.access_token !== "string") {
+    const apiMessage = formatApiErrors(body)
     throw new FurgonetkaError(
-      `Nie udało się zalogować do Furgonetki (HTTP ${response.status}): ${formatApiErrors(body)}`,
+      `Nie udało się zalogować do Furgonetki (HTTP ${response.status}): ${explainOAuthFailure(response.status, apiMessage)}`,
       response.status,
       body,
     )
