@@ -3,6 +3,7 @@
 import { sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
 import { getPaymentRecipient } from "@/app/actions/settings"
+import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
 import {
@@ -28,6 +29,40 @@ type PlaceOrderRow = {
 }
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100
+
+const placeOrderErrorMessage = (message: string) => {
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes("place_order") && normalized.includes("does not exist")) {
+    return "Brak funkcji place_order w Supabase. Wklej skrypt SQL z supabase/migrations/20260818_place_order.sql."
+  }
+
+  if (normalized.includes("string_glow")) {
+    return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260824_order_item_string_glow.sql."
+  }
+
+  if (normalized.includes("product_slug") || normalized.includes("product_name")) {
+    return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260821_order_item_product.sql."
+  }
+
+  if (normalized.includes("fast_delivery")) {
+    return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260818_fast_delivery.sql."
+  }
+
+  if (normalized.includes("orders_payment_recipient")) {
+    return "Nieprawidłowy odbiorca płatności. Odśwież stronę i spróbuj ponownie."
+  }
+
+  if (
+    normalized.includes("invalid api key")
+    || normalized.includes("jwt")
+    || normalized.includes("permission denied")
+  ) {
+    return "Błąd połączenia z bazą danych. Sprawdź zmienne Supabase na Vercel."
+  }
+
+  return "Nie udało się złożyć zamówienia. Spróbuj ponownie."
+}
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
   if (!input.items.length) {
@@ -105,9 +140,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     console.error("place_order failed", error)
     return {
       ok: false,
-      message: error.message.includes("place_order")
-        ? "Brak funkcji place_order w Supabase. Wklej skrypt SQL z supabase/migrations/20260818_place_order.sql."
-        : "Nie udało się złożyć zamówienia. Spróbuj ponownie.",
+      message: placeOrderErrorMessage(error.message),
     }
   }
 
@@ -275,6 +308,9 @@ const missingAdminSqlMessage =
   "Brak funkcji admin_list_orders w Supabase. Wklej skrypt SQL z supabase/migrations/20260818_admin_orders.sql."
 
 export async function listOrders(): Promise<ListOrdersResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   const supabase = await createClient()
   const { data, error } = await supabase.rpc("admin_list_orders")
 
@@ -292,6 +328,9 @@ export async function listOrders(): Promise<ListOrdersResult> {
 }
 
 export async function getOrder(id: string): Promise<GetOrderResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   const supabase = await createClient()
   const { data, error } = await supabase.rpc("admin_get_order", { p_id: id })
 
@@ -320,6 +359,9 @@ export async function getOrder(id: string): Promise<GetOrderResult> {
 }
 
 export async function saveInpostCode(orderUuid: string, code: string): Promise<void> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return
+
   const supabase = await createClient()
   const { error } = await supabase.rpc("admin_set_inpost_code", {
     p_id: orderUuid,
@@ -342,6 +384,9 @@ export async function updateOrderStatus(
   orderUuid: string,
   status: OrderStatus,
 ): Promise<UpdateOrderStatusResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   if (!WRITABLE_STATUSES.includes(status)) {
     return { ok: false, message: "Nieprawidłowy status zamówienia." }
   }

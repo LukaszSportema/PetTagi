@@ -1,6 +1,7 @@
 "use server"
 
 import { buildRevenueRows, type RevenueOrder, type RevenueRow } from "@/lib/revenue"
+import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 
 type RevenueItemRow = {
@@ -66,6 +67,9 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
 })
 
 export async function getRevenueReport(): Promise<RevenueReportResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
   const supabase = await createClient()
   const { data, error } = await supabase.rpc("admin_revenue_orders")
 

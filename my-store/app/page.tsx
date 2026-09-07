@@ -3,9 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { createOrder } from './actions/orders';
-import AdminPanel from './AdminPanel';
+import AdminNavButton from './components/AdminNavButton';
 import FurgonetkaMap from './FurgonetkaMap';
-import { fulfillmentMessage, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
+import { fulfillmentMessage, ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
 import {
   CATALOG_PRODUCTS,
   CLASSIC_TAG_PRODUCT,
@@ -356,13 +356,14 @@ export default function Home() {
   const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
   const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
   const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
+  const skipsGraphicsStep = isGlowTagConfigurator || formData.ringColor === 'kwiat';
 
   // --- LOGIKA OBLICZANIA CENY ---
   const basePrice = baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
   const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
   const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
   const extraStopersCost = formData.wantStopers === 'tak' ? formData.extraStopers.length * STOPPER_PRICE : 0;
-  const stickerCost = activeProductSlug === GLOW_TAG_PRODUCT.slug
+  const stickerCost = skipsGraphicsStep
     ? 0
     : formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
   const dialCodeCost = formData.includePhoneCode === 'tak' ? DIAL_CODE_PRICE : 0;
@@ -424,7 +425,10 @@ export default function Home() {
     { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
   ];
-  const skippedStepIds = isGlowTagConfigurator ? [1, 9] : [12];
+  const skippedStepIds = [
+    ...(isGlowTagConfigurator ? [1] : [12]),
+    ...(skipsGraphicsStep ? [9] : []),
+  ];
   const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
   const stepsInfo = visibleClassicSteps.map((step, index) => {
     const normalizedStep = { ...step, id: index + 1 };
@@ -1038,7 +1042,7 @@ export default function Home() {
       });
     }
 
-    if (!isGlowTagConfigurator && formData.wantSticker === 'tak' && formData.stickerOption) {
+    if (!skipsGraphicsStep && formData.wantSticker === 'tak' && formData.stickerOption) {
       options.push({
         label: 'Naklejka',
         values: [findTitle(stickersList, formData.stickerOption, `Pies ${formData.stickerOption}`)],
@@ -1212,9 +1216,11 @@ export default function Home() {
           stoppers: config.wantStopers === 'tak' && config.extraStopers.length > 0
             ? config.extraStopers.join(',')
             : null,
-          sticker: item.productSlug === GLOW_TAG_PRODUCT.slug
-            ? null
-            : config.wantSticker === 'tak' ? config.stickerOption || null : null,
+          sticker: (() => {
+            const product = getCatalogProduct(item.productSlug);
+            const skipsSticker = product?.configuratorId === 'glow-tag' || config.ringColor === 'kwiat';
+            return skipsSticker ? null : config.wantSticker === 'tak' ? config.stickerOption || null : null;
+          })(),
           dogName: config.petName,
           numberOnTag:
             config.includePhoneCode === 'tak'
@@ -1331,7 +1337,7 @@ export default function Home() {
         {formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Dodatkowe charms x{formData.extraCharms.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraCharms.length * 5} zł (5 zł/szt)</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraCharms.length * EXTRA_CHARM_PRICE} zł ({EXTRA_CHARM_PRICE} zł/szt)</span>
           </div>
         )}
 
@@ -1382,7 +1388,7 @@ export default function Home() {
           </div>
         )}
 
-        {formData.wantSticker === 'tak' && formData.stickerOption && !isGlowTagConfigurator && (
+        {formData.wantSticker === 'tak' && formData.stickerOption && !skipsGraphicsStep && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Naklejka (Pies {formData.stickerOption})</span>
             <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
@@ -1426,6 +1432,10 @@ export default function Home() {
     const left = active.offsetLeft - container.clientWidth / 2 + active.offsetWidth / 2;
     container.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
   }, [currentStep, activeTab, isTagConfigurator]);
+
+  useEffect(() => {
+    setCurrentStep((prev) => Math.min(prev, totalSteps));
+  }, [totalSteps]);
 
   useEffect(() => {
     return () => {
@@ -1549,17 +1559,7 @@ export default function Home() {
                 </nav>
 
                 <div className="shrink-0 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => goToTab('admin')}
-                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 ${
-                      activeTab === 'admin'
-                        ? 'bg-[#3A5A40] text-[#F4EFE6]'
-                        : 'bg-transparent text-[#161616] border border-[#D6C7AE] hover:border-[#161616]'
-                    }`}
-                  >
-                    Panel
-                  </button>
+                  <AdminNavButton />
                   <button 
                     onClick={() => goToTab('cart')}
                     className={`bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-3 md:px-5 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
@@ -1807,9 +1807,12 @@ export default function Home() {
         {/* ZAKŁADKA: Dane i dostawa */}
         {activeTab === 'checkout' && placedOrder && (
           <div className="max-w-3xl mx-auto px-5 md:px-12 py-10 md:py-20">
-            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-8 md:mb-14">
-              Dziękujemy za złożenie zamówienia
+            <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616] mb-3 md:mb-4">
+              {ORDER_CONFIRMATION_TITLE}
             </h1>
+            <p className="text-base md:text-lg text-[#7A736C] mb-8 md:mb-14 max-w-2xl">
+              {ORDER_CONFIRMATION_SUBTITLE}
+            </p>
             <div className="bg-white rounded-3xl border border-[#D6C7AE] p-5 md:p-8 space-y-6">
               <div>
                 <p className="font-bold text-[#161616] mb-3">
@@ -1828,6 +1831,9 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+              <p className="text-[#161616] font-medium">
+                {ORDER_CONFIRMATION_TRANSFER_NOTE}
+              </p>
               <p className="text-[#161616]">
                 {fulfillmentMessage(placedOrder.orderId, placedOrder.fastDelivery)}
               </p>
@@ -2209,9 +2215,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ZAKŁADKA: Panel administratora */}
-        {activeTab === 'admin' && <AdminPanel />}
-
         {/* ZAKŁADKA: Konfigurator produktu */}
         {activeTab === 'configurator' && !isTagConfigurator && (
           <div className="max-w-3xl mx-auto px-5 md:px-12 py-12 md:py-24 space-y-6 text-center">
@@ -2258,6 +2261,7 @@ export default function Home() {
                                   ...formData,
                                   ringColor: item.id,
                                   baseOption: basesForRing(item.id)[0]?.id ?? '1',
+                                  ...(item.id === 'kwiat' ? { wantSticker: 'nie', stickerOption: '' } : {}),
                                 })}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-stretch ${
                                   formData.ringColor === item.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'

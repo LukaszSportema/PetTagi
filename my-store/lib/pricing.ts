@@ -12,7 +12,7 @@ export const baseTagPrice = (ringColor: string) =>
 
 /** @deprecated Użyj baseTagPrice(ringColor) */
 export const BASE_TAG_PRICE = BASE_TAG_PRICES.złoty
-export const EXTRA_CHARM_PRICE = 5
+export const EXTRA_CHARM_PRICE = 4
 export const EXTRA_KARABINER_PRICE = 5
 export const STOPPER_PRICE = 5
 export const STICKER_PRICE = 5
