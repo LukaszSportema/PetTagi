@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { syncVercelAnalytics } from "@/lib/analytics-sync"
+import { syncVercelAnalyticsWithServiceRole } from "@/lib/analytics-sync"
 
 export const dynamic = "force-dynamic"
 
@@ -14,6 +14,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 })
   }
 
-  const result = await syncVercelAnalytics()
+  const result = await syncVercelAnalyticsWithServiceRole()
   return NextResponse.json(result, { status: result.ok ? 200 : 500 })
 }
