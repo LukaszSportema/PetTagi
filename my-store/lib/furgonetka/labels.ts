@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import type { OrderDetail } from "@/lib/types/order"
 import { defaultDropoffPoint } from "@/lib/furgonetka/config"
 import { FurgonetkaError, furgonetkaRequest } from "@/lib/furgonetka/client"
+import { formatPolishMobile, isPolishMobilePhone, toFurgonetkaPhone } from "@/lib/phone"
 
 type AccountService = {
   id: number
@@ -54,20 +55,11 @@ const splitCustomerStreet = (value: string) => {
   return `${match[1].trim()} ${match[2].replace(/\s+/g, "")}`
 }
 
-const digitsPhone = (value: string) => {
-  let digits = value.replace(/\D/g, "")
-  if (digits.startsWith("00")) digits = digits.slice(2)
-  if (digits.startsWith("48") && digits.length >= 11) digits = digits.slice(-9)
-  if (digits.startsWith("0") && digits.length === 10) digits = digits.slice(1)
-  return digits
-}
-
-const POLISH_MOBILE_PREFIX = /^(45|50|51|53|57|60|66|69|72|73|78|79|83|88)\d{7}$/
-
-const assertInpostPhone = (phone: string) => {
-  if (!POLISH_MOBILE_PREFIX.test(phone)) {
+const assertInpostPhone = (phone: string, rawPhone: string) => {
+  if (!isPolishMobilePhone(phone)) {
+    const formatted = formatPolishMobile(rawPhone)
     throw new FurgonetkaError(
-      "InPost Paczkomat wymaga 9-cyfrowego numeru komórkowego odbiorcy (np. 500 600 700), bez numeru stacjonarnego.",
+      `InPost wymaga numeru komórkowego odbiorcy (9 cyfr, np. 500 600 700). W zamówieniu jest: ${formatted || rawPhone.trim()}. Poproś klienta o numer komórkowy i zaktualizuj go w bazie.`,
     )
   }
 }
@@ -149,7 +141,7 @@ const senderAddress = () => {
     name,
     company: process.env.FURGONETKA_SENDER_COMPANY ?? "",
     email,
-    phone: digitsPhone(phone),
+    phone: toFurgonetkaPhone(phone),
     street: splitCustomerStreet(street),
     city: city.trim(),
     country_code: "PL",
@@ -183,10 +175,12 @@ const buildPackage = async (order: OrderDetail, serviceId: number): Promise<Pack
   const additionalServices: Record<string, string | boolean> = {
     digital_label: true,
   }
-  const phone = digitsPhone(order.clientPhone)
+  const phone = toFurgonetkaPhone(order.clientPhone)
   let address = customerAddress(order)
   const identity = senderAddress()
   const dropoffCode = resolveDropoffPointCode()
+
+  assertInpostPhone(phone, order.clientPhone)
 
   if (order.deliveryType === "paczkomat") {
     const point = order.inpostId?.trim()
@@ -195,7 +189,6 @@ const buildPackage = async (order: OrderDetail, serviceId: number): Promise<Pack
     }
     additionalServices.point = point
     address = await fetchLockerAddress(point)
-    assertInpostPhone(phone)
   }
 
   const payload: PackagePayload = {

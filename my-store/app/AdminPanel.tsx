@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getAnalyticsReport } from './actions/analytics';
-import { getOrder, listOrders, updateOrderStatus } from './actions/orders';
+import { getOrder, listOrders, updateOrderClientPhone, updateOrderStatus } from './actions/orders';
 import { getPopularityReport } from './actions/popularity';
 import { getRevenueReport } from './actions/revenue';
 import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
@@ -28,6 +28,7 @@ import {
 } from '@/lib/payment';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
 import type { AnalyticsRow } from '@/lib/analytics-report';
+import { formatPolishMobile, isPolishMobilePhone, normalizePolishPhone } from '@/lib/phone';
 import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from '@/lib/popularity';
 import type { ReportPeriod } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
@@ -239,6 +240,17 @@ export default function AdminPanel() {
     setStatusError(result.message);
   };
 
+  const changeOrderPhone = async (id: string, phone: string) => {
+    const result = await updateOrderClientPhone(id, phone);
+    if (!result.ok) return result;
+
+    setOrders((current) =>
+      current.map((order) => (order.id === id ? { ...order, clientPhone: result.phone } : order)),
+    );
+    setDetail((current) => (current?.id === id ? { ...current, clientPhone: result.phone } : current));
+    return result;
+  };
+
   const changePaymentRecipient = async (value: PaymentRecipientId) => {
     paymentRecipientVersion.current += 1;
     setPaymentRecipientState(value);
@@ -310,6 +322,7 @@ export default function AdminPanel() {
             isLoading={isLoadingDetail}
             isUpdatingStatus={updatingStatusId === selectedId}
             onStatusChange={changeOrderStatus}
+            onPhoneChange={changeOrderPhone}
             onBack={() => setSelectedId(null)}
           />
         ) : (
@@ -686,6 +699,7 @@ function OrderDetailView({
   isLoading,
   isUpdatingStatus,
   onStatusChange,
+  onPhoneChange,
   onBack,
 }: {
   detail: OrderDetail | null;
@@ -693,18 +707,26 @@ function OrderDetailView({
   isLoading: boolean;
   isUpdatingStatus: boolean;
   onStatusChange: (id: string, status: OrderStatus) => void;
+  onPhoneChange: (id: string, phone: string) => Promise<{ ok: true; phone: string } | { ok: false; message: string }>;
   onBack: () => void;
 }) {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [inpostCode, setInpostCode] = useState(detail?.inpostCode ?? '');
   const [copied, setCopied] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
 
   useEffect(() => {
     setInpostCode(detail?.inpostCode ?? '');
     setCodeError('');
     setCopied(false);
-  }, [detail?.id, detail?.inpostCode]);
+    setIsEditingPhone(false);
+    setPhoneDraft(detail ? normalizePolishPhone(detail.clientPhone) : '');
+    setPhoneError('');
+  }, [detail?.id, detail?.inpostCode, detail?.clientPhone]);
 
   const generateCode = async (orderId: string) => {
     setIsGeneratingCode(true);
@@ -724,6 +746,26 @@ function OrderDetailView({
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
+
+  const savePhone = async () => {
+    if (!detail) return;
+    setPhoneError('');
+    if (!isPolishMobilePhone(phoneDraft)) {
+      setPhoneError('Podaj poprawny numer komórkowy (9 cyfr, np. 500 600 700).');
+      return;
+    }
+    setIsSavingPhone(true);
+    const result = await onPhoneChange(detail.id, phoneDraft);
+    setIsSavingPhone(false);
+    if (!result.ok) {
+      setPhoneError(result.message);
+      return;
+    }
+    setIsEditingPhone(false);
+    setCodeError('');
+  };
+
+  const phoneIsMobile = detail ? isPolishMobilePhone(detail.clientPhone) : true;
 
   return (
     <div>
@@ -825,7 +867,72 @@ function OrderDetailView({
               <dl className="space-y-4 text-sm">
                 <DetailField label="Imię i nazwisko" value={`${detail.clientName} ${detail.clientSurname}`.trim()} />
                 <DetailField label="E-mail" value={detail.clientEmail} />
-                <DetailField label="Numer telefonu" value={detail.clientPhone} />
+                <div>
+                  <dt className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase mb-1">Numer telefonu</dt>
+                  <dd className="space-y-2">
+                    {isEditingPhone ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <span className="shrink-0 px-3 py-2 border border-[#D6C7AE] bg-white text-sm text-[#161616]">+48</span>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            value={formatPolishMobile(phoneDraft)}
+                            onChange={(event) => {
+                              const digits = event.target.value.replace(/\D/g, '').slice(0, 9);
+                              setPhoneDraft(digits);
+                              setPhoneError('');
+                            }}
+                            placeholder="500 600 700"
+                            className="flex-1 min-w-0 px-3 py-2 border border-[#D6C7AE] bg-white text-sm text-[#161616] focus:outline-none focus:border-[#C4A574]"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={savePhone}
+                            disabled={isSavingPhone}
+                            className="px-3 py-1.5 bg-[#3A5A40] text-[#F4EFE6] text-xs uppercase tracking-wider disabled:opacity-60"
+                          >
+                            {isSavingPhone ? 'Zapisywanie...' : 'Zapisz'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsEditingPhone(false);
+                              setPhoneDraft(normalizePolishPhone(detail.clientPhone));
+                              setPhoneError('');
+                            }}
+                            className="px-3 py-1.5 border border-[#D6C7AE] text-xs uppercase tracking-wider text-[#161616]"
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                        {phoneError && <p className="text-xs text-red-500">{phoneError}</p>}
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-[#161616] font-medium">{detail.clientPhone}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhoneDraft(normalizePolishPhone(detail.clientPhone));
+                            setIsEditingPhone(true);
+                            setPhoneError('');
+                          }}
+                          className="shrink-0 text-xs text-[#3A5A40] hover:underline uppercase tracking-wider"
+                        >
+                          Edytuj
+                        </button>
+                      </div>
+                    )}
+                    {!phoneIsMobile && !isEditingPhone && (
+                      <p className="text-xs text-red-500">
+                        To nie jest numer komórkowy — InPost nie wygeneruje kodu nadania. Kliknij Edytuj i wpisz numer komórkowy klienta.
+                      </p>
+                    )}
+                  </dd>
+                </div>
                 <DetailField
                   label="Adres"
                   value={formatAddress(detail.clientAddress, detail.clientPostcode, detail.clientCity)}

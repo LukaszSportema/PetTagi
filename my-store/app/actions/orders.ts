@@ -5,6 +5,7 @@ import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/paymen
 import { getPaymentRecipient } from "@/app/actions/settings"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
+import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
 import {
   shippingCostForOrder,
@@ -21,6 +22,7 @@ import type {
   OrderRecord,
   OrderStatus,
   UpdateOrderStatusResult,
+  UpdateOrderPhoneResult,
 } from "@/lib/types/order"
 
 type PlaceOrderRow = {
@@ -408,4 +410,39 @@ export async function updateOrderStatus(
   }
 
   return { ok: true }
+}
+
+export async function updateOrderClientPhone(
+  orderUuid: string,
+  phone: string,
+): Promise<UpdateOrderPhoneResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
+  const trimmed = phone.trim()
+  if (!isPolishMobilePhone(trimmed)) {
+    return {
+      ok: false,
+      message: "Podaj poprawny numer komórkowy (9 cyfr, np. 500 600 700).",
+    }
+  }
+
+  const stored = formatClientPhoneStorage(trimmed)
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("admin_set_client_phone", {
+    p_id: orderUuid,
+    p_phone: stored,
+  })
+
+  if (error) {
+    console.error("admin_set_client_phone failed", error)
+    return {
+      ok: false,
+      message: error.message.includes("admin_set_client_phone")
+        ? "Brak funkcji admin_set_client_phone w Supabase. Wklej migrację supabase/migrations/20260907_admin_client_phone.sql."
+        : "Nie udało się zapisać numeru telefonu. Spróbuj ponownie.",
+    }
+  }
+
+  return { ok: true, phone: stored }
 }
