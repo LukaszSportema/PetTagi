@@ -134,9 +134,13 @@ export default function FurgonetkaMap({
     setError('');
     try {
       const res = await fetch(`/api/furgonetka-points?${params}`);
-      const data = (await res.json()) as { items?: ApiPoint[] };
+      const data = (await res.json()) as { items?: ApiPoint[]; message?: string };
       const items = data.items ?? [];
       setPoints(items);
+      if (!res.ok) {
+        setError(data.message ?? 'Nie udało się pobrać punktów Furgonetki.');
+        return items;
+      }
       if (!items.length) setError('Nie znaleziono punktów InPost. Spróbuj innego adresu.');
       return items;
     } catch {

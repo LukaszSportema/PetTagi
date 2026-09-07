@@ -20,9 +20,17 @@ const toNumber = (value: number | string | undefined) => {
 }
 
 export async function GET(request: NextRequest) {
-  const apiKey = process.env.NEXT_PUBLIC_FURGONETKA_MAP_API_KEY?.trim()
+  const apiKey =
+    process.env.FURGONETKA_MAP_API_KEY?.trim() ??
+    process.env.NEXT_PUBLIC_FURGONETKA_MAP_API_KEY?.trim()
   if (!apiKey) {
-    return NextResponse.json({ items: [], message: "Brak klucza mapy Furgonetki." }, { status: 500 })
+    return NextResponse.json(
+      {
+        items: [],
+        message: "Brak klucza mapy Furgonetki. Ustaw NEXT_PUBLIC_FURGONETKA_MAP_API_KEY na Vercel.",
+      },
+      { status: 500 },
+    )
   }
 
   const { searchParams } = request.nextUrl
@@ -57,7 +65,16 @@ export async function GET(request: NextRequest) {
       }),
       cache: "no-store",
     })
-    const json = (await response.json()) as { points?: MapPoint[] }
+    const json = (await response.json()) as { points?: MapPoint[]; message?: string }
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          items: [],
+          message: json.message ?? `Furgonetka zwróciła błąd (${response.status}).`,
+        },
+        { status: response.status },
+      )
+    }
     const items = (json.points ?? [])
       .filter((point) => point.is_delivery_point !== false && point.code)
       .map((point) => ({
