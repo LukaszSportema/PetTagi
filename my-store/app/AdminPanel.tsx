@@ -15,6 +15,7 @@ import {
   formatOrderDate,
   formatPrice,
   fulfillmentLabel,
+  fulfillmentRangeLabel,
   orderItemOptions,
   orderItemTitle,
   statusLabel,
@@ -817,7 +818,7 @@ function OrdersTable({
   return (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1100px] text-left text-sm">
+        <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
             <tr>
               <th className="px-4 py-3 whitespace-nowrap">Data zamówienia</th>
@@ -829,6 +830,7 @@ function OrdersTable({
               <th className="px-4 py-3 whitespace-nowrap">Numer telefonu</th>
               <th className="px-4 py-3">Adres</th>
               <th className="px-4 py-3 whitespace-nowrap">Rodzaj wysyłki</th>
+              <th className="px-4 py-3 whitespace-nowrap min-w-[200px]">Termin realizacji</th>
               <th className="px-4 py-3 whitespace-nowrap">Numer paczkomatu</th>
               <th className="px-4 py-3 whitespace-nowrap">Rabat</th>
               <th className="px-4 py-3 whitespace-nowrap">Status</th>
@@ -863,6 +865,9 @@ function OrdersTable({
                   {formatAddress(order.clientAddress, order.clientPostcode, order.clientCity)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{deliveryLabel(order.deliveryType)}</td>
+                <td className="px-4 py-3 text-[#161616] min-w-[200px]">
+                  {fulfillmentRangeLabel(order.fastDelivery, order.createdAt)}
+                </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">
                   {order.deliveryType === 'paczkomat' ? order.inpostId || dash : dash}
                 </td>

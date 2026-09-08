@@ -1,5 +1,6 @@
 import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
 import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel } from "@/lib/catalog-options"
+import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
@@ -29,6 +30,11 @@ export const deliveryLabel = (type: DeliveryType) =>
 
 export const fulfillmentLabel = (fastDelivery: boolean) =>
   fastDelivery ? "Przyspieszony (3-4 dni robocze)" : "Standardowy (6-10 dni roboczych)"
+
+export const fulfillmentRangeLabel = (fastDelivery: boolean, orderCreatedAt: string) => {
+  const prefix = fastDelivery ? "Ekspresowy" : "Standardowy"
+  return `${prefix} — ${fulfillmentRangeCompact(fastDelivery, new Date(orderCreatedAt))}`
+}
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Oczekuje na płatność",
