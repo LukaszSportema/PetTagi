@@ -35,6 +35,7 @@ import { formatDuration, formatPercent } from '@/lib/configurator-analytics';
 import { formatPolishMobile, isPolishMobilePhone, normalizePolishPhone } from '@/lib/phone';
 import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from '@/lib/popularity';
 import type { ReportPeriod } from '@/lib/report-periods';
+import { warsawYmd } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
 
 const adminTabs = [
@@ -94,6 +95,9 @@ export default function AdminPanel() {
   const [configuratorReport, setConfiguratorReport] = useState<ConfiguratorAnalyticsReport | null>(null);
   const [configuratorError, setConfiguratorError] = useState('');
   const [isLoadingConfigurator, setIsLoadingConfigurator] = useState(false);
+  const [configuratorStartedDay, setConfiguratorStartedDay] = useState(() =>
+    warsawYmd(new Date().toISOString()),
+  );
   const paymentRecipientVersion = useRef(0);
 
   useEffect(() => {
@@ -241,7 +245,7 @@ export default function AdminPanel() {
     let cancelled = false;
     const load = async () => {
       setIsLoadingConfigurator(true);
-      const result = await getConfiguratorAnalyticsReport();
+      const result = await getConfiguratorAnalyticsReport(configuratorStartedDay);
       if (cancelled) return;
       if (!result.ok) {
         setConfiguratorError(result.message);
@@ -256,7 +260,7 @@ export default function AdminPanel() {
     return () => {
       cancelled = true;
     };
-  }, [activeAdminTab]);
+  }, [activeAdminTab, configuratorStartedDay]);
 
   const changeOrderStatus = async (id: string, status: OrderStatus) => {
     const previous = orders.find((order) => order.id === id)?.status;
@@ -402,6 +406,8 @@ export default function AdminPanel() {
           report={configuratorReport}
           error={configuratorError}
           isLoading={isLoadingConfigurator}
+          startedDay={configuratorStartedDay}
+          onStartedDayChange={setConfiguratorStartedDay}
         />
       )}
     </div>
@@ -412,10 +418,14 @@ function ConfiguratorAnalyticsPanel({
   report,
   error,
   isLoading,
+  startedDay,
+  onStartedDayChange,
 }: {
   report: ConfiguratorAnalyticsReport | null;
   error: string;
   isLoading: boolean;
+  startedDay: string;
+  onStartedDayChange: (day: string) => void;
 }) {
   if (isLoading) {
     return <p className="text-sm text-[#7A736C]">Ładowanie analityki konfiguratora...</p>;
@@ -456,7 +466,16 @@ function ConfiguratorAnalyticsPanel({
           <p className="text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
             Rozpoczęte konfiguracje
           </p>
-          <p className="text-3xl font-serif text-[#161616] mt-2">{formatCount(report.startedSessions)}</p>
+          <label className="mt-3 block">
+            <span className="text-xs text-[#7A736C]">Dzień</span>
+            <input
+              type="date"
+              value={startedDay}
+              onChange={(event) => onStartedDayChange(event.target.value)}
+              className="mt-1 w-full border border-[#D6C7AE] bg-white px-3 py-2 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574]"
+            />
+          </label>
+          <p className="text-3xl font-serif text-[#161616] mt-3">{formatCount(report.startedSessions)}</p>
         </div>
         <div className="bg-white border border-[#D6C7AE] rounded-2xl p-5">
           <p className="text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">

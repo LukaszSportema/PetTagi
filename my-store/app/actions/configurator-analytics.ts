@@ -19,12 +19,16 @@ const toNumber = (value: unknown) => {
 
 const asArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
 
-export async function getConfiguratorAnalyticsReport(): Promise<ConfiguratorAnalyticsResult> {
+export async function getConfiguratorAnalyticsReport(
+  startedDay?: string,
+): Promise<ConfiguratorAnalyticsResult> {
   const auth = await requireAdmin()
   if (!auth.ok) return { ok: false, message: auth.message }
 
   const supabase = await createClient()
-  const { data, error } = await supabase.rpc("admin_configurator_analytics")
+  const { data, error } = await supabase.rpc("admin_configurator_analytics", {
+    p_started_day: startedDay ?? null,
+  })
 
   if (error) {
     console.error("admin_configurator_analytics failed", error)
