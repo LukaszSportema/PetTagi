@@ -2308,7 +2308,7 @@ export default function Home() {
                   disabled={isPlacingOrder}
                   className="w-full bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isPlacingOrder ? 'Składanie zamówienia...' : 'Złóż zamówienie'}
+                  {isPlacingOrder ? 'Składanie zamówienia...' : 'Zamawiam z obowiązkiem zapłaty'}
                 </button>
               </aside>
             </div>
