@@ -24,6 +24,7 @@ import {
   glowStringUnitPrice,
   NECK_CIRCUMFERENCE_MAX,
   NECK_CIRCUMFERENCE_MIN,
+  isValidNeckCircumference,
   premiumStringUnitPrice,
   STICKER_PRICE,
   DIAL_CODE_PRICE,
@@ -339,6 +340,7 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const topStackRef = useRef<HTMLDivElement>(null);
   const stepsScrollRef = useRef<HTMLDivElement>(null);
+  const stopersChoiceTouchedRef = useRef(false);
   const [topStackHeight, setTopStackHeight] = useState(40);
   const [formData, setFormData] = useState<FormDataState>(initialFormData);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -408,6 +410,21 @@ export default function Home() {
   const isStopperSelectionComplete =
     !stopperSelectionRequired || formData.extraStopers.length === selectedStringsCount;
 
+  useEffect(() => {
+    if (selectedStringsCount === 0) {
+      stopersChoiceTouchedRef.current = false;
+      setFormData((prev) => {
+        if (prev.wantStopers === 'nie' && prev.extraStopers.length === 0) return prev;
+        return { ...prev, wantStopers: 'nie', extraStopers: [] };
+      });
+      return;
+    }
+
+    if (!stopersChoiceTouchedRef.current) {
+      setFormData((prev) => (prev.wantStopers === 'tak' ? prev : { ...prev, wantStopers: 'tak' }));
+    }
+  }, [selectedStringsCount]);
+
   const goToTab = (tab: string) => {
     setActiveTab(tab);
   };
@@ -454,6 +471,7 @@ export default function Home() {
   const openConfigurator = (slug: string = CLASSIC_TAG_PRODUCT.slug) => {
     const product = getCatalogProduct(slug) ?? CLASSIC_TAG_PRODUCT;
     if (product.slug !== activeProductSlug) {
+      stopersChoiceTouchedRef.current = false;
       setFormData(formDataForProduct(product.slug));
       setCurrentStep(1);
       setShowAddedToCart(false);
@@ -576,6 +594,10 @@ export default function Home() {
 
   const [showOrderErrors, setShowOrderErrors] = useState(false);
   const [showStopperErrors, setShowStopperErrors] = useState(false);
+  const [showStringErrors, setShowStringErrors] = useState(false);
+  const [showExtraCharmsErrors, setShowExtraCharmsErrors] = useState(false);
+  const [showExtraKarabinersErrors, setShowExtraKarabinersErrors] = useState(false);
+  const [showStickerErrors, setShowStickerErrors] = useState(false);
   const orderErrors = {
     petName: !formData.petName.trim(),
     phoneNumber: !isValidPhoneNumber(formData.phoneCode, formData.phoneNumber),
@@ -583,10 +605,27 @@ export default function Home() {
   const isOrderValid = !Object.values(orderErrors).some(Boolean);
 
   const nextStep = () => {
+    if (contentStep === 4) {
+      setShowExtraCharmsErrors(true);
+      if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) return;
+    }
+    if (contentStep === 6) {
+      setShowExtraKarabinersErrors(true);
+      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) return;
+    }
+    if (contentStep === 7) {
+      setShowStringErrors(true);
+      if (formData.wantString === 'tak' && !isValidNeckCircumference(formData.stringLength)) return;
+      if (formData.wantString === 'tak' && selectedStringsCount === 0) return;
+    }
     if (contentStep === 8) {
       setShowStopperErrors(true);
       if (formData.wantStopers === 'tak' && selectedStringsCount === 0) return;
       if (stopperSelectionRequired && !isStopperSelectionComplete) return;
+    }
+    if (contentStep === 9) {
+      setShowStickerErrors(true);
+      if (formData.wantSticker === 'tak' && !formData.stickerOption) return;
     }
     if (contentStep === 10) {
       setShowOrderErrors(true);
@@ -1114,7 +1153,12 @@ export default function Home() {
 
   const resetConfigurator = () => {
     setFormData(formDataForProduct(activeProductSlug));
+    stopersChoiceTouchedRef.current = false;
     setShowOrderErrors(false);
+    setShowStringErrors(false);
+    setShowExtraCharmsErrors(false);
+    setShowExtraKarabinersErrors(false);
+    setShowStickerErrors(false);
     setCurrentStep(1);
     setShowAddedToCart(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2475,6 +2519,9 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          {showExtraCharmsErrors && formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0 && (
+                            <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy charms.</p>
+                          )}
 
                           {formData.wantExtraCharms === 'tak' && (
                             <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
@@ -2525,6 +2572,9 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          {showExtraKarabinersErrors && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0 && (
+                            <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
+                          )}
 
                           {formData.wantExtraKarabiners === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
@@ -2549,6 +2599,7 @@ export default function Home() {
                                 onClick={() => setFormData(trimStopersToStringCount({
                                   ...formData,
                                   wantString: option.id,
+                                  wantStopers: option.id === 'nie' ? 'nie' : formData.wantStopers,
                                   stringLength: option.id === 'nie' ? '' : formData.stringLength,
                                   premiumStrings: option.id === 'nie' ? [] : formData.premiumStrings,
                                   classicStrings: option.id === 'nie' ? [] : formData.classicStrings,
@@ -2566,6 +2617,9 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          {showStringErrors && formData.wantString === 'tak' && selectedStringsCount === 0 && (
+                            <p className="text-sm text-red-500">Wybierz co najmniej jeden sznurek.</p>
+                          )}
 
                           {formData.wantString === 'tak' && (
                             <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
@@ -2596,6 +2650,11 @@ export default function Home() {
                                   placeholder="wpisz obwód szyi (15–99 cm)"
                                   className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
                                 />
+                                {showStringErrors && !isValidNeckCircumference(formData.stringLength) && (
+                                  <p className="text-sm text-red-500">
+                                    Podaj obwód szyi ({NECK_CIRCUMFERENCE_MIN}–{NECK_CIRCUMFERENCE_MAX} cm).
+                                  </p>
+                                )}
                                 {stringSizeText && (
                                   <div className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] bg-[#F4EFE6] font-bold text-base text-[#161616]">
                                     {stringSizeText}
@@ -2730,11 +2789,15 @@ export default function Home() {
                             ].map((option) => (
                               <div
                                 key={option.id}
-                                onClick={() => setFormData({
-                                  ...formData,
-                                  wantStopers: option.id,
-                                  extraStopers: option.id === 'nie' ? [] : formData.extraStopers,
-                                })}
+                                onClick={() => {
+                                  if (option.id === 'tak' && selectedStringsCount === 0) return;
+                                  stopersChoiceTouchedRef.current = true;
+                                  setFormData({
+                                    ...formData,
+                                    wantStopers: option.id,
+                                    extraStopers: option.id === 'nie' ? [] : formData.extraStopers,
+                                  });
+                                }}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                   formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
@@ -2843,6 +2906,9 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          {showStickerErrors && formData.wantSticker === 'tak' && !formData.stickerOption && (
+                            <p className="text-sm text-red-500">Wybierz grafikę pieska.</p>
+                          )}
 
                           {formData.wantSticker === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
