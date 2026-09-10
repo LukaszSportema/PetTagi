@@ -22,6 +22,9 @@ export const SHIPPING_PACZKOMAT_PRICE = 12
 export const SHIPPING_KURIER_PRICE = 16
 export const FAST_DELIVERY_COST = 10
 
+export const fastDeliveryCostForOrder = (tagCount: number, fastDelivery: boolean) =>
+  fastDelivery ? Math.max(0, tagCount) * FAST_DELIVERY_COST : 0
+
 export const qualifiesForFreeShipping = (productsValue: number) =>
   productsValue >= FREE_SHIPPING_THRESHOLD
 

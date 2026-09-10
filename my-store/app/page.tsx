@@ -21,6 +21,7 @@ import {
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
   FAST_DELIVERY_COST,
+  fastDeliveryCostForOrder,
   glowStringUnitPrice,
   NECK_CIRCUMFERENCE_MAX,
   NECK_CIRCUMFERENCE_MIN,
@@ -1188,7 +1189,7 @@ export default function Home() {
   const shippingCost = selectedShipping
     ? shippingCostForOrder(cartProductsValue, selectedShipping.price)
     : 0;
-  const fastDeliveryCost = checkoutData.fastDelivery ? FAST_DELIVERY_COST : 0;
+  const fastDeliveryCost = fastDeliveryCostForOrder(cartCount, checkoutData.fastDelivery);
   const checkoutTotal = cartProductsValue + shippingCost + fastDeliveryCost;
 
   const formatPostalCode = (value: string) => {
@@ -2184,7 +2185,7 @@ export default function Home() {
                       {
                         value: true,
                         title: `Przyspieszony — ${expressFulfillmentRangeCompact()}`,
-                        subtitle: `Dopłata: ${formatPrice(FAST_DELIVERY_COST)}`,
+                        subtitle: `Dopłata: ${formatPrice(FAST_DELIVERY_COST)} za każdą adresówkę`,
                       },
                     ].map((option) => {
                       const isSelected = checkoutData.fastDelivery === option.value;
