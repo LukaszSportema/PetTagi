@@ -238,3 +238,154 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
 
   return { html, text }
 }
+
+type OrderPaidEmailInput = {
+  orderId: string
+  clientEmail: string
+  clientName: string
+  clientSurname: string
+}
+
+export async function sendOrderPaidEmail(input: OrderPaidEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.error("Missing RESEND_API_KEY — paid order email was not sent")
+    return
+  }
+
+  const { html, text } = renderOrderPaidEmail(input)
+  const resend = new Resend(apiKey)
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: input.clientEmail,
+    subject: `Pettagi - zamówienie nr ${input.orderId} opłacone`,
+    html,
+    text,
+  })
+
+  if (error) {
+    console.error("Resend paid order send failed", error)
+  }
+}
+
+function renderOrderPaidEmail(input: OrderPaidEmailInput) {
+  const clientName = `${input.clientName} ${input.clientSurname}`.trim()
+  const message = `Zamówienie nr ${input.orderId} zostało opłacone i przekazane do realizacji.`
+
+  const text = [
+    clientName ? `Dzień dobry ${clientName},` : "Dzień dobry,",
+    "",
+    message,
+    "",
+    "Dziękujemy,",
+    "PetTagi",
+  ].join("\n")
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pl">
+  <body style="margin:0;padding:0;background:#F4EFE6">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE6;padding:32px 12px">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;overflow:hidden;font-family:Georgia,'Times New Roman',serif;color:#161616">
+            <tr>
+              <td style="padding:36px 32px 24px;background:#F9F5ED;border-bottom:1px solid #D6C7AE">
+                <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#C4A574;font-family:Arial,Helvetica,sans-serif">PetTagi</p>
+                <h1 style="margin:0;font-size:28px;line-height:1.3;font-weight:400;color:#161616">Płatność potwierdzona</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px 32px">
+                ${clientName ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#161616;font-family:Arial,Helvetica,sans-serif">Dzień dobry ${escapeHtml(clientName)},</p>` : ""}
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#161616;font-family:Arial,Helvetica,sans-serif">${escapeHtml(message)}</p>
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616;font-family:Arial,Helvetica,sans-serif">Dziękujemy,<br />PetTagi</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`.trim()
+
+  return { html, text }
+}
+
+type OrderPaymentReminderEmailInput = {
+  orderId: string
+  clientEmail: string
+  clientName: string
+  clientSurname: string
+}
+
+export async function sendOrderPaymentReminderEmail(
+  input: OrderPaymentReminderEmailInput,
+): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.error("Missing RESEND_API_KEY — payment reminder email was not sent")
+    return false
+  }
+
+  const { html, text } = renderOrderPaymentReminderEmail(input)
+  const resend = new Resend(apiKey)
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: input.clientEmail,
+    subject: `Pettagi - przypomnienie o płatności za zamówienie nr ${input.orderId}`,
+    html,
+    text,
+  })
+
+  if (error) {
+    console.error("Resend payment reminder send failed", error)
+    return false
+  }
+
+  return true
+}
+
+function renderOrderPaymentReminderEmail(input: OrderPaymentReminderEmailInput) {
+  const clientName = `${input.clientName} ${input.clientSurname}`.trim()
+  const message = `Zamówienie nr ${input.orderId} nie zostało opłacone. Prosimy o opłacenie w ciągu 24h w celu uniknięcia anulowania zamówienia.`
+
+  const text = [
+    clientName ? `Dzień dobry ${clientName},` : "Dzień dobry,",
+    "",
+    message,
+    "",
+    "Dziękujemy,",
+    "PetTagi",
+  ].join("\n")
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pl">
+  <body style="margin:0;padding:0;background:#F4EFE6">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE6;padding:32px 12px">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;overflow:hidden;font-family:Georgia,'Times New Roman',serif;color:#161616">
+            <tr>
+              <td style="padding:36px 32px 24px;background:#F9F5ED;border-bottom:1px solid #D6C7AE">
+                <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#C4A574;font-family:Arial,Helvetica,sans-serif">PetTagi</p>
+                <h1 style="margin:0;font-size:28px;line-height:1.3;font-weight:400;color:#161616">Przypomnienie o płatności</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px 32px">
+                ${clientName ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#161616;font-family:Arial,Helvetica,sans-serif">Dzień dobry ${escapeHtml(clientName)},</p>` : ""}
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#161616;font-family:Arial,Helvetica,sans-serif">${escapeHtml(message)}</p>
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616;font-family:Arial,Helvetica,sans-serif">Dziękujemy,<br />PetTagi</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`.trim()
+
+  return { html, text }
+}

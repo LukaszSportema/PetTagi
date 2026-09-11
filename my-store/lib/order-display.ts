@@ -73,6 +73,24 @@ export const ADMIN_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: "cancelled", label: STATUS_LABELS.cancelled },
 ]
 
+const STATUSES_BLOCKING_PENDING: OrderStatus[] = ["paid", "processing", "shipped", "completed"]
+
+export const canSetOrderStatusToPending = (currentStatus: OrderStatus) =>
+  !STATUSES_BLOCKING_PENDING.includes(currentStatus)
+
+export const statusOptionsForOrder = (currentStatus: OrderStatus) => {
+  const base =
+    currentStatus === "completed"
+      ? [{ value: "completed" as const, label: statusLabel("completed") }, ...ADMIN_STATUS_OPTIONS]
+      : ADMIN_STATUS_OPTIONS
+
+  if (!canSetOrderStatusToPending(currentStatus)) {
+    return base.filter((option) => option.value !== "pending")
+  }
+
+  return base
+}
+
 export const statusLabel = (status: OrderStatus) =>
   STATUS_LABELS[status] ?? status
 

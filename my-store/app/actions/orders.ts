@@ -1,13 +1,13 @@
 "use server"
 
-import { sendOrderPlacedEmail } from "@/lib/email"
+import { sendOrderPaidEmail, sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
 import { getPaymentRecipient } from "@/app/actions/settings"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
-import { orderFrameBaseLines } from "@/lib/order-display"
+import { canSetOrderStatusToPending, orderFrameBaseLines } from "@/lib/order-display"
 import {
   shippingCostForOrder,
   SHIPPING_KURIER_PRICE,
@@ -449,6 +449,44 @@ export async function updateOrderStatus(
   }
 
   const supabase = await createClient()
+
+  let paidEmailTarget: {
+    orderId: string
+    clientEmail: string
+    clientName: string
+    clientSurname: string
+  } | null = null
+
+  let currentOrder: OrderRow | null = null
+  if (status === "paid" || status === "pending") {
+    const { data: orderPayload, error: orderError } = await supabase.rpc("admin_get_order", {
+      p_id: orderUuid,
+    })
+
+    if (!orderError && orderPayload) {
+      currentOrder = (orderPayload as { order: OrderRow }).order
+    }
+  }
+
+  if (status === "pending" && currentOrder && !canSetOrderStatusToPending(asStatus(currentOrder.status))) {
+    return {
+      ok: false,
+      message: "Opłaconego zamówienia nie można oznaczyć ponownie jako oczekujące na płatność.",
+    }
+  }
+
+  if (status === "paid" && currentOrder) {
+    const previousStatus = asStatus(currentOrder.status)
+    if (previousStatus !== "paid") {
+      paidEmailTarget = {
+        orderId: currentOrder.order_id,
+        clientEmail: currentOrder.client_email,
+        clientName: currentOrder.client_name,
+        clientSurname: currentOrder.client_surname,
+      }
+    }
+  }
+
   const { error } = await supabase.rpc("admin_set_order_status", {
     p_id: orderUuid,
     p_status: status,
@@ -456,12 +494,22 @@ export async function updateOrderStatus(
 
   if (error) {
     console.error("admin_set_order_status failed", error)
+    if (error.message.includes("paid order cannot be set back to pending")) {
+      return {
+        ok: false,
+        message: "Opłaconego zamówienia nie można oznaczyć ponownie jako oczekujące na płatność.",
+      }
+    }
     return {
       ok: false,
       message: error.message.includes("admin_set_order_status")
         ? "Brak funkcji admin_set_order_status w Supabase. Wklej skrypt SQL z supabase/migrations/20260819_order_status.sql."
         : "Nie udało się zmienić statusu. Spróbuj ponownie.",
     }
+  }
+
+  if (paidEmailTarget) {
+    await sendOrderPaidEmail(paidEmailTarget)
   }
 
   return { ok: true }
