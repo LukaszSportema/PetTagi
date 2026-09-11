@@ -14,7 +14,6 @@ import {
   formatAddress,
   formatOrderDate,
   formatPrice,
-  fulfillmentLabel,
   fulfillmentRangeLabel,
   orderItemOptions,
   orderItemTitle,
@@ -1152,7 +1151,7 @@ function OrderDetailView({
                   value={formatAddress(detail.clientAddress, detail.clientPostcode, detail.clientCity)}
                 />
                 <DetailField label="Rodzaj wysyłki" value={deliveryLabel(detail.deliveryType)} />
-                <DetailField label="Czas realizacji" value={fulfillmentLabel(detail.fastDelivery)} />
+                <DetailField label="Czas realizacji" value={fulfillmentRangeLabel(detail.fastDelivery, detail.createdAt)} />
                 <DetailField
                   label="Płatność"
                   value={paymentRecipientLabel(detail.paymentRecipient) || dash}
