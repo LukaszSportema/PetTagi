@@ -9,7 +9,7 @@ import { getRevenueReport } from './actions/revenue';
 import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
 import { generateShippingLabel } from './actions/shipping';
 import {
-  ADMIN_STATUS_OPTIONS,
+  canSetOrderStatusToPending,
   deliveryLabel,
   formatAddress,
   formatOrderDate,
@@ -18,6 +18,7 @@ import {
   orderItemOptions,
   orderItemTitle,
   statusLabel,
+  statusOptionsForOrder,
 } from '@/lib/order-display';
 import {
   DEFAULT_PAYMENT_RECIPIENT,
@@ -56,6 +57,18 @@ const statusClass: Record<OrderStatus, string> = {
 
 const dash = '—';
 
+type StatusChangeRequest = {
+  id: string;
+  status: OrderStatus;
+  orderNumber: string;
+  currentStatus: OrderStatus;
+};
+
+type PendingPaidConfirmation = {
+  id: string;
+  orderNumber: string;
+};
+
 const orderRowClass = (status: OrderStatus) => {
   const base = 'border-t border-[#D6C7AE] cursor-pointer transition-colors';
   if (status === 'paid') {
@@ -80,6 +93,7 @@ export default function AdminPanel() {
   const [isSavingRecipient, setIsSavingRecipient] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [pendingPaidConfirmation, setPendingPaidConfirmation] = useState<PendingPaidConfirmation | null>(null);
   const [revenueRows, setRevenueRows] = useState<RevenueRow[]>([]);
   const [revenueError, setRevenueError] = useState('');
   const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
@@ -281,6 +295,29 @@ export default function AdminPanel() {
     setStatusError(result.message);
   };
 
+  const requestOrderStatusChange = ({
+    id,
+    status,
+    orderNumber,
+    currentStatus,
+  }: StatusChangeRequest) => {
+    if (status === 'pending' && !canSetOrderStatusToPending(currentStatus)) {
+      setStatusError('Opłaconego zamówienia nie można oznaczyć ponownie jako oczekujące na płatność.');
+      return;
+    }
+    if (status === 'paid' && currentStatus !== 'paid') {
+      setPendingPaidConfirmation({ id, orderNumber });
+      return;
+    }
+    void changeOrderStatus(id, status);
+  };
+
+  const confirmPaidStatusChange = () => {
+    if (!pendingPaidConfirmation) return;
+    void changeOrderStatus(pendingPaidConfirmation.id, 'paid');
+    setPendingPaidConfirmation(null);
+  };
+
   const changeOrderPhone = async (id: string, phone: string) => {
     const result = await updateOrderClientPhone(id, phone);
     if (!result.ok) return result;
@@ -362,7 +399,7 @@ export default function AdminPanel() {
             error={detailError}
             isLoading={isLoadingDetail}
             isUpdatingStatus={updatingStatusId === selectedId}
-            onStatusChange={changeOrderStatus}
+            onStatusChange={requestOrderStatusChange}
             onPhoneChange={changeOrderPhone}
             onBack={() => setSelectedId(null)}
           />
@@ -372,7 +409,7 @@ export default function AdminPanel() {
             error={listError}
             isLoading={isLoadingList}
             updatingStatusId={updatingStatusId}
-            onStatusChange={changeOrderStatus}
+            onStatusChange={requestOrderStatusChange}
             onOpen={setSelectedId}
           />
         )
@@ -407,6 +444,14 @@ export default function AdminPanel() {
           isLoading={isLoadingConfigurator}
           startedDay={configuratorStartedDay}
           onStartedDayChange={setConfiguratorStartedDay}
+        />
+      )}
+
+      {pendingPaidConfirmation && (
+        <PaidStatusConfirmationDialog
+          orderNumber={pendingPaidConfirmation.orderNumber}
+          onConfirm={confirmPaidStatusChange}
+          onCancel={() => setPendingPaidConfirmation(null)}
         />
       )}
     </div>
@@ -814,7 +859,7 @@ function OrdersTable({
   error: string;
   isLoading: boolean;
   updatingStatusId: string | null;
-  onStatusChange: (id: string, status: OrderStatus) => void;
+  onStatusChange: (request: StatusChangeRequest) => void;
   onOpen: (id: string) => void;
 }) {
   if (isLoading) {
@@ -906,7 +951,14 @@ function OrdersTable({
                   <StatusSelect
                     status={order.status}
                     disabled={updatingStatusId === order.id}
-                    onChange={(status) => onStatusChange(order.id, status)}
+                    onChange={(status) =>
+                      onStatusChange({
+                        id: order.id,
+                        status,
+                        orderNumber: order.orderId,
+                        currentStatus: order.status,
+                      })
+                    }
                   />
                 </td>
               </tr>
@@ -931,7 +983,7 @@ function OrderDetailView({
   error: string;
   isLoading: boolean;
   isUpdatingStatus: boolean;
-  onStatusChange: (id: string, status: OrderStatus) => void;
+  onStatusChange: (request: StatusChangeRequest) => void;
   onPhoneChange: (id: string, phone: string) => Promise<{ ok: true; phone: string } | { ok: false; message: string }>;
   onBack: () => void;
 }) {
@@ -1013,7 +1065,14 @@ function OrderDetailView({
             <StatusSelect
               status={detail.status}
               disabled={isUpdatingStatus}
-              onChange={(status) => onStatusChange(detail.id, status)}
+              onChange={(status) =>
+                onStatusChange({
+                  id: detail.id,
+                  status,
+                  orderNumber: detail.orderId,
+                  currentStatus: detail.status,
+                })
+              }
             />
           </div>
 
@@ -1206,6 +1265,47 @@ function OrderDetailView({
   );
 }
 
+function PaidStatusConfirmationDialog({
+  orderNumber,
+  onConfirm,
+  onCancel,
+}: {
+  orderNumber: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div
+        className="w-full max-w-md bg-white border border-[#D6C7AE] p-6 md:p-8 space-y-6"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="paid-status-confirmation-title"
+      >
+        <p id="paid-status-confirmation-title" className="text-base text-[#161616] leading-relaxed">
+          Czy na pewno zamówienie <strong>&quot;{orderNumber}&quot;</strong> zostało opłacone? Do klienta zostanie wysłany mail potwierdzający.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-5 py-2.5 rounded-none border border-[#D6C7AE] text-sm text-[#161616] hover:border-[#C4A574] transition-colors"
+          >
+            Nie
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="px-5 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors"
+          >
+            Tak
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -1224,10 +1324,7 @@ function StatusSelect({
   disabled?: boolean;
   onChange: (status: OrderStatus) => void;
 }) {
-  const options =
-    status === 'completed'
-      ? [{ value: 'completed' as const, label: statusLabel('completed') }, ...ADMIN_STATUS_OPTIONS]
-      : ADMIN_STATUS_OPTIONS;
+  const options = statusOptionsForOrder(status);
 
   return (
     <select
