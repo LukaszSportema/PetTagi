@@ -848,6 +848,7 @@ function OrdersTable({
               <th className="px-4 py-3 whitespace-nowrap">Numer telefonu</th>
               <th className="px-4 py-3">Adres</th>
               <th className="px-4 py-3 whitespace-nowrap">Rodzaj wysyłki</th>
+              <th className="px-4 py-3 min-w-[180px]">Oprawa i baza</th>
               <th className="px-4 py-3 whitespace-nowrap min-w-[200px]">Termin realizacji</th>
               <th className="px-4 py-3 whitespace-nowrap">Numer paczkomatu</th>
               <th className="px-4 py-3 whitespace-nowrap">Rabat</th>
@@ -883,6 +884,17 @@ function OrdersTable({
                   {formatAddress(order.clientAddress, order.clientPostcode, order.clientCity)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{deliveryLabel(order.deliveryType)}</td>
+                <td className="px-4 py-3 text-[#161616] min-w-[180px]">
+                  {order.frameBaseLines.length > 0 ? (
+                    <div className="space-y-1">
+                      {order.frameBaseLines.map((line, index) => (
+                        <div key={`${order.id}-${index}`}>{line}</div>
+                      ))}
+                    </div>
+                  ) : (
+                    dash
+                  )}
+                </td>
                 <td className="px-4 py-3 text-[#161616] min-w-[200px]">
                   {fulfillmentRangeLabel(order.fastDelivery, order.createdAt)}
                 </td>

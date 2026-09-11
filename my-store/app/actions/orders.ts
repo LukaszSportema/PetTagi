@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
+import { orderFrameBaseLines } from "@/lib/order-display"
 import {
   shippingCostForOrder,
   SHIPPING_KURIER_PRICE,
@@ -199,6 +200,15 @@ type OrderRow = {
   created_at: string
 }
 
+type OrderItemListRow = {
+  order_id: string
+  ring_color: string
+  base_color: string
+  quantity: number | string
+  sort_order: number | null
+  created_at: string
+}
+
 type OrderItemRow = {
   id: string
   quantity: number | string
@@ -279,6 +289,7 @@ const mapOrder = (row: OrderRow): OrderRecord => ({
   paymentRecipient: parsePaymentRecipientId(row.payment_recipient),
   total: toMoney(row.total),
   createdAt: row.created_at,
+  frameBaseLines: [],
 })
 
 const mapItem = (row: OrderItemRow): OrderItemRecord => ({
@@ -326,7 +337,48 @@ export async function listOrders(): Promise<ListOrdersResult> {
     }
   }
 
-  return { ok: true, orders: ((data ?? []) as OrderRow[]).map(mapOrder) }
+  const orders = ((data ?? []) as OrderRow[]).map(mapOrder)
+  if (orders.length === 0) {
+    return { ok: true, orders }
+  }
+
+  const orderIds = orders.map((order) => order.id)
+  const { data: itemsData, error: itemsError } = await supabase
+    .from("order_items")
+    .select("order_id, ring_color, base_color, quantity, sort_order, created_at")
+    .in("order_id", orderIds)
+
+  if (itemsError) {
+    console.error("order_items list failed", itemsError)
+    return { ok: true, orders }
+  }
+
+  const sortedItems = [...(itemsData ?? [])].sort((left, right) => {
+    const leftRow = left as OrderItemListRow
+    const rightRow = right as OrderItemListRow
+    const sortDiff = (Number(leftRow.sort_order) || 0) - (Number(rightRow.sort_order) || 0)
+    if (sortDiff !== 0) return sortDiff
+    return String(leftRow.created_at).localeCompare(String(rightRow.created_at))
+  })
+
+  const itemsByOrderId = new Map<string, { ringColor: string; baseColor: string; quantity: number }[]>()
+  for (const row of sortedItems as OrderItemListRow[]) {
+    const items = itemsByOrderId.get(row.order_id) ?? []
+    items.push({
+      ringColor: row.ring_color,
+      baseColor: row.base_color,
+      quantity: Number(row.quantity) || 1,
+    })
+    itemsByOrderId.set(row.order_id, items)
+  }
+
+  return {
+    ok: true,
+    orders: orders.map((order) => ({
+      ...order,
+      frameBaseLines: orderFrameBaseLines(itemsByOrderId.get(order.id) ?? []),
+    })),
+  }
 }
 
 export async function getOrder(id: string): Promise<GetOrderResult> {
@@ -351,11 +403,14 @@ export async function getOrder(id: string): Promise<GetOrderResult> {
     return { ok: false, message: "Nie znaleziono zamówienia." }
   }
 
+  const items = (payload.items ?? []).map(mapItem)
+
   return {
     ok: true,
     order: {
       ...mapOrder(payload.order),
-      items: (payload.items ?? []).map(mapItem),
+      frameBaseLines: orderFrameBaseLines(items),
+      items,
     },
   }
 }
