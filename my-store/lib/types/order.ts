@@ -78,6 +78,7 @@ export type OrderRecord = {
   paymentRecipient: PaymentRecipientId | null
   total: number
   createdAt: string
+  frameBaseLines: string[]
 }
 
 export type OrderItemRecord = {

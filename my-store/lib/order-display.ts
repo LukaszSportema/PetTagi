@@ -31,6 +31,26 @@ export const deliveryLabel = (type: DeliveryType) =>
 export const fulfillmentLabel = (fastDelivery: boolean) =>
   fastDelivery ? "Przyspieszony (3-4 dni robocze)" : "Standardowy (6-10 dni roboczych)"
 
+export const ringColorLabel = (ringColor: string) => {
+  if (ringColor === "glow") return "Glow"
+  if (ringColor === "złoty") return "Złoty"
+  if (ringColor === "srebrny") return "Srebrny"
+  if (ringColor === "kwiat") return "Kwiat"
+  return ringColor
+}
+
+export type OrderFrameBaseSource = Pick<OrderItemRecord, "ringColor" | "baseColor"> & {
+  quantity?: number
+}
+
+export const orderItemFrameBaseLabel = (item: OrderFrameBaseSource) => {
+  const suffix = item.quantity && item.quantity > 1 ? ` ×${item.quantity}` : ""
+  return `${ringColorLabel(item.ringColor)} · ${optionLabel(BASE_OPTIONS, item.baseColor)}${suffix}`
+}
+
+export const orderFrameBaseLines = (items: OrderFrameBaseSource[]) =>
+  items.map((item) => orderItemFrameBaseLabel(item))
+
 export const fulfillmentRangeLabel = (fastDelivery: boolean, orderCreatedAt: string) => {
   const prefix = fastDelivery ? "Ekspresowy" : "Standardowy"
   return `${prefix} — ${fulfillmentRangeCompact(fastDelivery, new Date(orderCreatedAt))}`
@@ -93,15 +113,7 @@ export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
   if (item.ringColor && item.ringColor !== "glow") {
     options.push({
       label: "Oprawa",
-      values: [
-        item.ringColor === "złoty"
-          ? "Złoty"
-          : item.ringColor === "srebrny"
-            ? "Srebrny"
-            : item.ringColor === "kwiat"
-              ? "Kwiat"
-              : item.ringColor,
-      ],
+      values: [ringColorLabel(item.ringColor)],
     })
   }
 
