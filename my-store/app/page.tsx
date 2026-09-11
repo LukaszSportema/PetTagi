@@ -2011,9 +2011,14 @@ export default function Home() {
                 </section>
 
                 <section>
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">2</span>
-                    <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Dane do wysyłki</h2>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">2</span>
+                      <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Dane do wysyłki</h2>
+                    </div>
+                    <p className="text-sm font-normal text-[#7A736C] mt-3 ml-11">
+                      Obecnie dostawy realizujemy wyłącznie na terenie Polski
+                    </p>
                   </div>
 
                   <div className="space-y-4">
@@ -2164,6 +2169,18 @@ export default function Home() {
                         />
                         {checkoutFieldError(showCheckoutErrors && checkoutErrors.city, 'Pole obowiązkowe')}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className={checkoutLabelClass}>Kraj{requiredMark}</label>
+                      <input
+                        type="text"
+                        value="Polska"
+                        readOnly
+                        tabIndex={-1}
+                        aria-readonly="true"
+                        className="w-full bg-[#F9F5ED] rounded-none border border-[#D6C7AE] px-4 py-3 text-base md:text-sm text-[#161616] cursor-default focus:outline-none"
+                      />
                     </div>
                       </>
                     )}
