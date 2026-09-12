@@ -260,7 +260,22 @@ export type KarabinerOption = CatalogOption & {
   image: string
 }
 
+export const GOLD_CONNECTING_RING_KARABINER: KarabinerOption = {
+  id: "kolkozlote",
+  label: "Kółko złote",
+  image: "/karabinczyk/kolkozlote.jpg",
+}
+
+export const SILVER_CONNECTING_RING_KARABINER: KarabinerOption = {
+  id: "kolkosrebrne",
+  label: "Kółko srebrne",
+  image: "/karabinczyk/kolkosrebrne.jpg",
+}
+
+export const CONNECTING_RING_KARABINER_IDS = ["kolkozlote", "kolkosrebrne"] as const
+
 export const KARABINER_CATALOG: KarabinerOption[] = [
+  GOLD_CONNECTING_RING_KARABINER,
   {
     id: "klasyczny",
     label: "Klasyczny",
@@ -276,6 +291,7 @@ export const KARABINER_CATALOG: KarabinerOption[] = [
     label: "Duży",
     image: "/karabinczyk/karabinczykduzy.jpg",
   },
+  SILVER_CONNECTING_RING_KARABINER,
   {
     id: "klasycznysrebrny",
     label: "Klasyczny srebrny",
