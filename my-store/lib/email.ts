@@ -10,7 +10,7 @@ import { fulfillmentEmailMessage } from "@/lib/fulfillment-dates"
 import { ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from "@/lib/payment"
 import type { CreateOrderInput } from "@/lib/types/order"
 
-const FROM = "Pettagi <zamowienia@pettagi.com>"
+const FROM = "Pettagi <no-reply@pettagi.com>"
 
 type OrderPlacedEmailInput = {
   orderId: string
