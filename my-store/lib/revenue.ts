@@ -1,4 +1,4 @@
-import { itemRevenueParts, type PricedOrderItem } from "@/lib/pricing"
+import { itemQuantityParts, itemRevenueParts, type PricedOrderItem } from "@/lib/pricing"
 import { inPeriod, reportPeriods, warsawYmd, type ReportPeriod } from "@/lib/report-periods"
 
 export type RevenueOrder = {
@@ -79,9 +79,51 @@ const totalsForPeriod = (period: ReportPeriod, orders: RevenueOrder[]) => {
   return roundTotals(totals)
 }
 
+const addOrderQuantity = (totals: RevenueTotals, order: RevenueOrder) => {
+  let tagQty = 0
+  for (const item of order.items) {
+    tagQty += item.quantity > 0 ? item.quantity : 1
+    const parts = itemQuantityParts(item)
+    totals.base += parts.base
+    totals.charms += parts.charms
+    totals.karabiners += parts.karabiners
+    totals.strings += parts.strings
+    totals.stoppers += parts.stoppers
+    totals.stickers += parts.stickers
+    totals.dialCode += parts.dialCode
+  }
+  if (order.fastDeliveryCost > 0) totals.express += tagQty
+  if (order.shippingCost > 0) totals.shipping += 1
+}
+
+const totalsForQuantityPeriod = (period: ReportPeriod, orders: RevenueOrder[]) => {
+  const totals = emptyTotals()
+  for (const order of orders) {
+    if (inPeriod(warsawYmd(order.createdAt), period)) addOrderQuantity(totals, order)
+  }
+  totals.total =
+    totals.base +
+    totals.charms +
+    totals.karabiners +
+    totals.strings +
+    totals.stoppers +
+    totals.stickers +
+    totals.dialCode +
+    totals.express +
+    totals.shipping
+  return totals
+}
+
 export const buildRevenueRows = (orders: RevenueOrder[], nowIso = new Date().toISOString()): RevenueRow[] =>
   reportPeriods(nowIso).map((period) => ({
     key: period.key,
     label: period.label,
     ...totalsForPeriod(period, orders),
+  }))
+
+export const buildQuantityRows = (orders: RevenueOrder[], nowIso = new Date().toISOString()): RevenueRow[] =>
+  reportPeriods(nowIso).map((period) => ({
+    key: period.key,
+    label: period.label,
+    ...totalsForQuantityPeriod(period, orders),
   }))

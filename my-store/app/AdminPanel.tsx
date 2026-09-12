@@ -95,6 +95,7 @@ export default function AdminPanel() {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [pendingPaidConfirmation, setPendingPaidConfirmation] = useState<PendingPaidConfirmation | null>(null);
   const [revenueRows, setRevenueRows] = useState<RevenueRow[]>([]);
+  const [revenueQuantityRows, setRevenueQuantityRows] = useState<RevenueRow[]>([]);
   const [revenueError, setRevenueError] = useState('');
   const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
   const [analyticsRows, setAnalyticsRows] = useState<AnalyticsRow[]>([]);
@@ -193,9 +194,11 @@ export default function AdminPanel() {
       if (!result.ok) {
         setRevenueError(result.message);
         setRevenueRows([]);
+        setRevenueQuantityRows([]);
       } else {
         setRevenueError('');
         setRevenueRows(result.rows);
+        setRevenueQuantityRows(result.quantityRows);
       }
       setIsLoadingRevenue(false);
     };
@@ -416,7 +419,12 @@ export default function AdminPanel() {
       )}
 
       {activeAdminTab === 'revenue' && (
-        <RevenueTable rows={revenueRows} error={revenueError} isLoading={isLoadingRevenue} />
+        <RevenueTable
+          rows={revenueRows}
+          quantityRows={revenueQuantityRows}
+          error={revenueError}
+          isLoading={isLoadingRevenue}
+        />
       )}
 
       {activeAdminTab === 'analytics' && (
@@ -779,13 +787,18 @@ function AnalyticsTable({
 
 function RevenueTable({
   rows,
+  quantityRows,
   error,
   isLoading,
 }: {
   rows: RevenueRow[];
+  quantityRows: RevenueRow[];
   error: string;
   isLoading: boolean;
 }) {
+  const [viewMode, setViewMode] = useState<'money' | 'quantity'>('money');
+  const formatCount = (value: number) => value.toLocaleString('pl-PL');
+
   if (isLoading) {
     return <p className="text-sm text-[#7A736C]">Ładowanie przychodów...</p>;
   }
@@ -794,8 +807,11 @@ function RevenueTable({
     return <p className="text-sm text-red-500">{error}</p>;
   }
 
+  const displayRows = viewMode === 'money' ? rows : quantityRows;
+  const formatValue = viewMode === 'money' ? formatPrice : formatCount;
+
   const columns: { key: keyof Omit<RevenueRow, 'key' | 'label'>; label: string }[] = [
-    { key: 'total', label: 'Przychody razem' },
+    { key: 'total', label: viewMode === 'money' ? 'Przychody razem' : 'Sztuki razem' },
     { key: 'base', label: 'Bazowe' },
     { key: 'charms', label: 'Charms' },
     { key: 'karabiners', label: 'Karabińczyki' },
@@ -809,6 +825,30 @@ function RevenueTable({
 
   return (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
+      <div className="flex gap-2 px-4 pt-4 border-b border-[#D6C7AE]">
+        <button
+          type="button"
+          onClick={() => setViewMode('money')}
+          className={`px-3 py-2 text-sm font-medium transition-colors -mb-px ${
+            viewMode === 'money'
+              ? 'text-[#161616] font-bold border-b-2 border-[#161616]'
+              : 'text-[#7A736C] hover:text-[#161616]'
+          }`}
+        >
+          Kwotowo
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('quantity')}
+          className={`px-3 py-2 text-sm font-medium transition-colors -mb-px ${
+            viewMode === 'quantity'
+              ? 'text-[#161616] font-bold border-b-2 border-[#161616]'
+              : 'text-[#7A736C] hover:text-[#161616]'
+          }`}
+        >
+          Ilościowo
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
@@ -822,7 +862,7 @@ function RevenueTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
+            {displayRows.map((row, index) => (
               <tr
                 key={row.key}
                 className={`border-t border-[#D6C7AE] ${index < 3 ? 'bg-[#F9F5ED]' : ''}`}
@@ -835,7 +875,7 @@ function RevenueTable({
                     key={column.key}
                     className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-[#161616]"
                   >
-                    {formatPrice(row[column.key])}
+                    {formatValue(row[column.key])}
                   </td>
                 ))}
               </tr>

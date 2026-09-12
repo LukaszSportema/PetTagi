@@ -114,3 +114,18 @@ export const itemRevenueParts = (item: PricedOrderItem) => {
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
 }
+
+export const itemQuantityParts = (item: PricedOrderItem) => {
+  const qty = item.quantity > 0 ? item.quantity : 1
+  const stringCount =
+    item.stringPremium.length + item.stringClassic.length + item.stringGlow.length
+  return {
+    base: qty,
+    charms: item.extraCharms.length * qty,
+    karabiners: item.extraCarabiner.length * qty,
+    strings: stringCount * qty,
+    stoppers: stopperCountFromStored(item.stoppers) * qty,
+    stickers: item.sticker ? qty : 0,
+    dialCode: item.dialCodeInfo ? qty : 0,
+  }
+}

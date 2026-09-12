@@ -1,6 +1,6 @@
 "use server"
 
-import { buildRevenueRows, type RevenueOrder, type RevenueRow } from "@/lib/revenue"
+import { buildQuantityRows, buildRevenueRows, type RevenueOrder, type RevenueRow } from "@/lib/revenue"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 
@@ -26,7 +26,7 @@ type RevenueOrderRow = {
 }
 
 export type RevenueReportResult =
-  | { ok: true; rows: RevenueRow[] }
+  | { ok: true; rows: RevenueRow[]; quantityRows: RevenueRow[] }
   | { ok: false; message: string }
 
 const toMoney = (value: unknown) => {
@@ -96,5 +96,10 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
     : typeof data === "string"
       ? (JSON.parse(data) as RevenueOrderRow[])
       : []
-  return { ok: true, rows: buildRevenueRows(rows.map(mapOrder)) }
+  const orders = rows.map(mapOrder)
+  return {
+    ok: true,
+    rows: buildRevenueRows(orders),
+    quantityRows: buildQuantityRows(orders),
+  }
 }
