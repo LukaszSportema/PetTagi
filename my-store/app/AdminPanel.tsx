@@ -810,8 +810,8 @@ function RevenueTable({
   const displayRows = viewMode === 'money' ? rows : quantityRows;
   const formatValue = viewMode === 'money' ? formatPrice : formatCount;
 
-  const columns: { key: keyof Omit<RevenueRow, 'key' | 'label'>; label: string }[] = [
-    { key: 'total', label: viewMode === 'money' ? 'Przychody razem' : 'Sztuki razem' },
+  const allColumns: { key: keyof Omit<RevenueRow, 'key' | 'label'>; label: string }[] = [
+    { key: 'total', label: 'Przychody razem' },
     { key: 'base', label: 'Bazowe' },
     { key: 'charms', label: 'Charms' },
     { key: 'karabiners', label: 'Karabińczyki' },
@@ -822,6 +822,8 @@ function RevenueTable({
     { key: 'express', label: 'Ekspresowa realizacja' },
     { key: 'shipping', label: 'Wysyłka' },
   ];
+  const columns =
+    viewMode === 'money' ? allColumns : allColumns.filter((column) => column.key !== 'total');
 
   return (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
