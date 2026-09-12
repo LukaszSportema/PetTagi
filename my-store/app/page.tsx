@@ -37,7 +37,7 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, CONNECTING_RING_KARABINER_IDS, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
@@ -349,6 +349,7 @@ export default function Home() {
   const [appliedDiscount, setAppliedDiscount] = useState('');
   const [showAddedToCart, setShowAddedToCart] = useState(false);
   const [charmMountingTarget, setCharmMountingTarget] = useState<{ type: 'free' | 'extra'; charmId: string } | null>(null);
+  const [showGoldRingInfoModal, setShowGoldRingInfoModal] = useState(false);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
@@ -757,6 +758,11 @@ export default function Home() {
     title: item.label,
     image: item.image,
   }));
+  const connectingRingKarabinerIds = new Set<string>(CONNECTING_RING_KARABINER_IDS);
+  const freeKarabinersList = isTagConfigurator
+    ? karabinersList
+    : karabinersList.filter((item) => !connectingRingKarabinerIds.has(item.id));
+  const extraKarabinersList = karabinersList.filter((item) => !connectingRingKarabinerIds.has(item.id));
 
   const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
     id: item.id,
@@ -958,7 +964,10 @@ export default function Home() {
     return (
       <div
         key={karabiner.id}
-        onClick={() => setFormData({ ...formData, karabinerOption: karabiner.id })}
+        onClick={() => {
+          setFormData({ ...formData, karabinerOption: karabiner.id });
+          if (connectingRingKarabinerIds.has(karabiner.id)) setShowGoldRingInfoModal(true);
+        }}
         className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
           isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
         }`}
@@ -997,14 +1006,14 @@ export default function Home() {
   };
 
   const renderFreeKarabinerGrid = () => (
-    <div className={imageGridClass(karabinersList.length)}>
-      {karabinersList.map(renderFreeKarabinerCard)}
+    <div className={imageGridClass(freeKarabinersList.length)}>
+      {freeKarabinersList.map(renderFreeKarabinerCard)}
     </div>
   );
 
   const renderExtraKarabinerGrid = () => (
-    <div className={imageGridClass(karabinersList.length)}>
-      {karabinersList.map(renderExtraKarabinerCard)}
+    <div className={imageGridClass(extraKarabinersList.length)}>
+      {extraKarabinersList.map(renderExtraKarabinerCard)}
     </div>
   );
 
@@ -1572,6 +1581,40 @@ export default function Home() {
                 className="w-full border border-[#D6C7AE] text-[#161616] hover:bg-[#EBE4D6] py-3.5 rounded-none text-[11px] uppercase tracking-[0.22em] font-light transition-colors duration-300"
               >
                 Wróć do konfiguratora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showGoldRingInfoModal && (
+        <div className="fixed inset-0 z-[80] bg-[#161616]/40 flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gold-ring-info-title"
+            className="w-full max-w-lg bg-[#F9F5ED] border border-[#D6C7AE] p-6 md:p-8 space-y-5"
+          >
+            <p id="gold-ring-info-title" className="font-serif font-semibold text-xl md:text-2xl text-[#161616]">
+              Kółko łącznikowe – stal nierdzewna
+            </p>
+            <div className="space-y-4 text-sm md:text-base text-[#161616] leading-relaxed">
+              <p>
+                Polecane do adresówek montowanych na sznurku. Służy do ich trwałego i bezpiecznego połączenia.
+              </p>
+              <p>
+                <strong>Ważne:</strong> Kółko jest montowane na stałe – nie zdejmiesz go ze sznurka, ale w każdej chwili możesz z niego wypiąć samą adresówkę i przełożyć ją do karabińczyka.
+              </p>
+              <p>
+                Jeśli planujesz nosić adresówkę również na obroży lub szelkach, rekomendujemy dokupienie dodatkowego karabińczyka.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowGoldRingInfoModal(false)}
+                className="px-5 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors"
+              >
+                Rozumiem
               </button>
             </div>
           </div>
