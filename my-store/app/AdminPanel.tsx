@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getConfiguratorAnalyticsReport } from './actions/configurator-analytics';
 import { getAnalyticsReport } from './actions/analytics';
 import { getOrder, listOrders, updateOrderClientPhone, updateOrderStatus } from './actions/orders';
@@ -35,7 +35,7 @@ import { formatDuration, formatPercent } from '@/lib/configurator-analytics';
 import { formatPolishMobile, isPolishMobilePhone, normalizePolishPhone } from '@/lib/phone';
 import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from '@/lib/popularity';
 import type { ReportPeriod } from '@/lib/report-periods';
-import { warsawYmd } from '@/lib/report-periods';
+import { monthLabel, warsawYmd } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
 
 const adminTabs = [
@@ -889,6 +889,8 @@ function RevenueTable({
   );
 }
 
+const orderMonthKey = (iso: string) => warsawYmd(iso).slice(0, 7);
+
 function OrdersTable({
   orders,
   error,
@@ -904,6 +906,26 @@ function OrdersTable({
   onStatusChange: (request: StatusChangeRequest) => void;
   onOpen: (id: string) => void;
 }) {
+  const [selectedMonth, setSelectedMonth] = useState('all');
+
+  const monthOptions = useMemo(() => {
+    const keys = [...new Set(orders.map((order) => orderMonthKey(order.createdAt)))].sort((a, b) =>
+      b.localeCompare(a),
+    );
+    return keys.map((key) => {
+      const [year, month] = key.split('-').map(Number);
+      return { key, label: monthLabel(year, month) };
+    });
+  }, [orders]);
+
+  const filteredOrders = useMemo(
+    () =>
+      selectedMonth === 'all'
+        ? orders
+        : orders.filter((order) => orderMonthKey(order.createdAt) === selectedMonth),
+    [orders, selectedMonth],
+  );
+
   if (isLoading) {
     return <p className="text-sm text-[#7A736C]">Ładowanie zamówień...</p>;
   }
@@ -922,6 +944,35 @@ function OrdersTable({
 
   return (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-4 pt-4 pb-3 border-b border-[#D6C7AE]">
+        <label className="flex flex-col gap-1.5 w-full sm:w-auto">
+          <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
+            Miesiąc zamówienia
+          </span>
+          <select
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+            className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat w-full sm:min-w-[220px]"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
+          >
+            <option value="all">Wszystkie miesiące</option>
+            {monthOptions.map((option) => (
+              <option key={option.key} value={option.key}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="text-sm text-[#7A736C] pb-2.5">
+          {filteredOrders.length}{' '}
+          {filteredOrders.length === 1 ? 'zamówienie' : filteredOrders.length < 5 ? 'zamówienia' : 'zamówień'}
+        </p>
+      </div>
+      {filteredOrders.length === 0 ? (
+        <div className="p-10 text-center">
+          <p className="text-[#7A736C]">Brak zamówień w wybranym miesiącu.</p>
+        </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
@@ -943,7 +994,7 @@ function OrdersTable({
             </tr>
           </thead>
           <tbody>
-            {orders.map((order) => (
+            {filteredOrders.map((order) => (
               <tr
                 key={order.id}
                 tabIndex={0}
@@ -1008,6 +1059,7 @@ function OrdersTable({
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
