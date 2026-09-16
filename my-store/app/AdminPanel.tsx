@@ -69,9 +69,12 @@ type PendingPaidConfirmation = {
   orderNumber: string;
 };
 
-const orderRowClass = (status: OrderStatus) => {
+const orderRowClass = (status: OrderStatus, fastDelivery: boolean) => {
   const base = 'border-t border-[#D6C7AE] cursor-pointer transition-colors';
   if (status === 'paid') {
+    if (fastDelivery) {
+      return `${base} bg-[#B5D4B8] hover:bg-[#A3C9A7]`;
+    }
     return `${base} bg-[#E4EDE5] hover:bg-[#D6E4D7]`;
   }
   return `${base} hover:bg-[#F4EFE6]`;
@@ -1005,7 +1008,7 @@ function OrdersTable({
                     onOpen(order.id);
                   }
                 }}
-                className={orderRowClass(order.status)}
+                className={orderRowClass(order.status, order.fastDelivery)}
               >
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{formatOrderDate(order.createdAt)}</td>
                 <td className="px-4 py-3 whitespace-nowrap font-medium text-[#161616]">{order.orderId}</td>
