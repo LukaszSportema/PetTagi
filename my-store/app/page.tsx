@@ -6,7 +6,15 @@ import { isPolishMobilePhone } from '@/lib/phone';
 import { createOrder } from './actions/orders';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import FurgonetkaMap from './FurgonetkaMap';
-import { fulfillmentMessage, ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from '@/lib/payment';
+import {
+  fulfillmentMessage,
+  orderConfirmationTransferNote,
+  ORDER_CONFIRMATION_SUBTITLE,
+  ORDER_CONFIRMATION_TITLE,
+  paymentRecipientShowsBankTransfer,
+  PAYMENT_RECIPIENTS,
+  type PaymentRecipientId,
+} from '@/lib/payment';
 import {
   CATALOG_PRODUCTS,
   CLASSIC_TAG_PRODUCT,
@@ -1956,17 +1964,19 @@ export default function Home() {
                   <p>
                     - BLIK na numer telefonu {PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].blikPhone}
                   </p>
-                  <div>
-                    <p>- przelewem na rachunek bankowy:</p>
-                    <div className="mt-1 font-medium pl-3">
-                      <p>{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountName}</p>
-                      <p className="break-all">{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountNumber}</p>
+                  {paymentRecipientShowsBankTransfer(placedOrder.paymentRecipient) && (
+                    <div>
+                      <p>- przelewem na rachunek bankowy:</p>
+                      <div className="mt-1 font-medium pl-3">
+                        <p>{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountName}</p>
+                        <p className="break-all">{PAYMENT_RECIPIENTS[placedOrder.paymentRecipient].accountNumber}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
               <p className="text-[#161616] font-medium">
-                {ORDER_CONFIRMATION_TRANSFER_NOTE}
+                {orderConfirmationTransferNote(placedOrder.paymentRecipient)}
               </p>
               <p className="text-[#161616]">
                 {fulfillmentMessage(placedOrder.orderId, placedOrder.fastDelivery)}

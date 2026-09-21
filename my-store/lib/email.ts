@@ -7,7 +7,14 @@ import {
   orderItemTitle,
 } from "@/lib/order-display"
 import { fulfillmentEmailMessage } from "@/lib/fulfillment-dates"
-import { ORDER_CONFIRMATION_SUBTITLE, ORDER_CONFIRMATION_TITLE, ORDER_CONFIRMATION_TRANSFER_NOTE, PAYMENT_RECIPIENTS, type PaymentRecipientId } from "@/lib/payment"
+import {
+  orderConfirmationTransferNote,
+  ORDER_CONFIRMATION_SUBTITLE,
+  ORDER_CONFIRMATION_TITLE,
+  paymentRecipientShowsBankTransfer,
+  PAYMENT_RECIPIENTS,
+  type PaymentRecipientId,
+} from "@/lib/payment"
 import type { CreateOrderInput } from "@/lib/types/order"
 
 const FROM = "Pettagi <no-reply@pettagi.com>"
@@ -35,11 +42,11 @@ const shippingCopy = (order: CreateOrderInput) => {
   return name
 }
 
-export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput) {
+export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     console.error("Missing RESEND_API_KEY — order email was not sent")
-    return
+    return false
   }
 
   const { html, text } = renderOrderPlacedEmail(input)
@@ -54,7 +61,10 @@ export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput) {
 
   if (error) {
     console.error("Resend send failed", error)
+    return false
   }
+
+  return true
 }
 
 function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
@@ -91,17 +101,20 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
     }
   })
 
+  const transferNote = orderConfirmationTransferNote(input.paymentRecipient)
+  const showBankTransfer = paymentRecipientShowsBankTransfer(input.paymentRecipient)
+
   const text = [
     ORDER_CONFIRMATION_TITLE,
     ORDER_CONFIRMATION_SUBTITLE,
     "",
     `Dokonaj płatności kwoty ${total}:`,
     `BLIK na numer: ${recipient.blikPhone}`,
-    "Przelew na rachunek bankowy:",
-    recipient.accountName,
-    recipient.accountNumber,
+    ...(showBankTransfer
+      ? ["Przelew na rachunek bankowy:", recipient.accountName, recipient.accountNumber]
+      : []),
     "",
-    ORDER_CONFIRMATION_TRANSFER_NOTE,
+    transferNote,
     "",
     "Szczegóły zamówienia",
     `Numer zamówienia: ${input.orderId}`,
@@ -174,16 +187,20 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
               <td style="padding:24px 28px 8px">
                 <p style="margin:0 0 12px;font-size:16px;font-weight:700">Dokonaj płatności kwoty ${total}:</p>
                 <p style="margin:0 0 8px;font-size:15px;line-height:1.6">BLIK na numer: <strong>${recipient.blikPhone}</strong></p>
-                <p style="margin:0;font-size:15px;line-height:1.6">
+                ${
+                  showBankTransfer
+                    ? `<p style="margin:0;font-size:15px;line-height:1.6">
                   Przelew na rachunek bankowy:<br />
                   <strong>${escapeHtml(recipient.accountName)}</strong><br />
                   <strong>${recipient.accountNumber}</strong>
-                </p>
+                </p>`
+                    : ""
+                }
               </td>
             </tr>
             <tr>
               <td style="padding:0 28px 8px">
-                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616"><strong>${escapeHtml(ORDER_CONFIRMATION_TRANSFER_NOTE)}</strong></p>
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#161616"><strong>${escapeHtml(transferNote)}</strong></p>
               </td>
             </tr>
             <tr>
@@ -246,11 +263,11 @@ type OrderPaidEmailInput = {
   clientSurname: string
 }
 
-export async function sendOrderPaidEmail(input: OrderPaidEmailInput) {
+export async function sendOrderPaidEmail(input: OrderPaidEmailInput): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     console.error("Missing RESEND_API_KEY — paid order email was not sent")
-    return
+    return false
   }
 
   const { html, text } = renderOrderPaidEmail(input)
@@ -265,7 +282,10 @@ export async function sendOrderPaidEmail(input: OrderPaidEmailInput) {
 
   if (error) {
     console.error("Resend paid order send failed", error)
+    return false
   }
+
+  return true
 }
 
 function renderOrderPaidEmail(input: OrderPaidEmailInput) {

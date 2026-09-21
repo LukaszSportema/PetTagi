@@ -70,3 +70,14 @@ export const ORDER_CONFIRMATION_SUBTITLE =
   "Od teraz Twój pupil ma swój własny talizman bezpieczeństwa — a Ty możesz czuć się spokojniej."
 export const ORDER_CONFIRMATION_TRANSFER_NOTE =
   "Ważne: W tytule przelewu (lub płatności BLIK) prosimy wpisać imię pupila."
+
+export const ORDER_CONFIRMATION_TRANSFER_NOTE_BLIK_ONLY =
+  "Ważne: W tytule płatności BLIK prosimy wpisać imię pupila."
+
+export const paymentRecipientShowsBankTransfer = (recipient: PaymentRecipientId) =>
+  recipient === "wiktoria"
+
+export const orderConfirmationTransferNote = (recipient: PaymentRecipientId) =>
+  paymentRecipientShowsBankTransfer(recipient)
+    ? ORDER_CONFIRMATION_TRANSFER_NOTE
+    : ORDER_CONFIRMATION_TRANSFER_NOTE_BLIK_ONLY
