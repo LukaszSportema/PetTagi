@@ -1,8 +1,11 @@
 import { itemQuantityParts, itemRevenueParts, type PricedOrderItem } from "@/lib/pricing"
 import { inPeriod, reportPeriods, warsawYmd, type ReportPeriod } from "@/lib/report-periods"
 
+import type { PaymentRecipientId } from "@/lib/payment"
+
 export type RevenueOrder = {
   createdAt: string
+  paymentRecipient: PaymentRecipientId
   total: number
   shippingCost: number
   fastDeliveryCost: number

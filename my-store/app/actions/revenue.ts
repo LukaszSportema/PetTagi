@@ -1,6 +1,11 @@
 "use server"
 
 import { buildQuantityRows, buildRevenueRows, type RevenueOrder, type RevenueRow } from "@/lib/revenue"
+import {
+  DEFAULT_PAYMENT_RECIPIENT,
+  parsePaymentRecipientId,
+  type PaymentRecipientId,
+} from "@/lib/payment"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 
@@ -19,15 +24,26 @@ type RevenueItemRow = {
 
 type RevenueOrderRow = {
   created_at: string
+  payment_recipient?: string | null
   total: number | string
   shipping_cost: number | string
   fast_delivery_cost: number | string | null
   items: RevenueItemRow[] | null
 }
 
+export type RevenueReportSlice = {
+  rows: RevenueRow[]
+  quantityRows: RevenueRow[]
+}
+
 export type RevenueReportResult =
-  | { ok: true; rows: RevenueRow[]; quantityRows: RevenueRow[] }
+  | { ok: true; byRecipient: Record<PaymentRecipientId, RevenueReportSlice> }
   | { ok: false; message: string }
+
+const REVENUE_RECIPIENTS: PaymentRecipientId[] = ["wiktoria", "lukasz"]
+
+const orderPaymentRecipient = (value: unknown): PaymentRecipientId =>
+  parsePaymentRecipientId(value) ?? DEFAULT_PAYMENT_RECIPIENT
 
 const toMoney = (value: unknown) => {
   const n = typeof value === "number" ? value : Number(value)
@@ -49,6 +65,7 @@ const toStringArray = (value: unknown): string[] => {
 
 const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
   createdAt: row.created_at,
+  paymentRecipient: orderPaymentRecipient(row.payment_recipient),
   total: toMoney(row.total),
   shippingCost: toMoney(row.shipping_cost),
   fastDeliveryCost: toMoney(row.fast_delivery_cost),
@@ -97,9 +114,18 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
       ? (JSON.parse(data) as RevenueOrderRow[])
       : []
   const orders = rows.map(mapOrder)
-  return {
-    ok: true,
-    rows: buildRevenueRows(orders),
-    quantityRows: buildQuantityRows(orders),
-  }
+  const byRecipient = Object.fromEntries(
+    REVENUE_RECIPIENTS.map((recipient) => {
+      const filtered = orders.filter((order) => order.paymentRecipient === recipient)
+      return [
+        recipient,
+        {
+          rows: buildRevenueRows(filtered),
+          quantityRows: buildQuantityRows(filtered),
+        },
+      ]
+    }),
+  ) as Record<PaymentRecipientId, RevenueReportSlice>
+
+  return { ok: true, byRecipient }
 }

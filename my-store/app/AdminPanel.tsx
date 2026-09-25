@@ -5,7 +5,7 @@ import { getConfiguratorAnalyticsReport } from './actions/configurator-analytics
 import { getAnalyticsReport } from './actions/analytics';
 import { getOrder, listOrders, updateOrderClientPhone, updateOrderStatus } from './actions/orders';
 import { getPopularityReport } from './actions/popularity';
-import { getRevenueReport } from './actions/revenue';
+import { getRevenueReport, type RevenueReportSlice } from './actions/revenue';
 import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
 import { generateShippingLabel } from './actions/shipping';
 import {
@@ -97,8 +97,13 @@ export default function AdminPanel() {
   const [statusError, setStatusError] = useState('');
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [pendingPaidConfirmation, setPendingPaidConfirmation] = useState<PendingPaidConfirmation | null>(null);
-  const [revenueRows, setRevenueRows] = useState<RevenueRow[]>([]);
-  const [revenueQuantityRows, setRevenueQuantityRows] = useState<RevenueRow[]>([]);
+  const [revenueByRecipient, setRevenueByRecipient] = useState<Record<
+    PaymentRecipientId,
+    RevenueReportSlice
+  > | null>(null);
+  const [revenueRecipientFilter, setRevenueRecipientFilter] = useState<PaymentRecipientId>(
+    DEFAULT_PAYMENT_RECIPIENT,
+  );
   const [revenueError, setRevenueError] = useState('');
   const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
   const [analyticsRows, setAnalyticsRows] = useState<AnalyticsRow[]>([]);
@@ -196,12 +201,10 @@ export default function AdminPanel() {
       if (cancelled) return;
       if (!result.ok) {
         setRevenueError(result.message);
-        setRevenueRows([]);
-        setRevenueQuantityRows([]);
+        setRevenueByRecipient(null);
       } else {
         setRevenueError('');
-        setRevenueRows(result.rows);
-        setRevenueQuantityRows(result.quantityRows);
+        setRevenueByRecipient(result.byRecipient);
       }
       setIsLoadingRevenue(false);
     };
@@ -423,8 +426,10 @@ export default function AdminPanel() {
 
       {activeAdminTab === 'revenue' && (
         <RevenueTable
-          rows={revenueRows}
-          quantityRows={revenueQuantityRows}
+          rows={revenueByRecipient?.[revenueRecipientFilter]?.rows ?? []}
+          quantityRows={revenueByRecipient?.[revenueRecipientFilter]?.quantityRows ?? []}
+          paymentRecipient={revenueRecipientFilter}
+          onPaymentRecipientChange={setRevenueRecipientFilter}
           error={revenueError}
           isLoading={isLoadingRevenue}
         />
@@ -791,11 +796,15 @@ function AnalyticsTable({
 function RevenueTable({
   rows,
   quantityRows,
+  paymentRecipient,
+  onPaymentRecipientChange,
   error,
   isLoading,
 }: {
   rows: RevenueRow[];
   quantityRows: RevenueRow[];
+  paymentRecipient: PaymentRecipientId;
+  onPaymentRecipientChange: (recipient: PaymentRecipientId) => void;
   error: string;
   isLoading: boolean;
 }) {
@@ -830,7 +839,23 @@ function RevenueTable({
 
   return (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
-      <div className="flex gap-2 px-4 pt-4 border-b border-[#D6C7AE]">
+      <div className="flex flex-wrap gap-2 px-4 pt-4 pb-2 border-b border-[#D6C7AE]">
+        {Object.values(PAYMENT_RECIPIENTS).map((recipient) => (
+          <button
+            key={recipient.id}
+            type="button"
+            onClick={() => onPaymentRecipientChange(recipient.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors -mb-px ${
+              paymentRecipient === recipient.id
+                ? 'text-[#161616] font-bold border-b-2 border-[#161616]'
+                : 'text-[#7A736C] hover:text-[#161616]'
+            }`}
+          >
+            {recipient.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 px-4 pt-2 border-b border-[#D6C7AE]">
         <button
           type="button"
           onClick={() => setViewMode('money')}
