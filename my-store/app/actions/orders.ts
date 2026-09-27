@@ -44,6 +44,10 @@ const placeOrderErrorMessage = (message: string) => {
     return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260824_order_item_string_glow.sql."
   }
 
+  if (normalized.includes("charm_mounting") || normalized.includes("name_layout")) {
+    return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260927_order_item_mounting_name_layout.sql."
+  }
+
   if (normalized.includes("product_slug") || normalized.includes("product_name")) {
     return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260821_order_item_product.sql."
   }
@@ -132,6 +136,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     dog_name: item.dogName.trim(),
     number_on_tag: item.numberOnTag.trim(),
     dial_code_info: item.dialCodeInfo,
+    charm_mounting: item.charmMounting,
+    name_layout: item.nameLayout,
   }))
 
   const { data, error } = await supabase.rpc("place_order", {
@@ -232,6 +238,8 @@ type OrderItemRow = {
   dog_name: string
   number_on_tag: string
   dial_code_info: boolean | string
+  charm_mounting?: string | null
+  name_layout?: string | null
 }
 
 const toMoney = (value: unknown) => {
@@ -315,6 +323,8 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   dogName: row.dog_name,
   numberOnTag: row.number_on_tag,
   dialCodeInfo: row.dial_code_info === true || row.dial_code_info === "true",
+  charmMounting: row.charm_mounting ?? null,
+  nameLayout: row.name_layout ?? null,
 })
 
 const missingAdminSqlMessage =

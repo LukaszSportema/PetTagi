@@ -1,5 +1,5 @@
 import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
-import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, optionLabel, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel } from "@/lib/catalog-options"
+import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel } from "@/lib/catalog-options"
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
@@ -118,6 +118,8 @@ export type OrderItemOptionsSource = Pick<
   | "dogName"
   | "numberOnTag"
   | "dialCodeInfo"
+  | "charmMounting"
+  | "nameLayout"
 >
 
 const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) => {
@@ -137,6 +139,13 @@ export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
 
   options.push({ label: "Baza", values: [optionLabel(BASE_OPTIONS, item.baseColor)] })
   options.push({ label: "Darmowy charms", values: [optionLabel(CHARM_LABEL_OPTIONS, item.baseCharms)] })
+
+  if (item.charmMounting) {
+    options.push({
+      label: "Mocowanie charms",
+      values: [charmMountingLabel(item.charmMounting)],
+    })
+  }
 
   if (item.extraCharms.length > 0) {
     options.push({ label: "Dodatkowe charms", values: item.extraCharms.map((id) => optionLabel(CHARM_LABEL_OPTIONS, id)) })
@@ -186,6 +195,14 @@ export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
   }
 
   options.push({ label: "Imię pupila", values: [item.dogName] })
+
+  if (item.nameLayout) {
+    options.push({
+      label: "Układ liter na adresówce",
+      values: [nameLayoutLabel(item.nameLayout, item.dogName.trim().length)],
+    })
+  }
+
   options.push({ label: "Nr telefonu", values: [tagPhoneDisplay(item.numberOnTag, item.dialCodeInfo)] })
 
   return options

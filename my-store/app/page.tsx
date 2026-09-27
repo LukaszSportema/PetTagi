@@ -45,7 +45,7 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, CONNECTING_RING_KARABINER_IDS, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, CONNECTING_RING_KARABINER_IDS, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, nameLayoutLabel, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
 
 type FormDataState = {
   ringColor: string;
@@ -1057,7 +1057,7 @@ export default function Home() {
       { label: 'Darmowy charms', values: [findTitle(charmsList, formData.charmOption, formData.charmOption)] },
     );
     options.push({
-      label: 'Mocowanie charmsa',
+      label: 'Mocowanie charms',
       values: [CHARM_MOUNTING_OPTIONS.find((option) => option.id === formData.charmMounting)?.label ?? formData.charmMounting],
     });
 
@@ -1132,11 +1132,7 @@ export default function Home() {
     options.push({ label: 'Imię pupila', values: [formData.petName] });
     options.push({
       label: 'Układ liter na adresówce',
-      values: [
-        formData.petName.trim().length > 6 || formData.nameLayout === 'imie6plus'
-          ? 'Rozszerzony'
-          : 'Standardowy',
-      ],
+      values: [nameLayoutLabel(formData.nameLayout, formData.petName.trim().length)],
     });
     options.push({
       label: 'Nr telefonu',
@@ -1334,6 +1330,9 @@ export default function Home() {
               ? `${config.phoneCode} ${formatPhoneGroups(config.phoneNumber, config.phoneCode)}`
               : formatPhoneGroups(config.phoneNumber, config.phoneCode),
           dialCodeInfo: config.includePhoneCode === 'tak',
+          charmMounting: config.charmMounting,
+          nameLayout:
+            config.petName.trim().length > 6 ? 'imie6plus' : config.nameLayout,
         };
       }),
     });
@@ -3064,8 +3063,8 @@ export default function Home() {
                             ) : (
                               <div className="grid grid-cols-2 gap-4 w-full max-w-md">
                                 {[
-                                  { id: 'imie6' as const, image: '/imie6.jpg', alt: 'Układ liter — do 6 liter, wariant 1' },
-                                  { id: 'imie6plus' as const, image: '/imie6plus.jpg', alt: 'Układ liter — do 6 liter, wariant 2' },
+                                  { id: 'imie6' as const, image: '/imie6.jpg', alt: 'Układ liter — na środku', caption: 'Na środku' },
+                                  { id: 'imie6plus' as const, image: '/imie6plus.jpg', alt: 'Układ liter — na dole', caption: 'Na dole' },
                                 ].map((option) => (
                                   <div
                                     key={option.id}
@@ -3081,6 +3080,7 @@ export default function Home() {
                                       alt={option.alt}
                                       className="w-full max-w-[9.33rem] border border-[#D6C7AE] bg-[#EFE8DC]"
                                     />
+                                    <span className="mt-2 text-sm font-medium text-[#161616]">{option.caption}</span>
                                     <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${
                                       formData.nameLayout === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
                                     }`}>

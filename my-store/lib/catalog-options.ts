@@ -256,6 +256,15 @@ export const charmMountingLabel = (id: string) =>
 export const charmMountingTileLabel = (id: string) =>
   CHARM_MOUNTING_OPTIONS.find((option) => option.id === id)?.tileLabel ?? id
 
+export type NameLayoutId = "imie6" | "imie6plus"
+
+/** Etykieta układu liter na adresówce (krok „Dane na adresówce”). */
+export const nameLayoutLabel = (layout: NameLayoutId | string, petNameLength: number) => {
+  if (petNameLength > 6 || layout === "imie6plus") return "Na dole"
+  if (layout === "imie6") return "Na środku"
+  return layout
+}
+
 export type KarabinerOption = CatalogOption & {
   image: string
 }

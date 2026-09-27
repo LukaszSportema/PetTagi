@@ -23,6 +23,8 @@ export type CreateOrderItemInput = {
   dogName: string
   numberOnTag: string
   dialCodeInfo: boolean
+  charmMounting: string | null
+  nameLayout: string | null
 }
 
 export type CreateOrderInput = {
@@ -104,6 +106,8 @@ export type OrderItemRecord = {
   dogName: string
   numberOnTag: string
   dialCodeInfo: boolean
+  charmMounting: string | null
+  nameLayout: string | null
 }
 
 export type OrderDetail = OrderRecord & {
