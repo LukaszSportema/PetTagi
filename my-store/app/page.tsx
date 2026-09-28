@@ -371,6 +371,9 @@ export default function Home() {
   const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
   const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
   const skipsGraphicsStep = isGlowTagConfigurator || formData.ringColor === 'kwiat';
+  const skipsStopersStep = (CONNECTING_RING_KARABINER_IDS as readonly string[]).includes(
+    formData.karabinerOption,
+  );
 
   // --- LOGIKA OBLICZANIA CENY ---
   const basePrice = baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
@@ -430,10 +433,18 @@ export default function Home() {
       return;
     }
 
+    if (skipsStopersStep) {
+      setFormData((prev) => {
+        if (prev.wantStopers === 'nie' && prev.extraStopers.length === 0) return prev;
+        return { ...prev, wantStopers: 'nie', extraStopers: [] };
+      });
+      return;
+    }
+
     if (!stopersChoiceTouchedRef.current) {
       setFormData((prev) => (prev.wantStopers === 'tak' ? prev : { ...prev, wantStopers: 'tak' }));
     }
-  }, [selectedStringsCount]);
+  }, [selectedStringsCount, skipsStopersStep]);
 
   const goToTab = (tab: string) => {
     setActiveTab(tab);
@@ -457,6 +468,7 @@ export default function Home() {
   const skippedStepIds = [
     ...(isGlowTagConfigurator ? [1] : [12]),
     ...(skipsGraphicsStep ? [9] : []),
+    ...(skipsStopersStep ? [8] : []),
   ];
   const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
   const stepsInfo = visibleClassicSteps.map((step, index) => {
@@ -973,8 +985,19 @@ export default function Home() {
       <div
         key={karabiner.id}
         onClick={() => {
-          setFormData({ ...formData, karabinerOption: karabiner.id });
-          if (connectingRingKarabinerIds.has(karabiner.id)) setShowGoldRingInfoModal(true);
+          const isConnectingRing = connectingRingKarabinerIds.has(karabiner.id);
+          const wasConnectingRing = connectingRingKarabinerIds.has(formData.karabinerOption);
+          setFormData((prev) => ({
+            ...prev,
+            karabinerOption: karabiner.id,
+            ...(isConnectingRing ? { wantStopers: 'nie' as const, extraStopers: [] } : {}),
+          }));
+          if (isConnectingRing) {
+            stopersChoiceTouchedRef.current = true;
+            setShowGoldRingInfoModal(true);
+          } else if (wasConnectingRing) {
+            stopersChoiceTouchedRef.current = false;
+          }
         }}
         className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
           isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
