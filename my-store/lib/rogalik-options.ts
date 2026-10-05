@@ -94,6 +94,7 @@ export const rogalikMountingUsesBeads = (mounting: string) => mounting === "kora
 
 export type RogalikFlowStep =
   | "baza"
+  | "dodatki"
   | "free-karabinier"
   | "extra-karabinier"
   | "dane"
@@ -103,7 +104,8 @@ export type RogalikFlowStep =
 export const rogalikFlowStepAt = (mounting: string, stepIndex: number): RogalikFlowStep => {
   if (rogalikMountingUsesBeads(mounting)) {
     if (stepIndex <= 1) return "baza"
-    if (stepIndex === 2) return "dane"
+    if (stepIndex === 2) return "dodatki"
+    if (stepIndex === 3) return "dane"
     return "podsumowanie"
   }
   if (stepIndex <= 1) return "baza"

@@ -28,8 +28,10 @@ type Props = {
   onToggleCharm: (id: string) => void;
   showErrors: boolean;
   stringSizeText: string;
-  /** Sekcje sznurek / koraliki / charms — tylko przy mocowaniu „Z koralikami”. */
-  showBeadMountSections: boolean;
+  /** Krok BAZA (kolor, mocowanie) lub DODATKI (obwód, sznureczek, koraliki, charmsy). */
+  step: 'baza' | 'dodatki';
+  /** Obwód szyi — pierwsza sekcja kroku DODATKI (mocowanie „Z koralikami”). */
+  showNeckSection: boolean;
 };
 
 const sectionClass = 'space-y-4 pt-8 border-t border-[#D6C7AE] first:border-t-0 first:pt-0';
@@ -114,14 +116,169 @@ function OptionTiles({
   );
 }
 
+function NeckCircumferenceSection({
+  formData,
+  onChange,
+  showErrors,
+  stringSizeText,
+  sectionIndex,
+}: {
+  formData: RogalikFormSlice;
+  onChange: (patch: Partial<RogalikFormSlice>) => void;
+  showErrors: boolean;
+  stringSizeText: string;
+  sectionIndex: number;
+}) {
+  return (
+    <section className={sectionClass}>
+      <SectionTitle index={sectionIndex}>Podaj obwód szyi</SectionTitle>
+      <div className="space-y-2">
+        <label className="block text-sm text-[#7A736C] font-light">
+          Wpisz obwód szyi Twojego pieska w centymetrach:
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={formData.stringLength}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (!/^\d*$/.test(val)) return;
+            if (val === '') {
+              onChange({ stringLength: '' });
+              return;
+            }
+            if (val.length > 2) return;
+            const num = Number(val);
+            if (num > ROGALIK_NECK_MAX) return;
+            if (val.length === 1 && num >= 1 && num <= 9) {
+              onChange({ stringLength: val });
+              return;
+            }
+            if (num >= ROGALIK_NECK_MIN && num <= ROGALIK_NECK_MAX) {
+              onChange({ stringLength: val });
+            }
+          }}
+          placeholder="wpisz obwód szyi (16–50 cm)"
+          className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
+        />
+        {showErrors && !isValidRogalikNeckCircumference(formData.stringLength) && (
+          <p className="text-sm text-red-500">
+            Podaj obwód szyi ({ROGALIK_NECK_MIN}–{ROGALIK_NECK_MAX} cm).
+          </p>
+        )}
+        {stringSizeText && (
+          <div className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] bg-[#F4EFE6] font-bold text-base text-[#161616]">
+            {stringSizeText}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function RogalikConfiguratorStep({
   formData,
   onChange,
   onToggleCharm,
   showErrors,
   stringSizeText,
-  showBeadMountSections,
+  step,
+  showNeckSection,
 }: Props) {
+  if (step === 'dodatki') {
+    const cordIndex = showNeckSection ? 2 : 1;
+    const beadsIndex = showNeckSection ? 3 : 2;
+    const charmsIndex = showNeckSection ? 4 : 3;
+
+    return (
+      <div className="space-y-2">
+        {showNeckSection && (
+          <NeckCircumferenceSection
+            formData={formData}
+            onChange={onChange}
+            showErrors={showErrors}
+            stringSizeText={stringSizeText}
+            sectionIndex={1}
+          />
+        )}
+
+        <section className={sectionClass}>
+          <SectionTitle index={cordIndex}>Wybierz kolor sznureczka</SectionTitle>
+          <OptionTiles
+            options={ROGALIK_CORD_COLOR_OPTIONS}
+            selectedId={formData.rogalikCordColor}
+            onSelect={(id) => onChange({ rogalikCordColor: id })}
+            columns={3}
+          />
+          {showErrors && !formData.rogalikCordColor && (
+            <p className="text-sm text-red-500">Wybierz kolor sznureczka.</p>
+          )}
+        </section>
+
+        <section className={sectionClass}>
+          <SectionTitle index={beadsIndex}>Wybierz koraliki</SectionTitle>
+          <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
+          <OptionTiles
+            options={ROGALIK_BEADS_OPTIONS}
+            selectedId={formData.rogalikBeads}
+            onSelect={(id) => onChange({ rogalikBeads: id })}
+            columns={3}
+          />
+          {showErrors && !formData.rogalikBeads && (
+            <p className="text-sm text-red-500">Wybierz wariant koralików.</p>
+          )}
+        </section>
+
+        <section className={sectionClass}>
+          <SectionTitle index={charmsIndex}>Dodaj charmsy</SectionTitle>
+          <p className={subtitleClass}>
+            Możesz dodać do {ROGALIK_MAX_CHARMS} charmsów i stworzyć własną, wyjątkową adresówkę
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {ROGALIK_CHARM_OPTIONS.map((charm) => {
+              const isSelected = formData.rogalikCharms.includes(charm.id);
+              const atLimit = !isSelected && formData.rogalikCharms.length >= ROGALIK_MAX_CHARMS;
+              return (
+                <button
+                  key={charm.id}
+                  type="button"
+                  disabled={atLimit}
+                  onClick={() => onToggleCharm(charm.id)}
+                  className={`rounded-none p-4 border flex flex-col items-center gap-2 transition-colors duration-300 ${
+                    atLimit
+                      ? 'opacity-40 cursor-not-allowed border-[#D6C7AE] bg-white'
+                      : isSelected
+                        ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+                        : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+                  }`}
+                >
+                  <div className="w-full aspect-square bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden flex items-center justify-center">
+                    {charm.image ? (
+                      <img src={charm.image} alt={charm.label} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] text-[#9A9288] uppercase tracking-widest">Zdjęcie wkrótce</span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-[#161616]">{charm.label}</span>
+                  <div
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                      isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+                    }`}
+                  >
+                    {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-[#7A736C]">
+            Wybrano: {formData.rogalikCharms.length} / {ROGALIK_MAX_CHARMS}
+          </p>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <section className={sectionClass}>
@@ -152,132 +309,6 @@ export function RogalikConfiguratorStep({
           <p className="text-sm text-red-500">Wybierz sposób mocowania.</p>
         )}
       </section>
-
-      {showBeadMountSections && (
-      <section className={sectionClass}>
-        <SectionTitle index={3}>Podaj obwód szyi</SectionTitle>
-        <div className="space-y-2">
-          <label className="block text-sm text-[#7A736C] font-light">
-            Wpisz obwód szyi Twojego pieska w centymetrach:
-          </label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={formData.stringLength}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!/^\d*$/.test(val)) return;
-              if (val === '') {
-                onChange({ stringLength: '' });
-                return;
-              }
-              if (val.length > 2) return;
-              const num = Number(val);
-              if (num > ROGALIK_NECK_MAX) return;
-              if (val.length === 1 && num >= 1 && num <= 9) {
-                onChange({ stringLength: val });
-                return;
-              }
-              if (num >= ROGALIK_NECK_MIN && num <= ROGALIK_NECK_MAX) {
-                onChange({ stringLength: val });
-              }
-            }}
-            placeholder="wpisz obwód szyi (16–50 cm)"
-            className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
-          />
-          {showErrors && !isValidRogalikNeckCircumference(formData.stringLength) && (
-            <p className="text-sm text-red-500">
-              Podaj obwód szyi ({ROGALIK_NECK_MIN}–{ROGALIK_NECK_MAX} cm).
-            </p>
-          )}
-          {stringSizeText && (
-            <div className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] bg-[#F4EFE6] font-bold text-base text-[#161616]">
-              {stringSizeText}
-            </div>
-          )}
-        </div>
-      </section>
-      )}
-
-      {showBeadMountSections && (
-      <section className={sectionClass}>
-        <SectionTitle index={4}>Wybierz kolor sznureczka</SectionTitle>
-        <OptionTiles
-          options={ROGALIK_CORD_COLOR_OPTIONS}
-          selectedId={formData.rogalikCordColor}
-          onSelect={(id) => onChange({ rogalikCordColor: id })}
-          columns={3}
-        />
-        {showErrors && !formData.rogalikCordColor && (
-          <p className="text-sm text-red-500">Wybierz kolor sznureczka.</p>
-        )}
-      </section>
-      )}
-
-      {showBeadMountSections && (
-      <section className={sectionClass}>
-        <SectionTitle index={5}>Wybierz koraliki</SectionTitle>
-        <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
-        <OptionTiles
-          options={ROGALIK_BEADS_OPTIONS}
-          selectedId={formData.rogalikBeads}
-          onSelect={(id) => onChange({ rogalikBeads: id })}
-          columns={3}
-        />
-        {showErrors && !formData.rogalikBeads && (
-          <p className="text-sm text-red-500">Wybierz wariant koralików.</p>
-        )}
-      </section>
-      )}
-
-      {showBeadMountSections && (
-      <section className={sectionClass}>
-        <SectionTitle index={6}>Dodaj charmsy</SectionTitle>
-        <p className={subtitleClass}>
-          Możesz dodać do {ROGALIK_MAX_CHARMS} charmsów i stworzyć własną, wyjątkową adresówkę
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {ROGALIK_CHARM_OPTIONS.map((charm) => {
-            const isSelected = formData.rogalikCharms.includes(charm.id);
-            const atLimit = !isSelected && formData.rogalikCharms.length >= ROGALIK_MAX_CHARMS;
-            return (
-              <button
-                key={charm.id}
-                type="button"
-                disabled={atLimit}
-                onClick={() => onToggleCharm(charm.id)}
-                className={`rounded-none p-4 border flex flex-col items-center gap-2 transition-colors duration-300 ${
-                  atLimit
-                    ? 'opacity-40 cursor-not-allowed border-[#D6C7AE] bg-white'
-                    : isSelected
-                      ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
-                      : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
-                }`}
-              >
-                <div className="w-full aspect-square bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden flex items-center justify-center">
-                  {charm.image ? (
-                    <img src={charm.image} alt={charm.label} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[10px] text-[#9A9288] uppercase tracking-widest">Zdjęcie wkrótce</span>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-[#161616]">{charm.label}</span>
-                <div
-                  className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                    isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
-                  }`}
-                >
-                  {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-[#7A736C]">
-          Wybrano: {formData.rogalikCharms.length} / {ROGALIK_MAX_CHARMS}
-        </p>
-      </section>
-      )}
     </div>
   );
 }

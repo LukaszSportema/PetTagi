@@ -557,7 +557,7 @@ export default function Home() {
   };
   const rogalikStepDane = {
     label: 'Dane na adresówce',
-    shortLabel: 'DANE',
+    shortLabel: 'DANE NA ADRESÓWCE',
     icon: '📝',
     thumbnail: '/miniatury/danenaadresowce.jpg',
   };
@@ -567,10 +567,18 @@ export default function Home() {
     icon: '🛒',
     thumbnail: '/miniatury/koszyk.jpg',
   };
+  const rogalikStepDodatki = {
+    id: 2,
+    label: 'Dodatki',
+    shortLabel: 'DODATKI',
+    icon: '✨',
+    thumbnail: '/miniatury/dodatkowycharms.jpg',
+  };
   const rogalikStepsBeads = [
     rogalikStepBaza,
-    { ...rogalikStepDane, id: 2 },
-    { ...rogalikStepSummary, id: 3 },
+    rogalikStepDodatki,
+    { ...rogalikStepDane, id: 3 },
+    { ...rogalikStepSummary, id: 4 },
   ];
   const rogalikStepsKarabinczyk = [
     rogalikStepBaza,
@@ -759,6 +767,7 @@ export default function Home() {
   const [showExtraKarabinersErrors, setShowExtraKarabinersErrors] = useState(false);
   const [showStickerErrors, setShowStickerErrors] = useState(false);
   const [showRogalikErrors, setShowRogalikErrors] = useState(false);
+  const [showRogalikDodatkiErrors, setShowRogalikDodatkiErrors] = useState(false);
   const orderErrors = {
     petName: !formData.petName.trim(),
     phoneNumber: isRogalikTagConfigurator
@@ -772,11 +781,12 @@ export default function Home() {
       setShowRogalikErrors(true);
       if (!formData.rogalikColor) return;
       if (!formData.rogalikMounting) return;
-      if (rogalikUsesBeadMounting) {
-        if (!isValidRogalikNeckCircumference(formData.stringLength)) return;
-        if (!formData.rogalikCordColor) return;
-        if (!formData.rogalikBeads) return;
-      }
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'dodatki') {
+      setShowRogalikDodatkiErrors(true);
+      if (!isValidRogalikNeckCircumference(formData.stringLength)) return;
+      if (!formData.rogalikCordColor) return;
+      if (!formData.rogalikBeads) return;
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier') {
       setShowExtraKarabinersErrors(true);
@@ -1420,6 +1430,7 @@ export default function Home() {
     setShowExtraKarabinersErrors(false);
     setShowStickerErrors(false);
     setShowRogalikErrors(false);
+    setShowRogalikDodatkiErrors(false);
     setCurrentStep(1);
     setShowAddedToCart(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2785,7 +2796,20 @@ export default function Home() {
                           onToggleCharm={toggleRogalikCharm}
                           showErrors={showRogalikErrors}
                           stringSizeText={stringSizeText ?? ''}
-                          showBeadMountSections={rogalikUsesBeadMounting}
+                          step="baza"
+                          showNeckSection={false}
+                        />
+                      )}
+
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'dodatki' && (
+                        <RogalikConfiguratorStep
+                          formData={formData}
+                          onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+                          onToggleCharm={toggleRogalikCharm}
+                          showErrors={showRogalikDodatkiErrors}
+                          stringSizeText={stringSizeText ?? ''}
+                          step="dodatki"
+                          showNeckSection={rogalikUsesBeadMounting}
                         />
                       )}
 
