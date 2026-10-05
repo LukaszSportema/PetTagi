@@ -1,5 +1,15 @@
-import { CLASSIC_TAG_PRODUCT, productLineTitle } from "@/lib/catalog"
+import { CLASSIC_TAG_PRODUCT, productLineTitle, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel } from "@/lib/catalog-options"
+import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
+import {
+  ROGALIK_BEADS_OPTIONS,
+  ROGALIK_CHARM_OPTIONS,
+  ROGALIK_COLOR_OPTIONS,
+  ROGALIK_CORD_COLOR_OPTIONS,
+  ROGALIK_MOUNTING_OPTIONS,
+  rogalikMountingUsesBeads,
+  rogalikOptionLabel,
+} from "@/lib/rogalik-options"
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
@@ -39,12 +49,21 @@ export const ringColorLabel = (ringColor: string) => {
   return ringColor
 }
 
-export type OrderFrameBaseSource = Pick<OrderItemRecord, "ringColor" | "baseColor"> & {
+export type OrderFrameBaseSource = Pick<OrderItemRecord, "ringColor" | "baseColor" | "productSlug"> & {
   quantity?: number
 }
 
+export const isRogalikOrderItem = (
+  item: Pick<OrderItemRecord, "productSlug" | "ringColor">,
+) =>
+  item.productSlug === ROGALIK_TAG_PRODUCT.slug || item.ringColor === ROGALIK_ORDER_RING_COLOR
+
 export const orderItemFrameBaseLabel = (item: OrderFrameBaseSource) => {
   const suffix = item.quantity && item.quantity > 1 ? ` ×${item.quantity}` : ""
+  if (isRogalikOrderItem(item)) {
+    const color = rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, item.baseColor)
+    return `Rogalik · ${color}${suffix}`
+  }
   return `${ringColorLabel(item.ringColor)} · ${optionLabel(BASE_OPTIONS, item.baseColor)}${suffix}`
 }
 
@@ -103,6 +122,7 @@ export type OrderOption = { label: string; values: string[] }
 
 export type OrderItemOptionsSource = Pick<
   OrderItemRecord,
+  | "productSlug"
   | "ringColor"
   | "baseColor"
   | "baseCharms"
@@ -120,6 +140,10 @@ export type OrderItemOptionsSource = Pick<
   | "dialCodeInfo"
   | "charmMounting"
   | "nameLayout"
+  | "rogalikMounting"
+  | "rogalikCordColor"
+  | "rogalikBeads"
+  | "rogalikCharms"
 >
 
 const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) => {
@@ -127,7 +151,67 @@ const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) => {
   return numberOnTag.replace(/^\+\d{1,4}\s*/, "").trim()
 }
 
+const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
+  const options: OrderOption[] = []
+  const mounting = item.rogalikMounting ?? ""
+  const usesBeads = rogalikMountingUsesBeads(mounting)
+
+  options.push({
+    label: "Kolor rogalika",
+    values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, item.baseColor)],
+  })
+  if (mounting) {
+    options.push({
+      label: "Mocowanie",
+      values: [rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, mounting)],
+    })
+  }
+
+  if (usesBeads) {
+    if (item.dogNeck) {
+      options.push({ label: "Obwód szyi", values: [item.dogNeck] })
+    }
+    if (item.rogalikCordColor) {
+      options.push({
+        label: "Kolor sznureczka",
+        values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, item.rogalikCordColor)],
+      })
+    }
+    if (item.rogalikBeads) {
+      options.push({
+        label: "Koraliki",
+        values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, item.rogalikBeads)],
+      })
+    }
+    if (item.rogalikCharms.length > 0) {
+      options.push({
+        label: "Charmsy",
+        values: item.rogalikCharms.map((id) => rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id)),
+      })
+    }
+  } else {
+    if (item.baseCarabiner && item.baseCarabiner !== "-") {
+      options.push({ label: "Darmowy karabińczyk", values: [optionTitle(item.baseCarabiner)] })
+    }
+    if (item.extraCarabiner.length > 0) {
+      options.push({
+        label: "Dodatkowe karabińczyki",
+        values: item.extraCarabiner.map(optionTitle),
+      })
+    }
+  }
+
+  options.push({ label: "Imię pupila", values: [item.dogName] })
+  options.push({ label: "Nr telefonu", values: [item.numberOnTag] })
+
+  return options
+}
+
 export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
+  if (isRogalikOrderItem(item)) {
+    return rogalikOrderItemOptions(item)
+  }
+
   const options: OrderOption[] = []
 
   if (item.ringColor && item.ringColor !== "glow") {

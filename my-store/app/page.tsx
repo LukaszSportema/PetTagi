@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'r
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { isPolishMobilePhone } from '@/lib/phone';
 import { createOrder } from './actions/orders';
+import { cartItemToCreateOrderItem } from '@/lib/order-from-cart';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import FurgonetkaMap from './FurgonetkaMap';
 import {
@@ -19,10 +20,29 @@ import {
   CATALOG_PRODUCTS,
   CLASSIC_TAG_PRODUCT,
   GLOW_TAG_PRODUCT,
+  ROGALIK_TAG_PRODUCT,
   getCatalogProduct,
   productLineTitle,
   type CatalogMedia,
 } from '@/lib/catalog';
+import {
+  ROGALIK_BASE_PRICE,
+  rogalikBeadsUnitPrice,
+  rogalikCordUnitPrice,
+  rogalikStringSizeFromNeckCm,
+  isValidRogalikNeckCircumference,
+  isValidRogalikPhoneNumber,
+  ROGALIK_BEADS_OPTIONS,
+  ROGALIK_CHARM_OPTIONS,
+  ROGALIK_COLOR_OPTIONS,
+  ROGALIK_CORD_COLOR_OPTIONS,
+  ROGALIK_MAX_CHARMS,
+  ROGALIK_MOUNTING_OPTIONS,
+  rogalikFlowStepAt,
+  rogalikMountingUsesBeads,
+  rogalikOptionLabel,
+} from '@/lib/rogalik-options';
+import { RogalikConfiguratorStep } from './RogalikConfiguratorStep';
 import {
   baseTagPrice,
   classicStringUnitPrice,
@@ -74,6 +94,11 @@ type FormDataState = {
   phoneCode: string;
   phoneNumber: string;
   includePhoneCode: string;
+  rogalikColor: string;
+  rogalikMounting: string;
+  rogalikCordColor: string;
+  rogalikBeads: string;
+  rogalikCharms: string[];
 };
 
 type CartItem = {
@@ -159,11 +184,37 @@ const initialFormData: FormDataState = {
   phoneCode: '+48',
   phoneNumber: '',
   includePhoneCode: 'nie',
+  rogalikColor: '',
+  rogalikMounting: '',
+  rogalikCordColor: '',
+  rogalikBeads: '',
+  rogalikCharms: [],
 };
 
 const formDataForProduct = (slug: string): FormDataState => {
   if (slug === GLOW_TAG_PRODUCT.slug) {
     return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1', glowTextColor: 'zloty', wantSticker: 'nie', stickerOption: '' };
+  }
+  if (slug === ROGALIK_TAG_PRODUCT.slug) {
+    return {
+      ...initialFormData,
+      wantString: 'tak',
+      wantExtraCharms: 'nie',
+      extraCharms: [],
+      wantExtraKarabiners: 'nie',
+      extraKarabiners: [],
+      wantStopers: 'nie',
+      extraStopers: [],
+      wantSticker: 'nie',
+      stickerOption: '',
+      includePhoneCode: 'nie',
+      phoneCode: '+48',
+      rogalikColor: '',
+      rogalikMounting: '',
+      rogalikCordColor: '',
+      rogalikBeads: '',
+      rogalikCharms: [],
+    };
   }
   return initialFormData;
 };
@@ -370,13 +421,20 @@ export default function Home() {
   const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
   const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
   const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
+  const isRogalikTagConfigurator = activeProduct.configuratorId === 'rogalik-tag';
+  const rogalikUsesBeadMounting = rogalikMountingUsesBeads(formData.rogalikMounting);
+  const rogalikFlowStep = isRogalikTagConfigurator
+    ? rogalikFlowStepAt(formData.rogalikMounting, currentStep)
+    : null;
   const skipsGraphicsStep = isGlowTagConfigurator || formData.ringColor === 'kwiat';
   const skipsStopersStep = (CONNECTING_RING_KARABINER_IDS as readonly string[]).includes(
     formData.karabinerOption,
   );
 
   // --- LOGIKA OBLICZANIA CENY ---
-  const basePrice = baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
+  const basePrice = isRogalikTagConfigurator
+    ? ROGALIK_BASE_PRICE
+    : baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
   const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
   const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
   const extraStopersCost = formData.wantStopers === 'tak' ? formData.extraStopers.length * STOPPER_PRICE : 0;
@@ -385,7 +443,9 @@ export default function Home() {
     : formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
   const dialCodeCost = formData.includePhoneCode === 'tak' ? DIAL_CODE_PRICE : 0;
   
-  const stringSize = stringSizeFromNeckCm(formData.stringLength);
+  const stringSize = isRogalikTagConfigurator
+    ? rogalikStringSizeFromNeckCm(formData.stringLength)
+    : stringSizeFromNeckCm(formData.stringLength);
   const stringSizeText = stringSizeLabel(stringSize);
   const premiumStringPrice = premiumStringUnitPrice(stringSize);
   const classicStringPrice = classicStringUnitPrice(stringSize);
@@ -400,7 +460,30 @@ export default function Home() {
     ? formData.glowStrings.length * glowStringPrice
     : 0;
 
-  const totalPrice = basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + glowStringsCost + dialCodeCost;
+  const rogalikCharmsCost =
+    isRogalikTagConfigurator && rogalikUsesBeadMounting
+      ? formData.rogalikCharms.length * EXTRA_CHARM_PRICE
+      : 0;
+  const rogalikCordPrice =
+    isRogalikTagConfigurator && rogalikUsesBeadMounting && formData.rogalikCordColor
+      ? rogalikCordUnitPrice(stringSize)
+      : null;
+  const rogalikCordCost = rogalikCordPrice ?? 0;
+  const rogalikBeadsPrice =
+    isRogalikTagConfigurator && rogalikUsesBeadMounting && formData.rogalikBeads
+      ? rogalikBeadsUnitPrice(stringSize)
+      : null;
+  const rogalikBeadsCost = rogalikBeadsPrice ?? 0;
+  const rogalikExtraKarabinersCost =
+    isRogalikTagConfigurator && !rogalikUsesBeadMounting ? extraKarabinersCost : 0;
+  const totalPrice = isRogalikTagConfigurator
+    ? ROGALIK_BASE_PRICE +
+      rogalikCordCost +
+      rogalikBeadsCost +
+      rogalikCharmsCost +
+      rogalikExtraKarabinersCost +
+      dialCodeCost
+    : basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + glowStringsCost + dialCodeCost;
 
   const countSelectedStrings = (data: Pick<FormDataState, 'wantString' | 'premiumStrings' | 'classicStrings' | 'glowStrings'>) =>
     data.wantString === 'tak'
@@ -449,7 +532,57 @@ export default function Home() {
   const goToTab = (tab: string) => {
     setActiveTab(tab);
   };
-  const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator;
+  const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator || isRogalikTagConfigurator;
+
+  const rogalikStepBaza = {
+    id: 1,
+    label: 'Baza',
+    shortLabel: 'BAZA',
+    icon: '🎨',
+    thumbnail: '/miniatury/baza.jpg',
+  };
+  const rogalikStepFreeKarabiner = {
+    id: 2,
+    label: 'Darmowy karabińczyk',
+    shortLabel: 'DARMOWY KARABIŃCZYK',
+    icon: '✍️',
+    thumbnail: '/miniatury/darmowykarabinczyk.jpg',
+  };
+  const rogalikStepExtraKarabiners = {
+    id: 3,
+    label: 'Dodatkowe karabińczyki. Wygoda na codzień!',
+    shortLabel: 'DODATKOWE KARABIŃCZYKI',
+    icon: '✨',
+    thumbnail: '/miniatury/dodatkowykarabinczyk.jpg',
+  };
+  const rogalikStepDane = {
+    label: 'Dane na adresówce',
+    shortLabel: 'DANE',
+    icon: '📝',
+    thumbnail: '/miniatury/danenaadresowce.jpg',
+  };
+  const rogalikStepSummary = {
+    label: 'Podsumowanie zamówienia',
+    shortLabel: 'PODSUMOWANIE',
+    icon: '🛒',
+    thumbnail: '/miniatury/koszyk.jpg',
+  };
+  const rogalikStepsBeads = [
+    rogalikStepBaza,
+    { ...rogalikStepDane, id: 2 },
+    { ...rogalikStepSummary, id: 3 },
+  ];
+  const rogalikStepsKarabinczyk = [
+    rogalikStepBaza,
+    rogalikStepFreeKarabiner,
+    rogalikStepExtraKarabiners,
+    { ...rogalikStepDane, id: 4 },
+    { ...rogalikStepSummary, id: 5 },
+  ];
+  const rogalikStepsInfo =
+    formData.rogalikMounting !== '' && !rogalikUsesBeadMounting
+      ? rogalikStepsKarabinczyk
+      : rogalikStepsBeads;
 
   const allStepsInfo = [
     { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/oprawa.jpg' },
@@ -471,15 +604,20 @@ export default function Home() {
     ...(skipsStopersStep ? [8] : []),
   ];
   const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
-  const stepsInfo = visibleClassicSteps.map((step, index) => {
+  const classicStepsInfo = visibleClassicSteps.map((step, index) => {
     const normalizedStep = { ...step, id: index + 1 };
     if (isGlowTagConfigurator && step.id === 2) {
       return { ...normalizedStep, label: 'Kolor' };
     }
     return normalizedStep;
   });
+  const stepsInfo = isRogalikTagConfigurator ? rogalikStepsInfo : classicStepsInfo;
   const totalSteps = stepsInfo.length;
-  const contentStep = visibleClassicSteps[currentStep - 1]?.id ?? currentStep;
+  /** Mało kroków (np. rogalik): bez rozciągania na całą szerokość paska. */
+  const compactStepsBar = isRogalikTagConfigurator ? totalSteps <= 5 : totalSteps <= 4;
+  const contentStep = isRogalikTagConfigurator
+    ? currentStep
+    : (visibleClassicSteps[currentStep - 1]?.id ?? currentStep);
 
   const configuratorAnalytics = useConfiguratorAnalytics({
     enabled: activeTab === 'configurator' && isTagConfigurator,
@@ -620,13 +758,38 @@ export default function Home() {
   const [showExtraCharmsErrors, setShowExtraCharmsErrors] = useState(false);
   const [showExtraKarabinersErrors, setShowExtraKarabinersErrors] = useState(false);
   const [showStickerErrors, setShowStickerErrors] = useState(false);
+  const [showRogalikErrors, setShowRogalikErrors] = useState(false);
   const orderErrors = {
     petName: !formData.petName.trim(),
-    phoneNumber: !isValidPhoneNumber(formData.phoneCode, formData.phoneNumber),
+    phoneNumber: isRogalikTagConfigurator
+      ? !isValidRogalikPhoneNumber(formData.phoneNumber)
+      : !isValidPhoneNumber(formData.phoneCode, formData.phoneNumber),
   };
   const isOrderValid = !Object.values(orderErrors).some(Boolean);
 
   const nextStep = () => {
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'baza') {
+      setShowRogalikErrors(true);
+      if (!formData.rogalikColor) return;
+      if (!formData.rogalikMounting) return;
+      if (rogalikUsesBeadMounting) {
+        if (!isValidRogalikNeckCircumference(formData.stringLength)) return;
+        if (!formData.rogalikCordColor) return;
+        if (!formData.rogalikBeads) return;
+      }
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier') {
+      setShowExtraKarabinersErrors(true);
+      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) return;
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'dane') {
+      setShowOrderErrors(true);
+      if (!isOrderValid) return;
+    }
+    if (isRogalikTagConfigurator) {
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+      return;
+    }
     if (contentStep === 4) {
       setShowExtraCharmsErrors(true);
       if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) return;
@@ -1060,7 +1223,67 @@ export default function Home() {
     </div>
   );
 
+  const toggleRogalikCharm = (id: string) => {
+    setFormData((prev) => {
+      const exists = prev.rogalikCharms.includes(id);
+      if (exists) {
+        return { ...prev, rogalikCharms: prev.rogalikCharms.filter((item) => item !== id) };
+      }
+      if (prev.rogalikCharms.length >= ROGALIK_MAX_CHARMS) return prev;
+      return { ...prev, rogalikCharms: [...prev.rogalikCharms, id] };
+    });
+  };
+
   const buildCartItem = (): CartItem => {
+    if (isRogalikTagConfigurator) {
+      const options: { label: string; values: string[] }[] = [
+        { label: 'Kolor rogalika', values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, formData.rogalikColor)] },
+        { label: 'Mocowanie', values: [rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, formData.rogalikMounting)] },
+      ];
+      if (rogalikUsesBeadMounting) {
+        options.push(
+          {
+            label: 'Obwód szyi',
+            values: [stringSizeText ? `${formData.stringLength} cm (${stringSizeText})` : `${formData.stringLength} cm`],
+          },
+          { label: 'Kolor sznureczka', values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, formData.rogalikCordColor)] },
+          { label: 'Koraliki', values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, formData.rogalikBeads)] },
+        );
+        if (formData.rogalikCharms.length > 0) {
+          options.push({
+            label: 'Charmsy',
+            values: formData.rogalikCharms.map((id) => rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id)),
+          });
+        }
+      } else {
+        options.push({
+          label: 'Darmowy karabińczyk',
+          values: [findTitle(karabinersList, formData.karabinerOption, `Opcja nr ${formData.karabinerOption}`)],
+        });
+        if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length > 0) {
+          options.push({
+            label: 'Dodatkowe karabińczyki',
+            values: formData.extraKarabiners.map((id) => findTitle(karabinersList, id, id)),
+          });
+        }
+      }
+      options.push({ label: 'Imię pupila', values: [formData.petName] });
+      options.push({
+        label: 'Nr telefonu',
+        values: [formData.phoneNumber],
+      });
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        productSlug: activeProduct.slug,
+        productName: activeProduct.name,
+        quantity: 1,
+        price: totalPrice,
+        image: '/rogalik/rogalikglowna.jpg',
+        options,
+        config: { ...formData },
+      };
+    }
+
     const bases = selectedBases;
     const options: { label: string; values: string[] }[] = [];
     if (!isGlowTagConfigurator) {
@@ -1196,6 +1419,7 @@ export default function Home() {
     setShowExtraCharmsErrors(false);
     setShowExtraKarabinersErrors(false);
     setShowStickerErrors(false);
+    setShowRogalikErrors(false);
     setCurrentStep(1);
     setShowAddedToCart(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1321,43 +1545,16 @@ export default function Home() {
       fastDelivery: checkoutData.fastDelivery,
       fastDeliveryCost,
       total: checkoutTotal,
-      items: cartItems.map((item) => {
-        const config = item.config;
-        return {
+      items: cartItems.map((item) =>
+        cartItemToCreateOrderItem({
           quantity: item.quantity,
-          unitPrice: item.price,
-          imageUrl: item.image,
+          price: item.price,
+          image: item.image,
           productSlug: item.productSlug,
           productName: item.productName,
-          ringColor: config.ringColor,
-          baseColor: config.baseOption,
-          baseCharms: config.charmOption,
-          extraCharms: config.wantExtraCharms === 'tak' ? config.extraCharms : [],
-          baseCarabiner: config.karabinerOption,
-          extraCarabiner: config.wantExtraKarabiners === 'tak' ? config.extraKarabiners : [],
-          stringPremium: config.wantString === 'tak' ? config.premiumStrings : [],
-          stringClassic: config.wantString === 'tak' ? config.classicStrings : [],
-          stringGlow: config.wantString === 'tak' ? config.glowStrings : [],
-          dogNeck: config.wantString === 'tak' && config.stringLength ? `${config.stringLength} cm` : null,
-          stoppers: config.wantStopers === 'tak' && config.extraStopers.length > 0
-            ? config.extraStopers.join(',')
-            : null,
-          sticker: (() => {
-            const product = getCatalogProduct(item.productSlug);
-            const skipsSticker = product?.configuratorId === 'glow-tag' || config.ringColor === 'kwiat';
-            return skipsSticker ? null : config.wantSticker === 'tak' ? config.stickerOption || null : null;
-          })(),
-          dogName: config.petName,
-          numberOnTag:
-            config.includePhoneCode === 'tak'
-              ? `${config.phoneCode} ${formatPhoneGroups(config.phoneNumber, config.phoneCode)}`
-              : formatPhoneGroups(config.phoneNumber, config.phoneCode),
-          dialCodeInfo: config.includePhoneCode === 'tak',
-          charmMounting: config.charmMounting,
-          nameLayout:
-            config.petName.trim().length > 6 ? 'imie6plus' : config.nameLayout,
-        };
-      }),
+          config: item.config,
+        }),
+      ),
     });
     setIsPlacingOrder(false);
 
@@ -1543,6 +1740,85 @@ export default function Home() {
     </>
   );
 
+  const rogalikSummaryLines = (
+    <>
+      <div className="space-y-3 text-sm text-[#7A736C]">
+        <div className="flex justify-between items-start gap-4">
+          <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
+          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{ROGALIK_BASE_PRICE} zł</span>
+        </div>
+        {formData.rogalikColor && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Kolor rogalika</span>
+            <span className="shrink-0 text-right">{rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, formData.rogalikColor)}</span>
+          </div>
+        )}
+        {formData.rogalikMounting && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Mocowanie</span>
+            <span className="shrink-0 text-right">{rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, formData.rogalikMounting)}</span>
+          </div>
+        )}
+        {rogalikUsesBeadMounting && formData.rogalikCordColor && rogalikCordPrice !== null && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">
+              Sznureczek
+              {stringSizeText ? ` (${stringSizeText})` : ''}
+            </span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{rogalikCordPrice} zł</span>
+          </div>
+        )}
+        {rogalikUsesBeadMounting && formData.rogalikBeads && rogalikBeadsPrice !== null && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">
+              Koraliki
+              {stringSizeText ? ` (${stringSizeText})` : ''}
+            </span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{rogalikBeadsPrice} zł</span>
+          </div>
+        )}
+        {rogalikUsesBeadMounting && formData.rogalikCharms.length > 0 && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Charmsy ×{formData.rogalikCharms.length}</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              +{formData.rogalikCharms.length * EXTRA_CHARM_PRICE} zł ({EXTRA_CHARM_PRICE} zł/szt)
+            </span>
+          </div>
+        )}
+        {!rogalikUsesBeadMounting && formData.karabinerOption && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Darmowy karabińczyk</span>
+            <span className="shrink-0 text-right">
+              {findTitle(karabinersList, formData.karabinerOption, formData.karabinerOption)}
+            </span>
+          </div>
+        )}
+        {!rogalikUsesBeadMounting && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length > 0 && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Dodatkowe karabińczyki ×{formData.extraKarabiners.length}</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              +{formData.extraKarabiners.length * EXTRA_KARABINER_PRICE} zł ({EXTRA_KARABINER_PRICE} zł/szt)
+            </span>
+          </div>
+        )}
+        {formData.includePhoneCode === 'tak' && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Numer kierunkowy na adresówce</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{DIAL_CODE_PRICE} zł</span>
+          </div>
+        )}
+      </div>
+      <div className="border-t border-[#D6C7AE] pt-4">
+        <div className="flex justify-between items-baseline gap-4">
+          <span className="text-base font-serif font-bold text-[#161616]">Cena całkowita:</span>
+          <span className="text-2xl font-bold text-[#161616] shrink-0 text-right tabular-nums">{totalPrice} zł</span>
+        </div>
+      </div>
+    </>
+  );
+
+  const activeConfiguratorSummary = isRogalikTagConfigurator ? rogalikSummaryLines : summaryLines;
+
   useLayoutEffect(() => {
     const el = topStackRef.current;
     if (!el) return;
@@ -1685,6 +1961,9 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            <p className="text-xs text-[#7A736C] font-light leading-relaxed pt-1 border-t border-[#D6C7AE]">
+              *Informacja: Wybrany sposób mocowania traktujemy jako preferencję klienta. Zastrzegamy sobie prawo do zmiany techniki montażu ze względów estetycznych lub praktycznych, aby zapewnić najwyższą jakość i trwałość wyrobu.
+            </p>
           </div>
         </div>
       )}
@@ -1763,20 +2042,38 @@ export default function Home() {
         {activeTab === 'configurator' && isTagConfigurator && (
           <div className="bg-white border-b border-[#D6C7AE] py-2.5 shadow-xs">
             <div className="px-2 md:px-4 flex items-center gap-2 md:gap-4">
-              {renderBackButton()}
+              {!compactStepsBar && renderBackButton()}
               <div className="flex-1 min-w-0">
                 <div
                   ref={stepsScrollRef}
-                  className="overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1.5"
+                  className={
+                    compactStepsBar
+                      ? 'py-1.5 overflow-hidden'
+                      : 'overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1.5'
+                  }
                 >
-                  <div className="flex items-center gap-3 md:gap-0 md:justify-between w-max md:w-full mb-1.5 px-1 pt-0.5">
+                  <div
+                    className={
+                      compactStepsBar
+                        ? 'flex items-center justify-center gap-2 sm:gap-3 w-full mb-1.5 px-1 pt-0.5'
+                        : 'flex items-center gap-3 md:gap-0 md:justify-between w-max md:w-full mb-1.5 px-1 pt-0.5'
+                    }
+                  >
+                    {compactStepsBar && renderBackButton()}
+                    <div
+                      className={
+                        compactStepsBar
+                          ? 'flex items-start gap-7 sm:gap-10 md:gap-14'
+                          : 'contents'
+                      }
+                    >
                     {stepsInfo.map((step) => (
                       <div
                         key={step.id}
                         data-step={step.id}
-                        className={`flex flex-col items-center gap-0.5 shrink-0 w-9 md:w-auto transition-opacity duration-300 ${
-                          step.id === currentStep ? 'opacity-100' : 'opacity-40'
-                        }`}
+                        className={`flex flex-col items-center gap-0.5 transition-opacity duration-300 ${
+                          compactStepsBar ? 'shrink-0 w-[4.25rem] sm:w-[4.75rem] md:w-[5.25rem]' : 'shrink-0 w-9 md:w-auto'
+                        } ${step.id === currentStep ? 'opacity-100' : 'opacity-40'}`}
                       >
                         <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm border-2 overflow-hidden shrink-0 ${
                           step.id === currentStep ? 'border-[#161616] bg-[#F4EFE6]' : 'border-[#D6C7AE] bg-white'
@@ -1787,9 +2084,16 @@ export default function Home() {
                             step.icon
                           )}
                         </div>
-                        <span className="text-[7px] md:text-[8px] font-medium uppercase tracking-wider hidden md:block">{'shortLabel' in step && step.shortLabel ? step.shortLabel : step.label}</span>
+                        <span
+                          className={`text-[7px] md:text-[8px] font-medium uppercase tracking-wider text-center leading-tight ${
+                            compactStepsBar ? 'block' : 'hidden md:block'
+                          }`}
+                        >
+                          {'shortLabel' in step && step.shortLabel ? step.shortLabel : step.label}
+                        </span>
                       </div>
                     ))}
+                    </div>
                   </div>
                 </div>
                 <div className="h-1 bg-[#D6C7AE] rounded-full overflow-hidden">
@@ -1799,7 +2103,15 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <div className={currentStep < totalSteps ? 'lg:hidden' : undefined}>
+              <div
+                className={
+                  currentStep < totalSteps
+                    ? compactStepsBar
+                      ? 'lg:invisible lg:pointer-events-none'
+                      : 'lg:hidden'
+                    : undefined
+                }
+              >
                 {renderNextButton()}
               </div>
             </div>
@@ -1855,7 +2167,12 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20">
               {CATALOG_PRODUCTS.map((product) => (
-                <div key={product.slug} className="space-y-6 text-center">
+                <div
+                  key={product.slug}
+                  className={`space-y-6 text-center ${
+                    product.slug === GLOW_TAG_PRODUCT.slug ? 'md:col-span-2 md:max-w-md md:mx-auto md:w-full' : ''
+                  }`}
+                >
                   <ProductGallery items={product.gallery} alt={product.name} />
                   <h3 className="text-2xl md:text-3xl font-serif font-light">{product.name}</h3>
                   <p className="text-sm text-[#7A736C] font-light leading-relaxed">{product.description}</p>
@@ -2443,7 +2760,81 @@ export default function Home() {
                     </h2>
                     
                     <div className="pt-4">
-                      {contentStep === 1 && (
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'baza' && (
+                        <RogalikConfiguratorStep
+                          formData={formData}
+                          onChange={(patch) =>
+                            setFormData((prev) => {
+                              const next = { ...prev, ...patch };
+                              if (!('rogalikMounting' in patch)) return next;
+                              if (patch.rogalikMounting === 'koraliki') {
+                                return { ...next, wantExtraKarabiners: 'nie', extraKarabiners: [] };
+                              }
+                              if (patch.rogalikMounting && patch.rogalikMounting !== 'koraliki') {
+                                return {
+                                  ...next,
+                                  stringLength: '',
+                                  rogalikCordColor: '',
+                                  rogalikBeads: '',
+                                  rogalikCharms: [],
+                                };
+                              }
+                              return next;
+                            })
+                          }
+                          onToggleCharm={toggleRogalikCharm}
+                          showErrors={showRogalikErrors}
+                          stringSizeText={stringSizeText}
+                          showBeadMountSections={rogalikUsesBeadMounting}
+                        />
+                      )}
+
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'free-karabinier' && (
+                        <div className="space-y-4">
+                          <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk do mocowania:</p>
+                          {renderFreeKarabinerGrid()}
+                        </div>
+                      )}
+
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier' && (
+                        <div className="space-y-6">
+                          <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {[
+                              { id: 'tak', label: 'Tak' },
+                              { id: 'nie', label: 'Nie' },
+                            ].map((option) => (
+                              <div
+                                key={option.id}
+                                onClick={() => setFormData({
+                                  ...formData,
+                                  wantExtraKarabiners: option.id,
+                                  extraKarabiners: option.id === 'nie' ? [] : formData.extraKarabiners,
+                                })}
+                                className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
+                                  formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                }`}
+                              >
+                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                  {formData.wantExtraKarabiners === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {showExtraKarabinersErrors && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0 && (
+                            <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
+                          )}
+                          {formData.wantExtraKarabiners === 'tak' && (
+                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
+                              <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
+                              {renderExtraKarabinerGrid()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {!isRogalikTagConfigurator && contentStep === 1 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz kolor oprawy, który najlepiej podkreśli styl Twojego pupila:</p>
                           <div className={imageGridClass(ringsList.length)}>
@@ -2481,7 +2872,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 2 && (
+                      {!isRogalikTagConfigurator && contentStep === 2 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">
                             {isGlowTagConfigurator ? (
@@ -2536,7 +2927,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 12 && (
+                      {!isRogalikTagConfigurator && contentStep === 12 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz kolor napisu</p>
                           <div className={imageGridClass(GLOW_TEXT_OPTIONS.length)}>
@@ -2564,7 +2955,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 3 && (
+                      {!isRogalikTagConfigurator && contentStep === 3 && (
                         <div className="space-y-6">
                           <div className="space-y-2">
                             <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
@@ -2585,7 +2976,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 4 && (
+                      {!isRogalikTagConfigurator && contentStep === 4 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Dodaj kolejne zawieszki, aby adresówka była jeszcze bardziej stylowa i przyciągała wzrok na spacerach</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2632,14 +3023,14 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 5 && (
+                      {!isRogalikTagConfigurator && contentStep === 5 && (
                         <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk do mocowania:</p>
                           {renderFreeKarabinerGrid()}
                         </div>
                       )}
 
-                      {contentStep === 6 && (
+                      {!isRogalikTagConfigurator && contentStep === 6 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2679,7 +3070,7 @@ export default function Home() {
                       )}
 
                       {/* KROK 7: Sznurek */}
-                      {contentStep === 7 && (
+                      {!isRogalikTagConfigurator && contentStep === 7 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Dodaj dedykowany, lekki i trwały sznurek na szyję, aby adresówka była zawsze na swoim miejscu (nawet bez obroży):</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2860,7 +3251,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 8 && (
+                      {!isRogalikTagConfigurator && contentStep === 8 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Dodaj stopery, aby precyzyjnie regulować długość sznurka i zapewnić psu maksymalny komfort:</p>
 
@@ -2973,7 +3364,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 9 && (
+                      {!isRogalikTagConfigurator && contentStep === 9 && (
                         <div className="space-y-6">
                           <p className="font-bold text-base text-[#161616]">Wybierz ulubioną grafikę pieska i stwórz wyjątkową adresówkę dla swojego pupila.</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3030,9 +3421,9 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 11 && (
+                      {((isRogalikTagConfigurator && rogalikFlowStep === 'podsumowanie') || contentStep === 11) && (
                         <div className="space-y-6">
-                          {summaryLines}
+                          {activeConfiguratorSummary}
                           <p className="text-xs text-[#7A736C] font-light leading-relaxed">
                             Zgodnie z Regulaminem sklepu produkt personalizowany nie podlega zwrotowi.
                           </p>
@@ -3050,7 +3441,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {contentStep === 10 && (
+                      {((isRogalikTagConfigurator && rogalikFlowStep === 'dane') || contentStep === 10) && (
                         <div className="space-y-5">
                           <div className="space-y-2">
                             <label className="block font-bold text-base text-[#161616]">Imię Twojego psa</label>
@@ -3064,7 +3455,9 @@ export default function Home() {
                                 setFormData((prev) => ({
                                   ...prev,
                                   petName: value,
-                                  nameLayout: nameLength > 6 ? 'imie6plus' : prev.nameLayout,
+                                  ...(isRogalikTagConfigurator
+                                    ? {}
+                                    : { nameLayout: nameLength > 6 ? 'imie6plus' : prev.nameLayout }),
                                 }));
                               }}
                               placeholder="Wpisz imię"
@@ -3075,6 +3468,7 @@ export default function Home() {
                             )}
                           </div>
 
+                          {!isRogalikTagConfigurator && (
                           <div className="space-y-3 flex flex-col items-center text-center">
                             <label className="block font-bold text-base text-[#161616]">Układ liter na adresówce</label>
                             {formData.petName.trim().length > 6 ? (
@@ -3114,9 +3508,23 @@ export default function Home() {
                               </div>
                             )}
                           </div>
+                          )}
 
                           <div className="space-y-2">
                             <label className="block font-bold text-base text-[#161616]">Numer telefonu</label>
+                            {isRogalikTagConfigurator ? (
+                              <input
+                                type="tel"
+                                inputMode="numeric"
+                                value={formData.phoneNumber}
+                                onChange={(e) => {
+                                  const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                  if (isDigitsOnly(digits)) updateFormField('phoneNumber', digits);
+                                }}
+                                placeholder="Numer telefonu bez nr kierunkowego (9 cyfr)"
+                                className={`w-full p-3 rounded-xl border bg-white text-base md:text-sm focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.phoneNumber ? 'border-red-400' : 'border-[#D6C7AE]'}`}
+                              />
+                            ) : (
                             <div className="flex flex-col sm:flex-row gap-3">
                               <select
                                 value={formData.phoneCode}
@@ -3139,17 +3547,21 @@ export default function Home() {
                                 className={`flex-1 p-3 rounded-xl border bg-white text-base md:text-sm focus:outline-none focus:border-[#161616] ${showOrderErrors && orderErrors.phoneNumber ? 'border-red-400' : 'border-[#D6C7AE]'}`}
                               />
                             </div>
+                            )}
                             {showOrderErrors && orderErrors.phoneNumber && (
                               <p className="text-xs text-red-500">
                                 {!formData.phoneNumber.trim()
                                   ? 'Wpisz numer telefonu (tylko cyfry).'
-                                  : formData.phoneCode === '+48'
+                                  : isRogalikTagConfigurator
+                                    ? 'Podaj poprawny numer (9 cyfr, bez zera na początku).'
+                                    : formData.phoneCode === '+48'
                                     ? 'Podaj poprawny numer telefonu (9 cyfr, bez zera na początku).'
                                     : 'Podaj poprawny numer telefonu dla Twojego kraju.'}
                               </p>
                             )}
                           </div>
 
+                          {!isRogalikTagConfigurator && (
                           <div
                             onClick={() => updateFormField('includePhoneCode', formData.includePhoneCode === 'tak' ? 'nie' : 'tak')}
                                 className={`cursor-pointer rounded-none p-4 border transition-colors duration-300 flex items-center justify-between ${
@@ -3164,6 +3576,7 @@ export default function Home() {
                               {formData.includePhoneCode === 'tak' && <span className="text-white text-xs font-bold">✓</span>}
                             </div>
                           </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -3181,7 +3594,7 @@ export default function Home() {
                   <h3 className="font-serif font-light text-2xl text-[#161616] border-b border-[#D6C7AE] pb-4">
                     Twoje podsumowanie
                   </h3>
-                  {summaryLines}
+                  {activeConfiguratorSummary}
                 </div>
                 <div className="hidden lg:flex justify-center mt-4">
                   {renderNextButton()}

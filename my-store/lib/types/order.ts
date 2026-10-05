@@ -25,6 +25,10 @@ export type CreateOrderItemInput = {
   dialCodeInfo: boolean
   charmMounting: string | null
   nameLayout: string | null
+  rogalikMounting: string | null
+  rogalikCordColor: string | null
+  rogalikBeads: string | null
+  rogalikCharms: string[]
 }
 
 export type CreateOrderInput = {
@@ -108,6 +112,10 @@ export type OrderItemRecord = {
   dialCodeInfo: boolean
   charmMounting: string | null
   nameLayout: string | null
+  rogalikMounting: string | null
+  rogalikCordColor: string | null
+  rogalikBeads: string | null
+  rogalikCharms: string[]
 }
 
 export type OrderDetail = OrderRecord & {

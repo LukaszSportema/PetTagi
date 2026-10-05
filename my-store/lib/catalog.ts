@@ -1,4 +1,4 @@
-export type ConfiguratorId = "classic-tag" | "glow-tag"
+export type ConfiguratorId = "classic-tag" | "glow-tag" | "rogalik-tag"
 
 export type CatalogMedia = {
   type: "image" | "video"
@@ -52,7 +52,22 @@ export const GLOW_TAG_PRODUCT: CatalogProduct = {
   ],
 }
 
-export const CATALOG_PRODUCTS: CatalogProduct[] = [CLASSIC_TAG_PRODUCT, GLOW_TAG_PRODUCT]
+export const ROGALIK_TAG_PRODUCT: CatalogProduct = {
+  slug: "adresowka-rogalik",
+  name: "Adresówka rogalik",
+  description:
+    "Urocza adresówka w kształcie rogalika, łącząca biżuteryjny styl z bezpieczeństwem Twojego pupila. Ręcznie wykonana z dbałością o każdy detal.",
+  emoji: "🥐",
+  cta: "Skonfiguruj własną",
+  configuratorId: "rogalik-tag",
+  gallery: [{ type: "image", src: "/rogalik/rogalikglowna.jpg" }],
+}
+
+export const CATALOG_PRODUCTS: CatalogProduct[] = [
+  CLASSIC_TAG_PRODUCT,
+  ROGALIK_TAG_PRODUCT,
+  GLOW_TAG_PRODUCT,
+]
 
 export const getCatalogProduct = (slug: string) =>
   CATALOG_PRODUCTS.find((product) => product.slug === slug)

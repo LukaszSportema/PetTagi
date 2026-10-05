@@ -275,16 +275,35 @@ export const GOLD_CONNECTING_RING_KARABINER: KarabinerOption = {
   image: "/karabinczyk/kolkozlote.jpg",
 }
 
+export const GOLD_CONNECTING_RING_MEDIUM_KARABINER: KarabinerOption = {
+  id: "kolkozlotesrednie",
+  label: "Kółko złote średnie",
+  image: "/karabinczyk/kolkozlotesrednie.jpg",
+}
+
+export const GOLD_CONNECTING_RING_LARGE_KARABINER: KarabinerOption = {
+  id: "kolkozloteduze",
+  label: "Kółko złote duże",
+  image: "/karabinczyk/kolkozloteduze.jpg",
+}
+
 export const SILVER_CONNECTING_RING_KARABINER: KarabinerOption = {
   id: "kolkosrebrne",
   label: "Kółko srebrne",
   image: "/karabinczyk/kolkosrebrne.jpg",
 }
 
-export const CONNECTING_RING_KARABINER_IDS = ["kolkozlote", "kolkosrebrne"] as const
+export const CONNECTING_RING_KARABINER_IDS = [
+  "kolkozlote",
+  "kolkozlotesrednie",
+  "kolkozloteduze",
+  "kolkosrebrne",
+] as const
 
 export const KARABINER_CATALOG: KarabinerOption[] = [
   GOLD_CONNECTING_RING_KARABINER,
+  GOLD_CONNECTING_RING_MEDIUM_KARABINER,
+  GOLD_CONNECTING_RING_LARGE_KARABINER,
   {
     id: "klasyczny",
     label: "Klasyczny",

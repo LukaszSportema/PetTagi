@@ -48,6 +48,10 @@ const placeOrderErrorMessage = (message: string) => {
     return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260927_order_item_mounting_name_layout.sql."
   }
 
+  if (normalized.includes("rogalik_mounting") || normalized.includes("rogalik_charms")) {
+    return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20261005_order_item_rogalik.sql."
+  }
+
   if (normalized.includes("product_slug") || normalized.includes("product_name")) {
     return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260821_order_item_product.sql."
   }
@@ -138,6 +142,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     dial_code_info: item.dialCodeInfo,
     charm_mounting: item.charmMounting,
     name_layout: item.nameLayout,
+    rogalik_mounting: item.rogalikMounting,
+    rogalik_cord_color: item.rogalikCordColor,
+    rogalik_beads: item.rogalikBeads,
+    rogalik_charms: item.rogalikCharms,
   }))
 
   const { data, error } = await supabase.rpc("place_order", {
@@ -208,6 +216,7 @@ type OrderRow = {
 
 type OrderItemListRow = {
   order_id: string
+  product_slug?: string | null
   ring_color: string
   base_color: string
   quantity: number | string
@@ -240,6 +249,10 @@ type OrderItemRow = {
   dial_code_info: boolean | string
   charm_mounting?: string | null
   name_layout?: string | null
+  rogalik_mounting?: string | null
+  rogalik_cord_color?: string | null
+  rogalik_beads?: string | null
+  rogalik_charms?: unknown
 }
 
 const toMoney = (value: unknown) => {
@@ -325,6 +338,10 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   dialCodeInfo: row.dial_code_info === true || row.dial_code_info === "true",
   charmMounting: row.charm_mounting ?? null,
   nameLayout: row.name_layout ?? null,
+  rogalikMounting: row.rogalik_mounting ?? null,
+  rogalikCordColor: row.rogalik_cord_color ?? null,
+  rogalikBeads: row.rogalik_beads ?? null,
+  rogalikCharms: toStringArray(row.rogalik_charms),
 })
 
 const missingAdminSqlMessage =
@@ -355,7 +372,7 @@ export async function listOrders(): Promise<ListOrdersResult> {
   const orderIds = orders.map((order) => order.id)
   const { data: itemsData, error: itemsError } = await supabase
     .from("order_items")
-    .select("order_id, ring_color, base_color, quantity, sort_order, created_at")
+    .select("order_id, product_slug, ring_color, base_color, quantity, sort_order, created_at")
     .in("order_id", orderIds)
 
   if (itemsError) {
@@ -371,10 +388,14 @@ export async function listOrders(): Promise<ListOrdersResult> {
     return String(leftRow.created_at).localeCompare(String(rightRow.created_at))
   })
 
-  const itemsByOrderId = new Map<string, { ringColor: string; baseColor: string; quantity: number }[]>()
+  const itemsByOrderId = new Map<
+    string,
+    { productSlug: string; ringColor: string; baseColor: string; quantity: number }[]
+  >()
   for (const row of sortedItems as OrderItemListRow[]) {
     const items = itemsByOrderId.get(row.order_id) ?? []
     items.push({
+      productSlug: normalizeProductSlug(row.product_slug || CLASSIC_TAG_PRODUCT.slug),
       ringColor: row.ring_color,
       baseColor: row.base_color,
       quantity: Number(row.quantity) || 1,
