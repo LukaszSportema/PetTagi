@@ -2784,7 +2784,7 @@ export default function Home() {
                           }
                           onToggleCharm={toggleRogalikCharm}
                           showErrors={showRogalikErrors}
-                          stringSizeText={stringSizeText}
+                          stringSizeText={stringSizeText ?? ''}
                           showBeadMountSections={rogalikUsesBeadMounting}
                         />
                       )}
