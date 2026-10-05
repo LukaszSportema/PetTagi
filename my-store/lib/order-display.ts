@@ -8,13 +8,21 @@ import {
   ROGALIK_CORD_COLOR_OPTIONS,
   ROGALIK_MOUNTING_OPTIONS,
   rogalikMountingUsesBeads,
+  rogalikMountingUsesKarabinczyk,
   rogalikOptionLabel,
 } from "@/lib/rogalik-options"
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
+import { rogalikPriceBreakdown, type RogalikPriceLine } from "@/lib/rogalik-pricing"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
   `${value.toFixed(2).replace(".", ",")} zł`
+
+export const formatRogalikPriceLineAmount = (line: RogalikPriceLine, quantity = 1) => {
+  const value = line.amountPln * quantity
+  const formatted = formatPrice(value)
+  return line.isBase ? formatted : `+${formatted}`
+}
 
 export const orderItemTitle = (
   item: Pick<OrderItemRecord, "dogName"> & { productName?: string | null },
@@ -146,19 +154,46 @@ export type OrderItemOptionsSource = Pick<
   | "rogalikCharms"
 >
 
+export const rogalikOrderItemPriceLines = (item: OrderItemOptionsSource): RogalikPriceLine[] =>
+  rogalikPriceBreakdown({
+    rogalikMounting: item.rogalikMounting ?? "",
+    dogNeck: item.dogNeck,
+    rogalikCordColor: item.rogalikCordColor,
+    rogalikBeads: item.rogalikBeads,
+    rogalikCharms: item.rogalikCharms,
+    extraKarabiners: item.extraCarabiner,
+    includeDialCode: item.dialCodeInfo,
+  })
+
 const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) => {
   if (dialCodeInfo) return numberOnTag
   return numberOnTag.replace(/^\+\d{1,4}\s*/, "").trim()
 }
 
-const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
+export type RogalikConfiguratorOptionsInput = {
+  rogalikColor: string
+  rogalikMounting: string
+  /** Gotowy tekst obwodu (np. z zamówienia) lub złożony w koszyku. */
+  dogNeckDisplay?: string | null
+  rogalikCordColor?: string | null
+  rogalikBeads?: string | null
+  rogalikCharms?: string[]
+  karabinerOption?: string
+  extraKarabiners?: string[]
+  petName: string
+  phoneNumber: string
+}
+
+/** Lista opcji rogalika — koszyk, admin, maile (ten sam układ). */
+export const rogalikConfiguratorOptions = (input: RogalikConfiguratorOptionsInput): OrderOption[] => {
   const options: OrderOption[] = []
-  const mounting = item.rogalikMounting ?? ""
+  const mounting = input.rogalikMounting ?? ""
   const usesBeads = rogalikMountingUsesBeads(mounting)
+  const charms = input.rogalikCharms ?? []
 
   options.push({
     label: "Kolor rogalika",
-    values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, item.baseColor)],
+    values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, input.rogalikColor)],
   })
   if (mounting) {
     options.push({
@@ -168,44 +203,60 @@ const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
   }
 
   if (usesBeads) {
-    if (item.dogNeck) {
-      options.push({ label: "Obwód szyi", values: [item.dogNeck] })
+    if (input.dogNeckDisplay) {
+      options.push({ label: "Obwód szyi", values: [input.dogNeckDisplay] })
     }
-    if (item.rogalikCordColor) {
+    if (input.rogalikCordColor) {
       options.push({
         label: "Kolor sznureczka",
-        values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, item.rogalikCordColor)],
+        values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, input.rogalikCordColor)],
       })
     }
-    if (item.rogalikBeads) {
+    if (input.rogalikBeads) {
       options.push({
         label: "Koraliki",
-        values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, item.rogalikBeads)],
+        values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, input.rogalikBeads)],
       })
     }
-    if (item.rogalikCharms.length > 0) {
+    if (charms.length > 0) {
       options.push({
         label: "Charmsy",
-        values: item.rogalikCharms.map((id) => rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id)),
+        values: charms.map((id) => rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id)),
       })
     }
-  } else {
-    if (item.baseCarabiner && item.baseCarabiner !== "-") {
-      options.push({ label: "Darmowy karabińczyk", values: [optionTitle(item.baseCarabiner)] })
+  } else if (rogalikMountingUsesKarabinczyk(mounting)) {
+    const karabinerId = input.karabinerOption?.trim()
+    if (karabinerId && karabinerId !== "-") {
+      options.push({ label: "Karabińczyk", values: [optionTitle(karabinerId)] })
     }
-    if (item.extraCarabiner.length > 0) {
+    const extras = input.extraKarabiners ?? []
+    if (extras.length > 0) {
       options.push({
         label: "Dodatkowe karabińczyki",
-        values: item.extraCarabiner.map(optionTitle),
+        values: extras.map(optionTitle),
       })
     }
   }
 
-  options.push({ label: "Imię pupila", values: [item.dogName] })
-  options.push({ label: "Nr telefonu", values: [item.numberOnTag] })
+  options.push({ label: "Imię pupila", values: [input.petName] })
+  options.push({ label: "Nr telefonu", values: [input.phoneNumber.trim()] })
 
   return options
 }
+
+const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
+  rogalikConfiguratorOptions({
+    rogalikColor: item.baseColor,
+    rogalikMounting: item.rogalikMounting ?? "",
+    dogNeckDisplay: item.dogNeck,
+    rogalikCordColor: item.rogalikCordColor,
+    rogalikBeads: item.rogalikBeads,
+    rogalikCharms: item.rogalikCharms,
+    karabinerOption: item.baseCarabiner,
+    extraKarabiners: item.extraCarabiner,
+    petName: item.dogName,
+    phoneNumber: item.numberOnTag,
+  })
 
 export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
   if (isRogalikOrderItem(item)) {

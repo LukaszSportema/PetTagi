@@ -15,7 +15,10 @@ import {
   formatOrderDate,
   formatPrice,
   fulfillmentRangeLabel,
+  formatRogalikPriceLineAmount,
+  isRogalikOrderItem,
   orderItemOptions,
+  rogalikOrderItemPriceLines,
   orderItemTitle,
   statusLabel,
   statusOptionsForOrder,
@@ -1235,6 +1238,24 @@ function OrderDetailView({
                           </div>
                         ))}
                       </div>
+                      {isRogalikOrderItem(item) && (
+                        <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
+                          {rogalikOrderItemPriceLines(item).map((line) => (
+                            <li
+                              key={`${item.id}-price-${line.label}`}
+                              className="flex justify-between gap-2 text-xs text-[#7A736C]"
+                            >
+                              <span className="min-w-0 pl-3 italic">
+                                {line.label}
+                                {line.detail ? ` (${line.detail})` : ''}
+                              </span>
+                              <span className="shrink-0 tabular-nums text-[#161616]">
+                                {formatRogalikPriceLineAmount(line, item.quantity)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   );
                 })}

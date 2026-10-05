@@ -29,11 +29,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="pl"
-      className={`${cormorant.variable} ${outfit.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
+    <html lang="pl" className="h-full antialiased" suppressHydrationWarning>
+      <body
+        className={`${cormorant.variable} ${outfit.variable} min-h-full flex flex-col font-sans`}
+        suppressHydrationWarning
+      >
         {children}
         <SiteFooter />
         <Analytics />

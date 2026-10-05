@@ -9,7 +9,9 @@ import {
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
   rogalikMountingUsesBeads,
+  rogalikMountingUsesKarabinczyk,
   rogalikStringSizeFromNeckCm,
+  ROGALIK_MOUNTING_KARABINER_PRICE,
 } from "@/lib/rogalik-options"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 
@@ -24,12 +26,16 @@ export const rogalikItemRevenueParts = (item: PricedOrderItem) => {
     usesBeads && item.rogalikCordColor ? rogalikCordUnitPrice(size) ?? 0 : 0
   const beadsPrice = usesBeads && item.rogalikBeads ? rogalikBeadsUnitPrice(size) ?? 0 : 0
   const charmCount = usesBeads ? (item.rogalikCharms?.length ?? 0) : 0
-  const karabinerCount = usesBeads ? 0 : item.extraCarabiner.length
+  const includedKarabiner = !usesBeads && rogalikMountingUsesKarabinczyk(item.rogalikMounting ?? "")
+  const extraKarabinerCount = usesBeads ? 0 : item.extraCarabiner.length
+  const karabinersRevenue =
+    (includedKarabiner ? ROGALIK_MOUNTING_KARABINER_PRICE : 0) +
+    extraKarabinerCount * EXTRA_KARABINER_PRICE
 
   return {
     base: ROGALIK_BASE_PRICE * qty,
     charms: charmCount * EXTRA_CHARM_PRICE * qty,
-    karabiners: karabinerCount * EXTRA_KARABINER_PRICE * qty,
+    karabiners: karabinersRevenue * qty,
     strings: (cordPrice + beadsPrice) * qty,
     stoppers: 0,
     stickers: 0,
@@ -46,7 +52,10 @@ export const rogalikItemQuantityParts = (item: PricedOrderItem) => {
   return {
     base: qty,
     charms: (usesBeads ? (item.rogalikCharms?.length ?? 0) : 0) * qty,
-    karabiners: (usesBeads ? 0 : item.extraCarabiner.length) * qty,
+    karabiners:
+      ((usesBeads ? 0 : item.extraCarabiner.length) +
+        (!usesBeads && rogalikMountingUsesKarabinczyk(item.rogalikMounting ?? "") ? 1 : 0)) *
+      qty,
     strings: stringUnits * qty,
     stoppers: 0,
     stickers: 0,

@@ -3,8 +3,11 @@ import {
   deliveryLabel,
   formatAddress,
   formatPrice,
+  formatRogalikPriceLineAmount,
+  isRogalikOrderItem,
   orderItemOptions,
   orderItemTitle,
+  rogalikOrderItemPriceLines,
 } from "@/lib/order-display"
 import { fulfillmentEmailMessage } from "@/lib/fulfillment-dates"
 import {
@@ -93,11 +96,32 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
       )
       .join("")
 
+    const priceLines = isRogalikOrderItem(item) ? rogalikOrderItemPriceLines(item) : []
+    const priceLineLabel = (label: string, detail?: string) =>
+      detail ? `${label} (${detail})` : label
+    const priceLinesText = priceLines
+      .map(
+        (line) =>
+          `${priceLineLabel(line.label, line.detail)}: ${formatRogalikPriceLineAmount(line, item.quantity)}`,
+      )
+      .join("\n")
+    const priceLinesHtml = priceLines
+      .map(
+        (line) => `
+          <tr>
+            <td style="padding:2px 0;color:#7A736C;font-size:13px;font-style:italic;vertical-align:top;width:46%">${escapeHtml(priceLineLabel(line.label, line.detail))}</td>
+            <td style="padding:2px 0;color:#161616;font-size:13px;white-space:nowrap">${escapeHtml(formatRogalikPriceLineAmount(line, item.quantity))}</td>
+          </tr>`,
+      )
+      .join("")
+
     return {
       title: `${title}${qty}`,
       price: formatPrice(item.unitPrice * item.quantity),
       optionLines,
       optionHtml,
+      priceLinesText,
+      priceLinesHtml,
     }
   })
 
@@ -119,7 +143,15 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
     "Szczegóły zamówienia",
     `Numer zamówienia: ${input.orderId}`,
     "",
-    ...itemBlocks.flatMap((item) => [item.title, item.optionLines, item.price, ""]),
+    ...itemBlocks.flatMap((item) =>
+      [
+        item.title,
+        item.optionLines,
+        item.priceLinesText || null,
+        item.price,
+        "",
+      ].filter(Boolean) as string[],
+    ),
     "Dane do wysyłki",
     clientName,
     address,
@@ -154,6 +186,11 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px">
                     ${item.optionHtml}
                   </table>
+                  ${
+                    item.priceLinesHtml
+                      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;padding-top:8px;border-top:1px solid #E8E0D4">${item.priceLinesHtml}</table>`
+                      : ""
+                  }
                 </td>
               </tr>
             </table>

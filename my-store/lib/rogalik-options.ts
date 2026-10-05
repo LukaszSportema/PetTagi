@@ -24,6 +24,9 @@ export const isValidRogalikPhoneNumber = (digits: string) =>
 
 export const ROGALIK_BASE_PRICE = 50
 
+/** Dopłata za mocowanie „Na karabińczyku” (karabińczyk w komplecie). */
+export const ROGALIK_MOUNTING_KARABINER_PRICE = 5
+
 /** Dopłata za sznureczek wg rozmiaru (obwód szyi → S / M / L / XL). */
 export const ROGALIK_CORD_PRICES: Record<StringSize, number> = {
   S: 9,
@@ -91,6 +94,8 @@ export const ROGALIK_CHARM_OPTIONS: RogalikOption[] = [
 export const ROGALIK_MAX_CHARMS = 4
 
 export const rogalikMountingUsesBeads = (mounting: string) => mounting === "koraliki"
+
+export const rogalikMountingUsesKarabinczyk = (mounting: string) => mounting === "karabinczyk"
 
 export type RogalikFlowStep =
   | "baza"

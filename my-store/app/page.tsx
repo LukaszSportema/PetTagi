@@ -4,7 +4,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'r
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { isPolishMobilePhone } from '@/lib/phone';
 import { createOrder } from './actions/orders';
-import { cartItemToCreateOrderItem } from '@/lib/order-from-cart';
+import { cartItemToCreateOrderItem, isRogalikCartItem } from '@/lib/order-from-cart';
+import {
+  formatRogalikPriceLineAmount,
+  rogalikConfiguratorOptions,
+} from '@/lib/order-display';
+import { rogalikPriceBreakdown, type RogalikPriceLine } from '@/lib/rogalik-pricing';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import FurgonetkaMap from './FurgonetkaMap';
 import {
@@ -40,6 +45,8 @@ import {
   ROGALIK_MOUNTING_OPTIONS,
   rogalikFlowStepAt,
   rogalikMountingUsesBeads,
+  rogalikMountingUsesKarabinczyk,
+  ROGALIK_MOUNTING_KARABINER_PRICE,
   rogalikOptionLabel,
 } from '@/lib/rogalik-options';
 import { RogalikConfiguratorStep } from './RogalikConfiguratorStep';
@@ -476,11 +483,16 @@ export default function Home() {
   const rogalikBeadsCost = rogalikBeadsPrice ?? 0;
   const rogalikExtraKarabinersCost =
     isRogalikTagConfigurator && !rogalikUsesBeadMounting ? extraKarabinersCost : 0;
+  const rogalikMountingKarabinerCost =
+    isRogalikTagConfigurator && rogalikMountingUsesKarabinczyk(formData.rogalikMounting)
+      ? ROGALIK_MOUNTING_KARABINER_PRICE
+      : 0;
   const totalPrice = isRogalikTagConfigurator
     ? ROGALIK_BASE_PRICE +
       rogalikCordCost +
       rogalikBeadsCost +
       rogalikCharmsCost +
+      rogalikMountingKarabinerCost +
       rogalikExtraKarabinersCost +
       dialCodeCost
     : basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + glowStringsCost + dialCodeCost;
@@ -543,8 +555,8 @@ export default function Home() {
   };
   const rogalikStepFreeKarabiner = {
     id: 2,
-    label: 'Darmowy karabińczyk',
-    shortLabel: 'DARMOWY KARABIŃCZYK',
+    label: 'KARABIŃCZYK',
+    shortLabel: 'KARABIŃCZYK',
     icon: '✍️',
     thumbnail: '/miniatury/darmowykarabinczyk.jpg',
   };
@@ -1246,41 +1258,24 @@ export default function Home() {
 
   const buildCartItem = (): CartItem => {
     if (isRogalikTagConfigurator) {
-      const options: { label: string; values: string[] }[] = [
-        { label: 'Kolor rogalika', values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, formData.rogalikColor)] },
-        { label: 'Mocowanie', values: [rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, formData.rogalikMounting)] },
-      ];
-      if (rogalikUsesBeadMounting) {
-        options.push(
-          {
-            label: 'Obwód szyi',
-            values: [stringSizeText ? `${formData.stringLength} cm (${stringSizeText})` : `${formData.stringLength} cm`],
-          },
-          { label: 'Kolor sznureczka', values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, formData.rogalikCordColor)] },
-          { label: 'Koraliki', values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, formData.rogalikBeads)] },
-        );
-        if (formData.rogalikCharms.length > 0) {
-          options.push({
-            label: 'Charmsy',
-            values: formData.rogalikCharms.map((id) => rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id)),
-          });
-        }
-      } else {
-        options.push({
-          label: 'Darmowy karabińczyk',
-          values: [findTitle(karabinersList, formData.karabinerOption, `Opcja nr ${formData.karabinerOption}`)],
-        });
-        if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length > 0) {
-          options.push({
-            label: 'Dodatkowe karabińczyki',
-            values: formData.extraKarabiners.map((id) => findTitle(karabinersList, id, id)),
-          });
-        }
-      }
-      options.push({ label: 'Imię pupila', values: [formData.petName] });
-      options.push({
-        label: 'Nr telefonu',
-        values: [formData.phoneNumber],
+      const dogNeckDisplay =
+        rogalikUsesBeadMounting && formData.stringLength.trim()
+          ? stringSizeText
+            ? `${formData.stringLength} cm (${stringSizeText})`
+            : `${formData.stringLength} cm`
+          : null;
+      const options = rogalikConfiguratorOptions({
+        rogalikColor: formData.rogalikColor,
+        rogalikMounting: formData.rogalikMounting,
+        dogNeckDisplay,
+        rogalikCordColor: formData.rogalikCordColor,
+        rogalikBeads: formData.rogalikBeads,
+        rogalikCharms: formData.rogalikCharms,
+        karabinerOption: formData.karabinerOption,
+        extraKarabiners:
+          formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners : [],
+        petName: formData.petName,
+        phoneNumber: formData.phoneNumber,
       });
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -1796,11 +1791,11 @@ export default function Home() {
             </span>
           </div>
         )}
-        {!rogalikUsesBeadMounting && formData.karabinerOption && (
-          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
-            <span className="min-w-0 pl-3">Darmowy karabińczyk</span>
-            <span className="shrink-0 text-right">
-              {findTitle(karabinersList, formData.karabinerOption, formData.karabinerOption)}
+        {rogalikMountingUsesKarabinczyk(formData.rogalikMounting) && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Karabińczyk</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              +{ROGALIK_MOUNTING_KARABINER_PRICE} zł
             </span>
           </div>
         )}
@@ -1829,6 +1824,34 @@ export default function Home() {
   );
 
   const activeConfiguratorSummary = isRogalikTagConfigurator ? rogalikSummaryLines : summaryLines;
+
+  const rogalikCartPriceLines = (item: CartItem) =>
+    rogalikPriceBreakdown({
+      rogalikMounting: item.config.rogalikMounting,
+      stringLength: item.config.stringLength,
+      rogalikCordColor: item.config.rogalikCordColor,
+      rogalikBeads: item.config.rogalikBeads,
+      rogalikCharms: item.config.rogalikCharms,
+      extraKarabiners:
+        item.config.wantExtraKarabiners === 'tak' ? item.config.extraKarabiners : [],
+      includeDialCode: item.config.includePhoneCode === 'tak',
+    });
+
+  const renderRogalikCartPriceBreakdown = (lines: RogalikPriceLine[], quantity: number) => (
+    <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
+      {lines.map((line) => (
+        <li key={line.label} className="flex justify-between gap-2 text-xs text-[#7A736C]">
+          <span className="min-w-0 pl-3 italic">
+            {line.label}
+            {line.detail ? ` (${line.detail})` : ''}
+          </span>
+          <span className="shrink-0 tabular-nums text-[#161616]">
+            {formatRogalikPriceLineAmount(line, quantity)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
 
   useLayoutEffect(() => {
     const el = topStackRef.current;
@@ -2265,7 +2288,24 @@ export default function Home() {
 
                 <aside className="w-full lg:w-[380px] shrink-0 bg-[#EBE4D6] p-5 md:p-10 space-y-6">
                   <h2 className="text-2xl font-serif font-light text-[#161616]">Podsumowanie zamówienia</h2>
-                  <div className="space-y-2 text-sm text-[#7A736C] pt-2">
+                  <div className="space-y-4 text-sm">
+                    {cartItems.map((item) => {
+                      const petName = item.options.find((option) => option.label === 'Imię pupila')?.values[0];
+                      return (
+                        <div key={`summary-${item.id}`}>
+                          <div className="flex justify-between gap-2 font-medium text-[#161616]">
+                            <span className="min-w-0">{productLineTitle(item.productName, petName)}</span>
+                            <span className="shrink-0 whitespace-nowrap">
+                              {formatPrice(item.price * item.quantity)}
+                            </span>
+                          </div>
+                          {isRogalikCartItem(item) &&
+                            renderRogalikCartPriceBreakdown(rogalikCartPriceLines(item), item.quantity)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="space-y-2 text-sm text-[#7A736C] pt-2 border-t border-[#D6C7AE]">
                     <div className="flex justify-between">
                       <span>Wartość produktów</span>
                       <span className="font-medium text-[#161616]">{formatPrice(cartProductsValue)}</span>
@@ -2647,14 +2687,20 @@ export default function Home() {
                   {cartItems.map((item) => {
                     const petName = item.options.find((option) => option.label === 'Imię pupila')?.values[0];
                     return (
-                      <div key={item.id} className="flex gap-3 items-center">
-                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-white shrink-0 border border-[#D6C7AE]">
-                          <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
+                      <div key={item.id}>
+                        <div className="flex gap-3 items-center">
+                          <div className="w-14 h-14 rounded-lg overflow-hidden bg-white shrink-0 border border-[#D6C7AE]">
+                            <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
+                          </div>
+                          <p className="flex-1 min-w-0 font-bold text-[#161616]">
+                            {productLineTitle(item.productName, petName)}
+                          </p>
+                          <span className="font-bold text-[#161616] whitespace-nowrap">
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
                         </div>
-                        <p className="flex-1 min-w-0 font-bold text-[#161616]">
-                          {productLineTitle(item.productName, petName)}
-                        </p>
-                        <span className="font-bold text-[#161616] whitespace-nowrap">{formatPrice(item.price * item.quantity)}</span>
+                        {isRogalikCartItem(item) &&
+                          renderRogalikCartPriceBreakdown(rogalikCartPriceLines(item), item.quantity)}
                       </div>
                     );
                   })}
@@ -2815,7 +2861,7 @@ export default function Home() {
 
                       {isRogalikTagConfigurator && rogalikFlowStep === 'free-karabinier' && (
                         <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk do mocowania:</p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz swój karabińczyk do mocowania:</p>
                           {renderFreeKarabinerGrid()}
                         </div>
                       )}
