@@ -1,4 +1,15 @@
 import { itemQuantityParts, itemRevenueParts, type PricedOrderItem } from "@/lib/pricing"
+import {
+  isRogalikRevenueItem,
+  rogalikItemQuantityParts,
+  rogalikItemRevenueParts,
+} from "@/lib/rogalik-revenue"
+
+const revenuePartsForItem = (item: PricedOrderItem) =>
+  isRogalikRevenueItem(item) ? rogalikItemRevenueParts(item) : itemRevenueParts(item)
+
+const quantityPartsForItem = (item: PricedOrderItem) =>
+  isRogalikRevenueItem(item) ? rogalikItemQuantityParts(item) : itemQuantityParts(item)
 import { inPeriod, reportPeriods, warsawYmd, type ReportPeriod } from "@/lib/report-periods"
 
 import type { PaymentRecipientId } from "@/lib/payment"
@@ -63,7 +74,7 @@ const addOrder = (totals: RevenueTotals, order: RevenueOrder) => {
   totals.express += order.fastDeliveryCost
   totals.shipping += order.shippingCost
   for (const item of order.items) {
-    const parts = itemRevenueParts(item)
+    const parts = revenuePartsForItem(item)
     totals.base += parts.base
     totals.charms += parts.charms
     totals.karabiners += parts.karabiners
@@ -86,7 +97,7 @@ const addOrderQuantity = (totals: RevenueTotals, order: RevenueOrder) => {
   let tagQty = 0
   for (const item of order.items) {
     tagQty += item.quantity > 0 ? item.quantity : 1
-    const parts = itemQuantityParts(item)
+    const parts = quantityPartsForItem(item)
     totals.base += parts.base
     totals.charms += parts.charms
     totals.karabiners += parts.karabiners

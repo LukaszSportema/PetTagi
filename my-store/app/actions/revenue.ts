@@ -11,6 +11,8 @@ import { createClient } from "@/lib/supabase/server"
 
 type RevenueItemRow = {
   quantity: number | string
+  product_slug?: string | null
+  ring_color?: string | null
   extra_charms: unknown
   extra_carabiner: unknown
   string_premium: unknown
@@ -20,6 +22,10 @@ type RevenueItemRow = {
   stoppers: string | null
   sticker: string | null
   dial_code_info: boolean | string | null
+  rogalik_mounting?: string | null
+  rogalik_cord_color?: string | null
+  rogalik_beads?: string | null
+  rogalik_charms?: unknown
 }
 
 type RevenueOrderRow = {
@@ -71,6 +77,8 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
   fastDeliveryCost: toMoney(row.fast_delivery_cost),
   items: (row.items ?? []).map((item) => ({
     quantity: Number(item.quantity) || 1,
+    productSlug: item.product_slug ?? undefined,
+    ringColor: item.ring_color ?? undefined,
     extraCharms: toStringArray(item.extra_charms),
     extraCarabiner: toStringArray(item.extra_carabiner),
     stringPremium: toStringArray(item.string_premium),
@@ -80,6 +88,10 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
     stoppers: item.stoppers,
     sticker: item.sticker,
     dialCodeInfo: item.dial_code_info === true || item.dial_code_info === "true",
+    rogalikMounting: item.rogalik_mounting ?? null,
+    rogalikCordColor: item.rogalik_cord_color ?? null,
+    rogalikBeads: item.rogalik_beads ?? null,
+    rogalikCharms: toStringArray(item.rogalik_charms),
   })),
 })
 
@@ -98,6 +110,13 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
         ok: false,
         message:
           "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260911_order_item_string_glow_column.sql w Supabase SQL Editor.",
+      }
+    }
+    if (normalized.includes("rogalik_mounting") || normalized.includes("rogalik_charms")) {
+      return {
+        ok: false,
+        message:
+          "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20261005_admin_revenue_rogalik.sql.",
       }
     }
     return {

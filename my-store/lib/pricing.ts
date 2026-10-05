@@ -86,6 +86,7 @@ export const glowStringUnitPrice = (size: StringSize | null): number | null =>
 
 export type PricedOrderItem = {
   quantity: number
+  productSlug?: string
   ringColor?: string
   extraCharms: string[]
   extraCarabiner: string[]
@@ -96,6 +97,10 @@ export type PricedOrderItem = {
   stoppers: string | null
   sticker: string | null
   dialCodeInfo?: boolean
+  rogalikMounting?: string | null
+  rogalikCordColor?: string | null
+  rogalikBeads?: string | null
+  rogalikCharms?: string[]
 }
 
 export const itemRevenueParts = (item: PricedOrderItem) => {
