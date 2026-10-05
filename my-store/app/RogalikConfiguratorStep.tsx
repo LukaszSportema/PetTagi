@@ -75,8 +75,8 @@ function OptionTiles({
             type="button"
             disabled={disabled}
             onClick={() => !disabled && onSelect(option.id)}
-            className={`rounded-none p-4 md:p-6 border transition-colors duration-300 flex flex-col gap-3 ${
-              variant === 'text' ? 'items-center text-center min-h-[5rem] justify-center' : 'text-left min-h-[5.5rem]'
+            className={`rounded-none p-4 md:p-6 border transition-colors duration-300 flex flex-col gap-3 items-center text-center ${
+              variant === 'text' ? 'min-h-[5rem] justify-center' : 'min-h-[5.5rem]'
             } ${
               disabled
                 ? 'border-[#E8E0D4] bg-[#F9F5ED] opacity-70 cursor-not-allowed'
