@@ -78,6 +78,7 @@ export const mapRogalikCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
   return {
     quantity: item.quantity,
     unitPrice: item.price,
+    baseUnitPrice: cartItemBaseUnitPrice(item),
     imageUrl: item.image,
     productSlug: item.productSlug,
     productName: item.productName,
@@ -114,6 +115,7 @@ export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
   return {
     quantity: item.quantity,
     unitPrice: item.price,
+    baseUnitPrice: cartItemBaseUnitPrice(item),
     imageUrl: item.image,
     productSlug: item.productSlug,
     productName: item.productName,
