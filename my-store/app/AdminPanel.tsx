@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getConfiguratorAnalyticsReport } from './actions/configurator-analytics';
 import { getAnalyticsReport } from './actions/analytics';
-import { getOrder, listOrders, updateOrderClientPhone, updateOrderStatus } from './actions/orders';
+import {
+  getOrder,
+  listOrders,
+  updateOrderAdminComment,
+  updateOrderClientPhone,
+  updateOrderStatus,
+} from './actions/orders';
 import { getPopularityReport } from './actions/popularity';
 import { getRevenueReport, type RevenueReportSlice } from './actions/revenue';
 import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
@@ -18,6 +24,7 @@ import {
   formatRogalikPriceLineAmount,
   isRogalikOrderItem,
   orderItemOptions,
+  orderPetNamesLabel,
   rogalikOrderItemPriceLines,
   orderItemTitle,
   statusLabel,
@@ -31,6 +38,7 @@ import {
   readStoredPaymentRecipient,
   type PaymentRecipientId,
 } from '@/lib/payment';
+import { orderDiscountCodeSummary } from '@/lib/order-discount-display';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
 import type { AnalyticsRow } from '@/lib/analytics-report';
 import type { ConfiguratorAnalyticsReport } from '@/lib/configurator-analytics';
@@ -40,9 +48,11 @@ import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from 
 import type { ReportPeriod } from '@/lib/report-periods';
 import { monthLabel, warsawYmd } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
+import { DiscountCodesPanel } from './DiscountCodesPanel';
 
 const adminTabs = [
   { id: 'orders', label: 'Zamówienia' },
+  { id: 'discount-codes', label: 'Kody rabatowe' },
   { id: 'revenue', label: 'Przychody' },
   { id: 'analytics', label: 'Analityka' },
   { id: 'popularity', label: 'Popularność' },
@@ -341,6 +351,21 @@ export default function AdminPanel() {
     return result;
   };
 
+  const changeOrderComment = async (id: string, comment: string) => {
+    const result = await updateOrderAdminComment(id, comment);
+    if (!result.ok) return result;
+
+    setOrders((current) =>
+      current.map((order) =>
+        order.id === id ? { ...order, adminComment: result.comment } : order,
+      ),
+    );
+    setDetail((current) =>
+      current?.id === id ? { ...current, adminComment: result.comment } : current,
+    );
+    return result;
+  };
+
   const changePaymentRecipient = async (value: PaymentRecipientId) => {
     paymentRecipientVersion.current += 1;
     setPaymentRecipientState(value);
@@ -422,10 +447,13 @@ export default function AdminPanel() {
             isLoading={isLoadingList}
             updatingStatusId={updatingStatusId}
             onStatusChange={requestOrderStatusChange}
+            onCommentChange={changeOrderComment}
             onOpen={setSelectedId}
           />
         )
       )}
+
+      {activeAdminTab === 'discount-codes' && <DiscountCodesPanel />}
 
       {activeAdminTab === 'revenue' && (
         <RevenueTable
@@ -922,12 +950,78 @@ function RevenueTable({
 
 const orderMonthKey = (iso: string) => warsawYmd(iso).slice(0, 7);
 
+const UNPAID_ORDER_GRACE_MS = 48 * 60 * 60 * 1000;
+
+/** Pending dłużej niż 48 h od złożenia. */
+const isOverdueUnpaidOrder = (order: OrderRecord) => {
+  if (order.status !== 'pending') return false;
+  const createdAtMs = new Date(order.createdAt).getTime();
+  if (!Number.isFinite(createdAtMs)) return false;
+  return Date.now() - createdAtMs >= UNPAID_ORDER_GRACE_MS;
+};
+
+/** Zakładka Nieopłacone: zaległe pending lub anulowane. */
+const isNieoplaconeTabOrder = (order: OrderRecord) =>
+  order.status === 'cancelled' || isOverdueUnpaidOrder(order);
+
+function OrderCommentField({
+  orderId,
+  value,
+  onSave,
+}: {
+  orderId: string;
+  value: string | null;
+  onSave: (id: string, comment: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+}) {
+  const [draft, setDraft] = useState(value ?? '');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setDraft(value ?? '');
+    setError('');
+  }, [value, orderId]);
+
+  const commit = async () => {
+    const normalized = draft.trim().slice(0, 120);
+    const previous = (value ?? '').trim();
+    if (normalized === previous) return;
+
+    const result = await onSave(orderId, normalized);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setError('');
+  };
+
+  return (
+    <div className="min-w-[200px] max-w-[280px]" onClick={(event) => event.stopPropagation()}>
+      <textarea
+        value={draft}
+        maxLength={120}
+        rows={2}
+        placeholder="Komentarz…"
+        onChange={(event) => {
+          setDraft(event.target.value.slice(0, 120));
+          setError('');
+        }}
+        onBlur={() => void commit()}
+        onKeyDown={(event) => event.stopPropagation()}
+        className="w-full rounded-none border border-[#D6C7AE] bg-white px-2 py-1.5 text-xs text-[#161616] focus:outline-none focus:border-[#C4A574] resize-y min-h-[2.5rem]"
+      />
+      <p className="text-[10px] text-[#9A9288] mt-0.5 tabular-nums">{draft.length}/120</p>
+      {error ? <p className="text-[10px] text-red-500 mt-0.5">{error}</p> : null}
+    </div>
+  );
+}
+
 function OrdersTable({
   orders,
   error,
   isLoading,
   updatingStatusId,
   onStatusChange,
+  onCommentChange,
   onOpen,
 }: {
   orders: OrderRecord[];
@@ -935,9 +1029,11 @@ function OrdersTable({
   isLoading: boolean;
   updatingStatusId: string | null;
   onStatusChange: (request: StatusChangeRequest) => void;
+  onCommentChange: (id: string, comment: string) => Promise<{ ok: true } | { ok: false; message: string }>;
   onOpen: (id: string) => void;
 }) {
   const [selectedMonth, setSelectedMonth] = useState('all');
+  const [orderListTab, setOrderListTab] = useState<'all' | 'unpaid'>('all');
 
   const monthOptions = useMemo(() => {
     const keys = [...new Set(orders.map((order) => orderMonthKey(order.createdAt)))].sort((a, b) =>
@@ -949,13 +1045,16 @@ function OrdersTable({
     });
   }, [orders]);
 
-  const filteredOrders = useMemo(
-    () =>
-      selectedMonth === 'all'
-        ? orders
-        : orders.filter((order) => orderMonthKey(order.createdAt) === selectedMonth),
-    [orders, selectedMonth],
-  );
+  const filteredOrders = useMemo(() => {
+    let list =
+      orderListTab === 'unpaid'
+        ? orders.filter(isNieoplaconeTabOrder)
+        : orders.filter((order) => !isNieoplaconeTabOrder(order));
+    if (selectedMonth !== 'all') {
+      list = list.filter((order) => orderMonthKey(order.createdAt) === selectedMonth);
+    }
+    return list;
+  }, [orders, selectedMonth, orderListTab]);
 
   if (isLoading) {
     return <p className="text-sm text-[#7A736C]">Ładowanie zamówień...</p>;
@@ -975,6 +1074,30 @@ function OrdersTable({
 
   return (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-hidden">
+      <div className="flex flex-wrap gap-2 px-4 pt-4 border-b border-[#D6C7AE]">
+        <button
+          type="button"
+          onClick={() => setOrderListTab('all')}
+          className={`px-4 py-2.5 text-sm font-medium transition-colors -mb-px ${
+            orderListTab === 'all'
+              ? 'text-[#161616] font-bold border-b-2 border-[#161616]'
+              : 'text-[#7A736C] hover:text-[#161616]'
+          }`}
+        >
+          Zamówienia
+        </button>
+        <button
+          type="button"
+          onClick={() => setOrderListTab('unpaid')}
+          className={`px-4 py-2.5 text-sm font-medium transition-colors -mb-px ${
+            orderListTab === 'unpaid'
+              ? 'text-[#161616] font-bold border-b-2 border-[#161616]'
+              : 'text-[#7A736C] hover:text-[#161616]'
+          }`}
+        >
+          Nieopłacone
+        </button>
+      </div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-4 pt-4 pb-3 border-b border-[#D6C7AE]">
         <label className="flex flex-col gap-1.5 w-full sm:w-auto">
           <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
@@ -1001,11 +1124,17 @@ function OrdersTable({
       </div>
       {filteredOrders.length === 0 ? (
         <div className="p-10 text-center">
-          <p className="text-[#7A736C]">Brak zamówień w wybranym miesiącu.</p>
+          <p className="text-[#7A736C]">
+            {orderListTab === 'unpaid'
+              ? 'Brak nieopłaconych (48 h+) ani anulowanych zamówień.'
+              : selectedMonth === 'all'
+                ? 'Brak zamówień.'
+                : 'Brak zamówień w wybranym miesiącu.'}
+          </p>
         </div>
       ) : (
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1280px] text-left text-sm">
+        <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
             <tr>
               <th className="px-4 py-3 whitespace-nowrap">Data zamówienia</th>
@@ -1013,13 +1142,10 @@ function OrdersTable({
               <th className="px-4 py-3 whitespace-nowrap">Kwota zamówienia</th>
               <th className="px-4 py-3 whitespace-nowrap">Płatność</th>
               <th className="px-4 py-3 whitespace-nowrap">Imię i nazwisko</th>
-              <th className="px-4 py-3 whitespace-nowrap">E-mail</th>
-              <th className="px-4 py-3 whitespace-nowrap">Numer telefonu</th>
-              <th className="px-4 py-3">Adres</th>
-              <th className="px-4 py-3 whitespace-nowrap">Rodzaj wysyłki</th>
+              <th className="px-4 py-3 whitespace-nowrap">Imię psa</th>
               <th className="px-4 py-3 min-w-[180px]">Oprawa i baza</th>
               <th className="px-4 py-3 whitespace-nowrap min-w-[200px]">Termin realizacji</th>
-              <th className="px-4 py-3 whitespace-nowrap">Numer paczkomatu</th>
+              <th className="px-4 py-3 min-w-[220px]">Komentarz</th>
               <th className="px-4 py-3 whitespace-nowrap">Rabat</th>
               <th className="px-4 py-3 whitespace-nowrap">Status</th>
             </tr>
@@ -1047,12 +1173,9 @@ function OrdersTable({
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">
                   {`${order.clientName} ${order.clientSurname}`.trim()}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{order.clientEmail}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{order.clientPhone}</td>
-                <td className="px-4 py-3 text-[#161616] min-w-[180px]">
-                  {formatAddress(order.clientAddress, order.clientPostcode, order.clientCity)}
+                <td className="px-4 py-3 whitespace-nowrap text-[#161616] font-medium">
+                  {orderPetNamesLabel(order.petNames)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{deliveryLabel(order.deliveryType)}</td>
                 <td className="px-4 py-3 text-[#161616] min-w-[180px]">
                   {order.frameBaseLines.length > 0 ? (
                     <div className="space-y-1">
@@ -1067,8 +1190,12 @@ function OrdersTable({
                 <td className="px-4 py-3 text-[#161616] min-w-[200px]">
                   {fulfillmentRangeLabel(order.fastDelivery, order.createdAt)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-[#161616]">
-                  {order.deliveryType === 'paczkomat' ? order.inpostId || dash : dash}
+                <td className="px-4 py-3 align-top">
+                  <OrderCommentField
+                    orderId={order.id}
+                    value={order.adminComment}
+                    onSave={onCommentChange}
+                  />
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{order.discountCode || dash}</td>
                 <td className="px-4 py-3 whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
@@ -1229,8 +1356,11 @@ function OrderDetailView({
                           <div key={`${item.id}-${option.label}`} className="text-sm min-w-0">
                             <p className="text-[#9A9288]">{option.label}:</p>
                             <ul className="mt-0.5 space-y-0.5 pl-3">
-                              {option.values.map((value) => (
-                                <li key={`${item.id}-${option.label}-${value}`} className="text-[#161616] font-medium">
+                              {option.values.map((value, valueIndex) => (
+                                <li
+                                  key={`${item.id}-${option.label}-${valueIndex}`}
+                                  className="text-[#161616] font-medium"
+                                >
                                   {value}
                                 </li>
                               ))}
@@ -1261,13 +1391,30 @@ function OrderDetailView({
                 })}
               </div>
 
-              {detail.discountCode && (
+              {detail.discountDetails && (
+                <p className="text-sm text-[#7A736C]">{orderDiscountCodeSummary(detail.discountDetails)}</p>
+              )}
+              {!detail.discountDetails && detail.discountCode && (
                 <p className="text-sm text-[#7A736C]">
                   Kod rabatowy: <span className="font-medium text-[#161616]">{detail.discountCode}</span>
                 </p>
               )}
 
               <div className="space-y-2 text-sm text-[#7A736C] pt-2">
+                {detail.discountDetails && detail.discountDetails.discountAmount > 0 && (
+                  <>
+                    <div className="flex justify-between gap-3 text-xs">
+                      <span>Produkty przed rabatem</span>
+                      <span className="shrink-0 tabular-nums">{formatPrice(detail.discountDetails.productsValueBefore)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 text-xs">
+                      <span className="min-w-0">Rabat (tylko cena bazowa adresówki)</span>
+                      <span className="shrink-0 tabular-nums text-[#161616]">
+                        −{formatPrice(detail.discountDetails.discountAmount)}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span>Wartość produktów</span>
                   <span className="font-medium text-[#161616]">{formatPrice(detail.productsValue)}</span>

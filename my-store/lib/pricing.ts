@@ -28,6 +28,15 @@ export const fastDeliveryCostForOrder = (tagCount: number, fastDelivery: boolean
 export const qualifiesForFreeShipping = (productsValue: number) =>
   productsValue >= FREE_SHIPPING_THRESHOLD
 
+export const amountUntilFreeShipping = (productsValue: number) =>
+  Math.max(0, FREE_SHIPPING_THRESHOLD - productsValue)
+
+export const freeShippingProgressPercent = (productsValue: number) =>
+  Math.min(100, Math.max(0, (productsValue / FREE_SHIPPING_THRESHOLD) * 100))
+
+export const freeShippingRemainingPercent = (productsValue: number) =>
+  Math.max(0, 100 - freeShippingProgressPercent(productsValue))
+
 export const shippingCostForOrder = (productsValue: number, methodPrice: number) =>
   qualifiesForFreeShipping(productsValue) ? 0 : methodPrice
 

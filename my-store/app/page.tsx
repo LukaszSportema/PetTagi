@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { isPolishMobilePhone } from '@/lib/phone';
+import { validateDiscountCodeForCheckout } from './actions/discount-codes';
 import { createOrder } from './actions/orders';
 import { cartItemToCreateOrderItem, isRogalikCartItem } from '@/lib/order-from-cart';
 import {
@@ -10,7 +11,14 @@ import {
   rogalikConfiguratorOptions,
 } from '@/lib/order-display';
 import { rogalikPriceBreakdown, type RogalikPriceLine } from '@/lib/rogalik-pricing';
+import {
+  cartItemBaseUnitPrice,
+  discountAmountForLines,
+  discountedProductsValue,
+} from '@/lib/cart-item-pricing';
+import type { DiscountPercent } from '@/lib/discount-codes';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
+import { scrollToConfiguratorSection } from '@/lib/configurator-scroll';
 import FurgonetkaMap from './FurgonetkaMap';
 import {
   fulfillmentMessage,
@@ -64,6 +72,9 @@ import {
   premiumStringUnitPrice,
   STICKER_PRICE,
   DIAL_CODE_PRICE,
+  amountUntilFreeShipping,
+  freeShippingProgressPercent,
+  freeShippingRemainingPercent,
   qualifiesForFreeShipping,
   SHIPPING_KURIER_PRICE,
   SHIPPING_PACZKOMAT_PRICE,
@@ -412,11 +423,16 @@ export default function Home() {
   const [formData, setFormData] = useState<FormDataState>(initialFormData);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountInput, setDiscountInput] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState('');
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState('');
+  const [appliedDiscountPercent, setAppliedDiscountPercent] = useState<DiscountPercent | 0>(0);
+  const [appliedDiscountLabel, setAppliedDiscountLabel] = useState('');
+  const [discountError, setDiscountError] = useState('');
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [showAddedToCart, setShowAddedToCart] = useState(false);
   const [charmMountingTarget, setCharmMountingTarget] = useState<{ type: 'free' | 'extra'; charmId: string } | null>(null);
   const [showGoldRingInfoModal, setShowGoldRingInfoModal] = useState(false);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
+  const [cartRemoveTarget, setCartRemoveTarget] = useState<{ id: string; title: string } | null>(null);
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
   const [showCheckoutErrors, setShowCheckoutErrors] = useState(false);
@@ -546,12 +562,19 @@ export default function Home() {
   };
   const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator || isRogalikTagConfigurator;
 
-  const rogalikStepBaza = {
+  const rogalikStepKolor = {
     id: 1,
-    label: 'Baza',
-    shortLabel: 'BAZA',
+    label: 'Kolor rogalika',
+    shortLabel: 'KOLOR',
     icon: '🎨',
     thumbnail: '/miniatury/baza.jpg',
+  };
+  const rogalikStepMocowanie = {
+    id: 2,
+    label: 'Sposób mocowania',
+    shortLabel: 'MOCOWANIE',
+    icon: '🔗',
+    thumbnail: '/miniatury/darmowykarabinczyk.jpg',
   };
   const rogalikStepFreeKarabiner = {
     id: 2,
@@ -580,24 +603,26 @@ export default function Home() {
     thumbnail: '/miniatury/koszyk.jpg',
   };
   const rogalikStepDodatki = {
-    id: 2,
+    id: 3,
     label: 'Dodatki',
     shortLabel: 'DODATKI',
     icon: '✨',
     thumbnail: '/miniatury/dodatkowycharms.jpg',
   };
   const rogalikStepsBeads = [
-    rogalikStepBaza,
+    rogalikStepKolor,
+    rogalikStepMocowanie,
     rogalikStepDodatki,
-    { ...rogalikStepDane, id: 3 },
-    { ...rogalikStepSummary, id: 4 },
-  ];
-  const rogalikStepsKarabinczyk = [
-    rogalikStepBaza,
-    rogalikStepFreeKarabiner,
-    rogalikStepExtraKarabiners,
     { ...rogalikStepDane, id: 4 },
     { ...rogalikStepSummary, id: 5 },
+  ];
+  const rogalikStepsKarabinczyk = [
+    rogalikStepKolor,
+    rogalikStepMocowanie,
+    { ...rogalikStepFreeKarabiner, id: 3 },
+    { ...rogalikStepExtraKarabiners, id: 4 },
+    { ...rogalikStepDane, id: 5 },
+    { ...rogalikStepSummary, id: 6 },
   ];
   const rogalikStepsInfo =
     formData.rogalikMounting !== '' && !rogalikUsesBeadMounting
@@ -634,7 +659,7 @@ export default function Home() {
   const stepsInfo = isRogalikTagConfigurator ? rogalikStepsInfo : classicStepsInfo;
   const totalSteps = stepsInfo.length;
   /** Mało kroków (np. rogalik): bez rozciągania na całą szerokość paska. */
-  const compactStepsBar = isRogalikTagConfigurator ? totalSteps <= 5 : totalSteps <= 4;
+  const compactStepsBar = isRogalikTagConfigurator ? totalSteps <= 6 : totalSteps <= 4;
   const contentStep = isRogalikTagConfigurator
     ? currentStep
     : (visibleClassicSteps[currentStep - 1]?.id ?? currentStep);
@@ -650,14 +675,15 @@ export default function Home() {
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
   const openConfigurator = (slug: string = CLASSIC_TAG_PRODUCT.slug) => {
     const product = getCatalogProduct(slug) ?? CLASSIC_TAG_PRODUCT;
-    if (product.slug !== activeProductSlug) {
-      stopersChoiceTouchedRef.current = false;
-      setFormData(formDataForProduct(product.slug));
-      setCurrentStep(1);
-      setShowAddedToCart(false);
-    }
+    stopersChoiceTouchedRef.current = false;
+    setFormData(formDataForProduct(product.slug));
+    setCurrentStep(1);
+    setShowAddedToCart(false);
+    setShowRogalikErrors(false);
+    setShowRogalikDodatkiErrors(false);
     setActiveProductSlug(product.slug);
     goToTab('configurator');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const imageGridClass = (count: number) => {
@@ -789,24 +815,52 @@ export default function Home() {
   const isOrderValid = !Object.values(orderErrors).some(Boolean);
 
   const nextStep = () => {
-    if (isRogalikTagConfigurator && rogalikFlowStep === 'baza') {
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'kolor') {
       setShowRogalikErrors(true);
-      if (!formData.rogalikColor) return;
-      if (!formData.rogalikMounting) return;
+      if (!formData.rogalikColor) {
+        scrollToConfiguratorSection('rogalik-color');
+        return;
+      }
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'mocowanie') {
+      setShowRogalikErrors(true);
+      if (!formData.rogalikMounting) {
+        scrollToConfiguratorSection('rogalik-mounting');
+        return;
+      }
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'dodatki') {
       setShowRogalikDodatkiErrors(true);
-      if (!isValidRogalikNeckCircumference(formData.stringLength)) return;
-      if (!formData.rogalikCordColor) return;
-      if (!formData.rogalikBeads) return;
+      if (rogalikUsesBeadMounting && !isValidRogalikNeckCircumference(formData.stringLength)) {
+        scrollToConfiguratorSection('rogalik-neck');
+        return;
+      }
+      if (!formData.rogalikCordColor) {
+        scrollToConfiguratorSection('rogalik-cord');
+        return;
+      }
+      if (!formData.rogalikBeads) {
+        scrollToConfiguratorSection('rogalik-beads');
+        return;
+      }
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier') {
       setShowExtraKarabinersErrors(true);
-      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) return;
+      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
+        scrollToConfiguratorSection('extra-karabiners-pick');
+        return;
+      }
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'dane') {
       setShowOrderErrors(true);
-      if (!isOrderValid) return;
+      if (orderErrors.petName) {
+        scrollToConfiguratorSection('order-pet-name');
+        return;
+      }
+      if (orderErrors.phoneNumber) {
+        scrollToConfiguratorSection('order-phone');
+        return;
+      }
     }
     if (isRogalikTagConfigurator) {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
@@ -814,29 +868,57 @@ export default function Home() {
     }
     if (contentStep === 4) {
       setShowExtraCharmsErrors(true);
-      if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) return;
+      if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) {
+        scrollToConfiguratorSection('extra-charms-pick');
+        return;
+      }
     }
     if (contentStep === 6) {
       setShowExtraKarabinersErrors(true);
-      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) return;
+      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
+        scrollToConfiguratorSection('extra-karabiners-pick');
+        return;
+      }
     }
     if (contentStep === 7) {
       setShowStringErrors(true);
-      if (formData.wantString === 'tak' && !isValidNeckCircumference(formData.stringLength)) return;
-      if (formData.wantString === 'tak' && selectedStringsCount === 0) return;
+      if (formData.wantString === 'tak' && !isValidNeckCircumference(formData.stringLength)) {
+        scrollToConfiguratorSection('classic-string-neck');
+        return;
+      }
+      if (formData.wantString === 'tak' && selectedStringsCount === 0) {
+        scrollToConfiguratorSection('classic-string-pick');
+        return;
+      }
     }
     if (contentStep === 8) {
       setShowStopperErrors(true);
-      if (formData.wantStopers === 'tak' && selectedStringsCount === 0) return;
-      if (stopperSelectionRequired && !isStopperSelectionComplete) return;
+      if (formData.wantStopers === 'tak' && selectedStringsCount === 0) {
+        scrollToConfiguratorSection('classic-stopers-hint');
+        return;
+      }
+      if (stopperSelectionRequired && !isStopperSelectionComplete) {
+        scrollToConfiguratorSection('classic-stopers-pick');
+        return;
+      }
     }
     if (contentStep === 9) {
       setShowStickerErrors(true);
-      if (formData.wantSticker === 'tak' && !formData.stickerOption) return;
+      if (formData.wantSticker === 'tak' && !formData.stickerOption) {
+        scrollToConfiguratorSection('sticker-pick');
+        return;
+      }
     }
     if (contentStep === 10) {
       setShowOrderErrors(true);
-      if (!isOrderValid) return;
+      if (orderErrors.petName) {
+        scrollToConfiguratorSection('order-pet-name');
+        return;
+      }
+      if (orderErrors.phoneNumber) {
+        scrollToConfiguratorSection('order-phone');
+        return;
+      }
     }
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
@@ -1448,8 +1530,28 @@ export default function Home() {
     removedFromCartTimeoutRef.current = setTimeout(() => setShowRemovedFromCart(false), 3000);
   };
 
+  const confirmRemoveFromCart = () => {
+    if (!cartRemoveTarget) return;
+    removeFromCart(cartRemoveTarget.id);
+    setCartRemoveTarget(null);
+  };
+
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const cartProductsValue = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartDiscountLines = cartItems.map((item) => ({
+    price: item.price,
+    quantity: item.quantity,
+    productSlug: item.productSlug,
+    baseUnitPrice: cartItemBaseUnitPrice({
+      productSlug: item.productSlug,
+      config: item.config,
+    }),
+  }));
+  const cartProductsValueBeforeDiscount = cartDiscountLines.reduce(
+    (sum, line) => sum + line.price * line.quantity,
+    0,
+  );
+  const cartProductsValue = discountedProductsValue(cartDiscountLines, appliedDiscountPercent);
+  const cartDiscountAmount = discountAmountForLines(cartDiscountLines, appliedDiscountPercent);
   const hasFreeShipping = qualifiesForFreeShipping(cartProductsValue);
   const selectedShipping = shippingOptions.find((option) => option.id === checkoutData.shippingMethod);
   const shippingCost = selectedShipping
@@ -1457,6 +1559,32 @@ export default function Home() {
     : 0;
   const fastDeliveryCost = fastDeliveryCostForOrder(cartCount, checkoutData.fastDelivery);
   const checkoutTotal = cartProductsValue + shippingCost + fastDeliveryCost;
+
+  const applyDiscountCode = async () => {
+    setDiscountError('');
+    setIsApplyingDiscount(true);
+    const result = await validateDiscountCodeForCheckout(discountInput);
+    setIsApplyingDiscount(false);
+    if (!result.ok) {
+      setAppliedDiscountCode('');
+      setAppliedDiscountPercent(0);
+      setAppliedDiscountLabel('');
+      setDiscountError(result.message);
+      return;
+    }
+    setAppliedDiscountCode(result.code);
+    setAppliedDiscountPercent(result.percent);
+    setAppliedDiscountLabel(result.label);
+    setDiscountInput(result.code);
+  };
+
+  const clearDiscountCode = () => {
+    setAppliedDiscountCode('');
+    setAppliedDiscountPercent(0);
+    setAppliedDiscountLabel('');
+    setDiscountError('');
+    setDiscountInput('');
+  };
 
   const formatPostalCode = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 5);
@@ -1545,7 +1673,7 @@ export default function Home() {
       clientCity: checkoutData.city,
       deliveryType,
       inpostId: deliveryType === 'paczkomat' ? checkoutData.pickupPointName : null,
-      discountCode: appliedDiscount || null,
+      discountCode: appliedDiscountCode || null,
       productsValue: cartProductsValue,
       shippingCost,
       fastDelivery: checkoutData.fastDelivery,
@@ -1580,7 +1708,10 @@ export default function Home() {
     setCartItems([]);
     setCheckoutData(initialCheckoutData);
     setDiscountInput('');
-    setAppliedDiscount('');
+    setAppliedDiscountCode('');
+    setAppliedDiscountPercent(0);
+    setAppliedDiscountLabel('');
+    setDiscountError('');
     setShowCheckoutErrors(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1889,6 +2020,36 @@ export default function Home() {
       {showRemovedFromCart && (
         <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[70] bg-[#161616] text-[#F4EFE6] px-6 py-3 rounded-full shadow-lg text-sm font-medium text-center">
           Usunięto produkt z koszyka
+        </div>
+      )}
+      {cartRemoveTarget && (
+        <div className="fixed inset-0 z-[80] bg-[#161616]/40 flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-cart-item-title"
+            className="w-full max-w-md bg-white border border-[#D6C7AE] p-6 md:p-8 space-y-6"
+          >
+            <p id="remove-cart-item-title" className="text-base text-[#161616] leading-relaxed">
+              Czy chcesz usunąć pozycję <strong>{cartRemoveTarget.title}</strong>?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setCartRemoveTarget(null)}
+                className="px-5 py-2.5 rounded-none border border-[#D6C7AE] text-sm text-[#161616] hover:border-[#C4A574] transition-colors"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={confirmRemoveFromCart}
+                className="px-5 py-2.5 rounded-none bg-[#161616] text-[#F4EFE6] text-sm hover:bg-[#3A3A3A] transition-colors"
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {showAddedToCart && (
@@ -2245,12 +2406,14 @@ export default function Home() {
                 <div className="flex-1 space-y-4 w-full">
                   {cartItems.map((item) => {
                     const petName = item.options.find((option) => option.label === 'Imię pupila')?.values[0];
+                    const lineTitle = productLineTitle(item.productName, petName);
                     return (
                     <div key={item.id} className="bg-white rounded-3xl p-5 md:p-6 relative flex gap-4 md:gap-6 shadow-sm">
                       <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="absolute top-4 right-4 text-[#9A9288] hover:text-[#161616] text-xl leading-none"
-                        aria-label="Usuń z koszyka"
+                        type="button"
+                        onClick={() => setCartRemoveTarget({ id: item.id, title: lineTitle })}
+                        className="absolute top-4 right-4 w-[18px] h-[18px] rounded-full bg-red-700 hover:bg-red-800 text-white flex items-center justify-center text-xs leading-none shadow-sm transition-colors"
+                        aria-label={`Usuń z koszyka: ${lineTitle}`}
                       >
                         ×
                       </button>
@@ -2261,15 +2424,18 @@ export default function Home() {
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                           <div>
                             <h3 className="text-xl font-serif font-light text-[#161616]">
-                              {productLineTitle(item.productName, petName)}
+                              {lineTitle}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-3">
                               {item.options.map((option) => (
                                 <div key={`${item.id}-${option.label}`} className="text-sm min-w-0">
                                   <p className="text-[#9A9288]">{option.label}:</p>
                                   <ul className="mt-0.5 space-y-0.5 pl-3">
-                                    {option.values.map((value) => (
-                                      <li key={`${item.id}-${option.label}-${value}`} className="text-[#161616] font-medium">
+                                    {option.values.map((value, valueIndex) => (
+                                      <li
+                                        key={`${item.id}-${option.label}-${valueIndex}`}
+                                        className="text-[#161616] font-medium"
+                                      >
                                         {value}
                                       </li>
                                     ))}
@@ -2712,23 +2878,54 @@ export default function Home() {
                     <input
                       type="text"
                       value={discountInput}
-                      onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
-                      placeholder="KOD RABATOWY..."
-                      className="flex-1 min-w-0 rounded-none border border-[#D6C7AE] bg-white px-4 py-2 text-base md:text-sm focus:outline-none focus:border-[#C4A574]"
+                      maxLength={6}
+                      onChange={(e) =>
+                        setDiscountInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6))
+                      }
+                      placeholder="KOD"
+                      className="flex-1 min-w-0 rounded-none border border-[#D6C7AE] bg-white px-4 py-2 text-base md:text-sm focus:outline-none focus:border-[#C4A574] uppercase tracking-widest"
                     />
                     <button
-                      onClick={() => setAppliedDiscount(discountInput.trim())}
-                      className="bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-4 md:px-6 py-2.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
+                      type="button"
+                      disabled={isApplyingDiscount || discountInput.length !== 6}
+                      onClick={() => void applyDiscountCode()}
+                      className="bg-[#3A5A40] hover:bg-[#2E4833] disabled:opacity-50 text-[#F4EFE6] px-4 md:px-6 py-2.5 rounded-none text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light shrink-0 transition-colors duration-300"
                     >
-                      Zastosuj
+                      {isApplyingDiscount ? 'Sprawdzam…' : 'Zastosuj'}
                     </button>
                   </div>
-                  {appliedDiscount && (
-                    <p className="text-xs text-[#7A736C] mt-2">Zapisano kod: {appliedDiscount}</p>
+                  {discountError && <p className="text-xs text-red-500 mt-2">{discountError}</p>}
+                  {appliedDiscountCode && (
+                    <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-[#7A736C]">
+                      <span>
+                        Kod <strong className="text-[#161616]">{appliedDiscountCode}</strong>
+                        {appliedDiscountLabel ? ` · ${appliedDiscountLabel}` : ''} (−{appliedDiscountPercent}% od
+                        ceny bazowej)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={clearDiscountCode}
+                        className="underline text-[#161616] hover:text-[#3A5A40]"
+                      >
+                        Usuń
+                      </button>
+                    </div>
                   )}
                 </div>
 
                 <div className="space-y-2 text-sm text-[#7A736C] pt-2">
+                  {cartDiscountAmount > 0 && (
+                    <>
+                      <div className="flex justify-between gap-3 text-xs">
+                        <span>Produkty przed rabatem</span>
+                        <span className="shrink-0">{formatPrice(cartProductsValueBeforeDiscount)}</span>
+                      </div>
+                      <div className="flex justify-between gap-3 text-xs">
+                        <span className="min-w-0">Rabat (tylko cena bazowa adresówki)</span>
+                        <span className="shrink-0 text-[#161616]">−{formatPrice(cartDiscountAmount)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between">
                     <span>Wartość produktów</span>
                     <span className="font-medium text-[#161616]">{formatPrice(cartProductsValue)}</span>
@@ -2817,7 +3014,19 @@ export default function Home() {
                     </h2>
                     
                     <div className="pt-4">
-                      {isRogalikTagConfigurator && rogalikFlowStep === 'baza' && (
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'kolor' && (
+                        <RogalikConfiguratorStep
+                          formData={formData}
+                          onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+                          onToggleCharm={toggleRogalikCharm}
+                          showErrors={showRogalikErrors}
+                          stringSizeText={stringSizeText ?? ''}
+                          step="kolor"
+                          showNeckSection={false}
+                        />
+                      )}
+
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'mocowanie' && (
                         <RogalikConfiguratorStep
                           formData={formData}
                           onChange={(patch) =>
@@ -2842,7 +3051,7 @@ export default function Home() {
                           onToggleCharm={toggleRogalikCharm}
                           showErrors={showRogalikErrors}
                           stringSizeText={stringSizeText ?? ''}
-                          step="baza"
+                          step="mocowanie"
                           showNeckSection={false}
                         />
                       )}
@@ -2896,7 +3105,10 @@ export default function Home() {
                             <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
                           )}
                           {formData.wantExtraKarabiners === 'tak' && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
+                            <div
+                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
+                              data-configurator-section="extra-karabiners-pick"
+                            >
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
                               {renderExtraKarabinerGrid()}
                             </div>
@@ -3078,7 +3290,10 @@ export default function Home() {
                           )}
 
                           {formData.wantExtraCharms === 'tak' && (
-                            <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
+                            <div
+                              className="space-y-6 pt-6 border-t border-[#D6C7AE]"
+                              data-configurator-section="extra-charms-pick"
+                            >
                               <div className="space-y-2">
                                 <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
                                 {isGlowTagConfigurator && (
@@ -3131,7 +3346,10 @@ export default function Home() {
                           )}
 
                           {formData.wantExtraKarabiners === 'tak' && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
+                            <div
+                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
+                              data-configurator-section="extra-karabiners-pick"
+                            >
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
                               {renderExtraKarabinerGrid()}
                             </div>
@@ -3177,7 +3395,7 @@ export default function Home() {
 
                           {formData.wantString === 'tak' && (
                             <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
-                              <div className="space-y-2">
+                              <div className="space-y-2" data-configurator-section="classic-string-neck">
                                 <label className="block font-bold text-base text-[#161616]">Wpisz obwód szyi Twojego pieska w centymetrach:</label>
                                 <input
                                   type="text"
@@ -3217,7 +3435,10 @@ export default function Home() {
                               </div>
 
                               {isGlowTagConfigurator && (
-                                <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+                                <section
+                                  className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden"
+                                  data-configurator-section="classic-string-pick"
+                                >
                                   <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                     <h3 className="font-bold text-lg text-[#161616]">
                                       Dodaj sznurek Glow (możesz wybrać wiele)
@@ -3251,7 +3472,10 @@ export default function Home() {
                                 </section>
                               )}
 
-                              <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+                              <section
+                                className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden"
+                                data-configurator-section={isGlowTagConfigurator ? undefined : 'classic-string-pick'}
+                              >
                                 <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                   <h3 className="font-bold text-lg text-[#161616]">
                                     Dodaj sznurek Premium (możesz wybrać wiele)
@@ -3365,11 +3589,19 @@ export default function Home() {
                           </div>
 
                           {formData.wantStopers === 'tak' && selectedStringsCount === 0 && (
-                            <p className="text-sm text-red-500">Najpierw dodaj sznurek w poprzednim kroku.</p>
+                            <p
+                              className="text-sm text-red-500"
+                              data-configurator-section="classic-stopers-hint"
+                            >
+                              Najpierw dodaj sznurek w poprzednim kroku.
+                            </p>
                           )}
 
                           {formData.wantStopers === 'tak' && selectedStringsCount > 0 && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
+                            <div
+                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
+                              data-configurator-section="classic-stopers-pick"
+                            >
                               <p className="font-bold text-base text-[#161616]">Wybierz stopery (możesz powtórzyć ten sam wariant):</p>
                               <div className={imageGridClass(stopersList.length)}>
                                 {stopersList.map((stoper) => {
@@ -3465,7 +3697,10 @@ export default function Home() {
                           )}
 
                           {formData.wantSticker === 'tak' && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
+                            <div
+                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
+                              data-configurator-section="sticker-pick"
+                            >
                               <p className="font-bold text-base text-[#161616]">Wybierz naklejkę:</p>
                               <div className={imageGridClass(stickersList.length)}>
                                 {stickersList.map((sticker) => (
@@ -3513,7 +3748,7 @@ export default function Home() {
 
                       {((isRogalikTagConfigurator && rogalikFlowStep === 'dane') || contentStep === 10) && (
                         <div className="space-y-5">
-                          <div className="space-y-2">
+                          <div className="space-y-2" data-configurator-section="order-pet-name">
                             <label className="block font-bold text-base text-[#161616]">Imię Twojego psa</label>
                             <input
                               type="text"
@@ -3580,7 +3815,7 @@ export default function Home() {
                           </div>
                           )}
 
-                          <div className="space-y-2">
+                          <div className="space-y-2" data-configurator-section="order-phone">
                             <label className="block font-bold text-base text-[#161616]">Numer telefonu</label>
                             {isRogalikTagConfigurator ? (
                               <input
@@ -3666,6 +3901,33 @@ export default function Home() {
                   </h3>
                   {activeConfiguratorSummary}
                 </div>
+                {!qualifiesForFreeShipping(totalPrice) && (
+                  <div className="mt-3 space-y-2">
+                    <div
+                      className="h-2.5 w-full bg-[#EBE4D6] border border-[#D6C7AE] overflow-hidden"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(freeShippingProgressPercent(totalPrice))}
+                      aria-label={`Postęp do darmowej wysyłki: ${Math.round(freeShippingRemainingPercent(totalPrice))}% do ukończenia`}
+                    >
+                      <div
+                        className="h-full bg-[#3A5A40] transition-[width] duration-300 ease-out"
+                        style={{ width: `${freeShippingProgressPercent(totalPrice)}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-[#7A736C] leading-relaxed text-center lg:text-left">
+                      Do darmowej wysyłki brakuje{' '}
+                      <span className="font-medium text-[#161616] tabular-nums">
+                        {formatPrice(amountUntilFreeShipping(totalPrice))}
+                      </span>
+                      <span className="text-[#9A9288]">
+                        {' '}
+                        ({Math.round(freeShippingRemainingPercent(totalPrice))}%)
+                      </span>
+                    </p>
+                  </div>
+                )}
                 <div className="hidden lg:flex justify-center mt-4">
                   {renderNextButton()}
                 </div>

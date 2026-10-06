@@ -28,8 +28,8 @@ type Props = {
   onToggleCharm: (id: string) => void;
   showErrors: boolean;
   stringSizeText: string;
-  /** Krok BAZA (kolor, mocowanie) lub DODATKI (obwód, sznureczek, koraliki, charmsy). */
-  step: 'baza' | 'dodatki';
+  /** Kolor, mocowanie lub dodatki (obwód, sznureczek, koraliki, charmsy). */
+  step: 'kolor' | 'mocowanie' | 'dodatki';
   /** Obwód szyi — pierwsza sekcja kroku DODATKI (mocowanie „Z koralikami”). */
   showNeckSection: boolean;
 };
@@ -130,7 +130,7 @@ function NeckCircumferenceSection({
   sectionIndex: number;
 }) {
   return (
-    <section className={sectionClass}>
+    <section className={sectionClass} data-configurator-section="rogalik-neck">
       <SectionTitle index={sectionIndex}>Podaj obwód szyi</SectionTitle>
       <div className="space-y-2">
         <label className="block text-sm text-[#7A736C] font-light">
@@ -202,7 +202,7 @@ export function RogalikConfiguratorStep({
           />
         )}
 
-        <section className={sectionClass}>
+        <section className={sectionClass} data-configurator-section="rogalik-cord">
           <SectionTitle index={cordIndex}>Wybierz kolor sznureczka</SectionTitle>
           <OptionTiles
             options={ROGALIK_CORD_COLOR_OPTIONS}
@@ -215,7 +215,7 @@ export function RogalikConfiguratorStep({
           )}
         </section>
 
-        <section className={sectionClass}>
+        <section className={sectionClass} data-configurator-section="rogalik-beads">
           <SectionTitle index={beadsIndex}>Wybierz koraliki</SectionTitle>
           <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
           <OptionTiles
@@ -279,24 +279,30 @@ export function RogalikConfiguratorStep({
     );
   }
 
+  if (step === 'kolor') {
+    return (
+      <div className="space-y-2">
+        <section className={sectionClass} data-configurator-section="rogalik-color">
+          <SectionTitle index={1}>Wybierz kolor rogalika</SectionTitle>
+          <p className={subtitleClass}>Wybierz kolor, który najbardziej Ci odpowiada:</p>
+          <OptionTiles
+            options={ROGALIK_COLOR_OPTIONS}
+            selectedId={formData.rogalikColor}
+            onSelect={(id) => onChange({ rogalikColor: id })}
+            columns={3}
+          />
+          {showErrors && !formData.rogalikColor && (
+            <p className="text-sm text-red-500">Wybierz kolor rogalika.</p>
+          )}
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
-      <section className={sectionClass}>
-        <SectionTitle index={1}>Wybierz kolor rogalika</SectionTitle>
-        <p className={subtitleClass}>Wybierz kolor, który najbardziej Ci odpowiada:</p>
-        <OptionTiles
-          options={ROGALIK_COLOR_OPTIONS}
-          selectedId={formData.rogalikColor}
-          onSelect={(id) => onChange({ rogalikColor: id })}
-          columns={3}
-        />
-        {showErrors && !formData.rogalikColor && (
-          <p className="text-sm text-red-500">Wybierz kolor rogalika.</p>
-        )}
-      </section>
-
-      <section className={sectionClass}>
-        <SectionTitle index={2}>Wybierz sposób mocowania</SectionTitle>
+      <section className={sectionClass} data-configurator-section="rogalik-mounting">
+        <SectionTitle index={1}>Wybierz sposób mocowania</SectionTitle>
         <p className={subtitleClass}>Wybierz w jaki sposób adresówka będzie mocowana:</p>
         <OptionTiles
           options={ROGALIK_MOUNTING_OPTIONS}

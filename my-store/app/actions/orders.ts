@@ -7,6 +7,11 @@ import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
+import { validateDiscountCodeForCheckout } from "@/app/actions/discount-codes"
+import { discountedProductsValue, roundMoney } from "@/lib/cart-item-pricing"
+import { orderDiscountDetailsFromCreateItems, orderDiscountDetailsFromItems } from "@/lib/order-discount-summary"
+import type { OrderDiscountDetails } from "@/lib/types/order"
+import { DISCOUNT_PERCENTS, type DiscountPercent } from "@/lib/discount-codes"
 import { canSetOrderStatusToPending, orderFrameBaseLines } from "@/lib/order-display"
 import {
   shippingCostForOrder,
@@ -23,6 +28,7 @@ import type {
   OrderRecord,
   OrderStatus,
   UpdateOrderStatusResult,
+  UpdateOrderCommentResult,
   UpdateOrderPhoneResult,
 } from "@/lib/types/order"
 
@@ -30,8 +36,6 @@ type PlaceOrderRow = {
   id: string
   order_id: string
 }
-
-const roundMoney = (value: number) => Math.round(value * 100) / 100
 
 const placeOrderErrorMessage = (message: string) => {
   const normalized = message.toLowerCase()
@@ -50,6 +54,10 @@ const placeOrderErrorMessage = (message: string) => {
 
   if (normalized.includes("rogalik_mounting") || normalized.includes("rogalik_charms")) {
     return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20261005_order_item_rogalik.sql."
+  }
+
+  if (normalized.includes("discount code") || normalized.includes("discount_codes")) {
+    return "Kod rabatowy jest nieprawidłowy, wykorzystany lub wygasł."
   }
 
   if (normalized.includes("product_slug") || normalized.includes("product_name")) {
@@ -84,11 +92,53 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     return { ok: false, message: "Wybierz paczkomat." }
   }
 
+  let discountCodeForOrder: string | null = null
+  let discountPercent = 0
+  let discountLabel = ""
+  if (input.discountCode?.trim()) {
+    const discountCheck = await validateDiscountCodeForCheckout(input.discountCode)
+    if (!discountCheck.ok) {
+      return { ok: false, message: discountCheck.message }
+    }
+    discountCodeForOrder = discountCheck.code
+    discountPercent = discountCheck.percent
+    discountLabel = discountCheck.label
+  }
+
+  const discountDetails: OrderDiscountDetails | null = discountCodeForOrder
+    ? orderDiscountDetailsFromCreateItems(
+        input.items,
+        discountCodeForOrder,
+        discountLabel,
+        discountPercent,
+      )
+    : null
+
+  const discountLines = input.items.map((item) => ({
+    price: item.unitPrice,
+    quantity: item.quantity,
+    productSlug: item.productSlug,
+    baseUnitPrice: item.baseUnitPrice,
+  }))
+
+  const expectedProductsValue = discountedProductsValue(discountLines, discountPercent)
+
   const baseShippingPrice =
     input.deliveryType === "paczkomat" ? SHIPPING_PACZKOMAT_PRICE : SHIPPING_KURIER_PRICE
-  const expectedShippingCost = shippingCostForOrder(input.productsValue, baseShippingPrice)
+  const expectedShippingCost = shippingCostForOrder(expectedProductsValue, baseShippingPrice)
+  if (roundMoney(input.productsValue) !== roundMoney(expectedProductsValue)) {
+    return { ok: false, message: "Nieprawidłowa wartość produktów (rabat)." }
+  }
   if (roundMoney(input.shippingCost) !== roundMoney(expectedShippingCost)) {
     return { ok: false, message: "Nieprawidłowy koszt dostawy." }
+  }
+
+  const expectedFastDeliveryCost = roundMoney(input.fastDelivery ? input.fastDeliveryCost : 0)
+  const expectedTotal = roundMoney(
+    expectedProductsValue + expectedShippingCost + expectedFastDeliveryCost,
+  )
+  if (roundMoney(input.total) !== expectedTotal) {
+    return { ok: false, message: "Nieprawidłowa kwota zamówienia." }
   }
 
   const supabase = await createClient()
@@ -108,7 +158,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     client_city: input.clientCity.trim(),
     delivery_type: input.deliveryType,
     inpost_id: input.deliveryType === "paczkomat" ? input.inpostId?.trim() ?? null : null,
-    discount_code: input.discountCode?.trim() || null,
+    discount_code: discountCodeForOrder,
     products_value: roundMoney(input.productsValue),
     shipping_cost: roundMoney(input.shippingCost),
     fast_delivery: Boolean(input.fastDelivery),
@@ -179,6 +229,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       clientAddress: orderRow.client_address,
       clientPostcode: orderRow.client_postcode,
       clientCity: orderRow.client_city,
+      discountCode: discountCodeForOrder,
+      discountDetails,
       productsValue: orderRow.products_value,
       shippingCost: orderRow.shipping_cost,
       fastDelivery: orderRow.fast_delivery,
@@ -212,6 +264,7 @@ type OrderRow = {
   payment_recipient?: string | null
   total: number | string
   created_at: string
+  admin_comment?: string | null
 }
 
 type OrderItemListRow = {
@@ -222,6 +275,7 @@ type OrderItemListRow = {
   quantity: number | string
   sort_order: number | null
   created_at: string
+  dog_name?: string | null
 }
 
 type OrderItemRow = {
@@ -311,6 +365,8 @@ const mapOrder = (row: OrderRow): OrderRecord => ({
   total: toMoney(row.total),
   createdAt: row.created_at,
   frameBaseLines: [],
+  petNames: [],
+  adminComment: row.admin_comment?.trim() || null,
 })
 
 const mapItem = (row: OrderItemRow): OrderItemRecord => ({
@@ -372,7 +428,9 @@ export async function listOrders(): Promise<ListOrdersResult> {
   const orderIds = orders.map((order) => order.id)
   const { data: itemsData, error: itemsError } = await supabase
     .from("order_items")
-    .select("order_id, product_slug, ring_color, base_color, quantity, sort_order, created_at")
+    .select(
+      "order_id, product_slug, ring_color, base_color, quantity, sort_order, created_at, dog_name",
+    )
     .in("order_id", orderIds)
 
   if (itemsError) {
@@ -392,6 +450,7 @@ export async function listOrders(): Promise<ListOrdersResult> {
     string,
     { productSlug: string; ringColor: string; baseColor: string; quantity: number }[]
   >()
+  const petNamesByOrderId = new Map<string, string[]>()
   for (const row of sortedItems as OrderItemListRow[]) {
     const items = itemsByOrderId.get(row.order_id) ?? []
     items.push({
@@ -401,6 +460,13 @@ export async function listOrders(): Promise<ListOrdersResult> {
       quantity: Number(row.quantity) || 1,
     })
     itemsByOrderId.set(row.order_id, items)
+
+    const dogName = row.dog_name?.trim()
+    if (dogName) {
+      const names = petNamesByOrderId.get(row.order_id) ?? []
+      names.push(dogName)
+      petNamesByOrderId.set(row.order_id, names)
+    }
   }
 
   return {
@@ -408,6 +474,7 @@ export async function listOrders(): Promise<ListOrdersResult> {
     orders: orders.map((order) => ({
       ...order,
       frameBaseLines: orderFrameBaseLines(itemsByOrderId.get(order.id) ?? []),
+      petNames: petNamesByOrderId.get(order.id) ?? [],
     })),
   }
 }
@@ -435,14 +502,53 @@ export async function getOrder(id: string): Promise<GetOrderResult> {
   }
 
   const items = (payload.items ?? []).map(mapItem)
+  const mappedOrder = mapOrder(payload.order)
+
+  const petNames = items
+    .map((item) => item.dogName.trim())
+    .filter((name, index, all) => name.length > 0 && all.indexOf(name) === index)
+
+  let discountDetails: OrderDiscountDetails | null = null
+  if (mappedOrder.discountCode) {
+    const meta = await lookupDiscountCodeMetaForAdmin(supabase, mappedOrder.discountCode)
+    if (meta) {
+      discountDetails = orderDiscountDetailsFromItems(
+        items,
+        mappedOrder.discountCode,
+        meta.label,
+        meta.percent,
+      )
+    }
+  }
 
   return {
     ok: true,
     order: {
-      ...mapOrder(payload.order),
+      ...mappedOrder,
       frameBaseLines: orderFrameBaseLines(items),
+      petNames,
       items,
+      discountDetails,
     },
+  }
+}
+
+const lookupDiscountCodeMetaForAdmin = async (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  code: string,
+): Promise<{ label: string; percent: DiscountPercent } | null> => {
+  const { data, error } = await supabase.rpc("admin_lookup_discount_code", { p_code: code })
+  if (error) {
+    console.error("admin_lookup_discount_code failed", error)
+    return null
+  }
+  if (!data || typeof data !== "object") return null
+  const payload = data as { label?: string; percent?: number }
+  const percent = Number(payload.percent)
+  if (!DISCOUNT_PERCENTS.includes(percent as DiscountPercent)) return null
+  return {
+    label: String(payload.label ?? "").trim(),
+    percent: percent as DiscountPercent,
   }
 }
 
@@ -579,4 +685,33 @@ export async function updateOrderClientPhone(
   }
 
   return { ok: true, phone: stored }
+}
+
+export async function updateOrderAdminComment(
+  orderUuid: string,
+  comment: string,
+): Promise<UpdateOrderCommentResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
+  const trimmed = comment.trim().slice(0, 120)
+  const stored = trimmed.length > 0 ? trimmed : null
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc("admin_set_order_comment", {
+    p_id: orderUuid,
+    p_comment: stored ?? "",
+  })
+
+  if (error) {
+    console.error("admin_set_order_comment failed", error)
+    return {
+      ok: false,
+      message: error.message.includes("admin_set_order_comment")
+        ? "Brak funkcji admin_set_order_comment w Supabase. Wklej migrację supabase/migrations/20261006_order_admin_comment.sql."
+        : "Nie udało się zapisać komentarza. Spróbuj ponownie.",
+    }
+  }
+
+  return { ok: true, comment: stored }
 }

@@ -1,3 +1,4 @@
+import { cartItemBaseUnitPrice } from "@/lib/cart-item-pricing"
 import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { rogalikMountingUsesBeads, rogalikStringSizeFromNeckCm } from "@/lib/rogalik-options"
 import { stringSizeLabel } from "@/lib/pricing"
@@ -151,5 +152,12 @@ export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
   }
 }
 
-export const cartItemToCreateOrderItem = (item: CartItemForOrder): CreateOrderItemInput =>
-  isRogalikCartItem(item) ? mapRogalikCartItemToOrderItem(item) : mapClassicCartItemToOrderItem(item)
+export const cartItemToCreateOrderItem = (item: CartItemForOrder): CreateOrderItemInput => {
+  const mapped = isRogalikCartItem(item)
+    ? mapRogalikCartItemToOrderItem(item)
+    : mapClassicCartItemToOrderItem(item)
+  return {
+    ...mapped,
+    baseUnitPrice: cartItemBaseUnitPrice(item),
+  }
+}

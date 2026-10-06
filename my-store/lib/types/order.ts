@@ -29,6 +29,16 @@ export type CreateOrderItemInput = {
   rogalikCordColor: string | null
   rogalikBeads: string | null
   rogalikCharms: string[]
+  /** Cena bazowa adresówki (walidacja rabatu). */
+  baseUnitPrice: number
+}
+
+export type OrderDiscountDetails = {
+  code: string
+  label: string
+  percent: number
+  productsValueBefore: number
+  discountAmount: number
 }
 
 export type CreateOrderInput = {
@@ -42,6 +52,7 @@ export type CreateOrderInput = {
   deliveryType: DeliveryType
   inpostId: string | null
   discountCode: string | null
+  discountDetails?: OrderDiscountDetails | null
   productsValue: number
   shippingCost: number
   fastDelivery: boolean
@@ -85,6 +96,9 @@ export type OrderRecord = {
   total: number
   createdAt: string
   frameBaseLines: string[]
+  /** Imiona pupili z pozycji zamówienia (unikalne, kolejność jak w koszyku). */
+  petNames: string[]
+  adminComment: string | null
 }
 
 export type OrderItemRecord = {
@@ -120,6 +134,7 @@ export type OrderItemRecord = {
 
 export type OrderDetail = OrderRecord & {
   items: OrderItemRecord[]
+  discountDetails: OrderDiscountDetails | null
 }
 
 export type ListOrdersResult =
@@ -136,4 +151,8 @@ export type UpdateOrderStatusResult =
 
 export type UpdateOrderPhoneResult =
   | { ok: true; phone: string }
+  | { ok: false; message: string }
+
+export type UpdateOrderCommentResult =
+  | { ok: true; comment: string | null }
   | { ok: false; message: string }

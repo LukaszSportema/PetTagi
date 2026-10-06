@@ -18,6 +18,16 @@ import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/ord
 export const formatPrice = (value: number) =>
   `${value.toFixed(2).replace(".", ",")} zł`
 
+export const orderPetNamesLabel = (names: string[]) => {
+  const unique: string[] = []
+  for (const name of names) {
+    const trimmed = name.trim()
+    if (!trimmed || unique.includes(trimmed)) continue
+    unique.push(trimmed)
+  }
+  return unique.length > 0 ? unique.join(", ") : "—"
+}
+
 export const formatRogalikPriceLineAmount = (line: RogalikPriceLine, quantity = 1) => {
   const value = line.amountPln * quantity
   const formatted = formatPrice(value)

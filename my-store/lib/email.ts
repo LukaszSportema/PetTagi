@@ -18,6 +18,7 @@ import {
   PAYMENT_RECIPIENTS,
   type PaymentRecipientId,
 } from "@/lib/payment"
+import { orderDiscountCodeSummary } from "@/lib/order-discount-display"
 import type { CreateOrderInput } from "@/lib/types/order"
 
 const FROM = "Pettagi <no-reply@pettagi.com>"
@@ -127,6 +128,8 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
 
   const transferNote = orderConfirmationTransferNote(input.paymentRecipient)
   const showBankTransfer = paymentRecipientShowsBankTransfer(input.paymentRecipient)
+  const discount = order.discountDetails
+  const showDiscountBreakdown = Boolean(discount && discount.discountAmount > 0)
 
   const text = [
     ORDER_CONFIRMATION_TITLE,
@@ -159,6 +162,13 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
     order.clientEmail,
     "",
     "Metoda wysyłki i koszty",
+    ...(discount ? [orderDiscountCodeSummary(discount), ""] : []),
+    ...(showDiscountBreakdown
+      ? [
+          `Produkty przed rabatem: ${formatPrice(discount!.productsValueBefore)}`,
+          `Rabat (tylko cena bazowa adresówki): −${formatPrice(discount!.discountAmount)}`,
+        ]
+      : []),
     `Wartość produktów: ${formatPrice(order.productsValue)}`,
     `Dostawa (${shipping}): ${formatPrice(order.shippingCost)}`,
     ...(order.fastDelivery
@@ -263,7 +273,17 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
             <tr>
               <td style="padding:20px 28px 8px">
                 <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#9A9288;font-family:Arial,Helvetica,sans-serif">Metoda wysyłki i koszty</p>
+                ${
+                  discount
+                    ? `<p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:#7A736C;font-family:Arial,Helvetica,sans-serif">${escapeHtml(orderDiscountCodeSummary(discount))}</p>`
+                    : ""
+                }
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  ${
+                    showDiscountBreakdown
+                      ? `${costRow("Produkty przed rabatem", formatPrice(discount!.productsValueBefore))}${costRow("Rabat (tylko cena bazowa adresówki)", `−${formatPrice(discount!.discountAmount)}`)}`
+                      : ""
+                  }
                   ${costRow("Wartość produktów", formatPrice(order.productsValue))}
                   ${costRow(`Dostawa — ${escapeHtml(shipping)}`, formatPrice(order.shippingCost))}
                   ${

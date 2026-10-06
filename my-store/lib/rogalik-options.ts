@@ -98,7 +98,8 @@ export const rogalikMountingUsesBeads = (mounting: string) => mounting === "kora
 export const rogalikMountingUsesKarabinczyk = (mounting: string) => mounting === "karabinczyk"
 
 export type RogalikFlowStep =
-  | "baza"
+  | "kolor"
+  | "mocowanie"
   | "dodatki"
   | "free-karabinier"
   | "extra-karabinier"
@@ -107,16 +108,18 @@ export type RogalikFlowStep =
 
 /** Mapowanie numeru kroku w UI na ekran (zależy od mocowania). */
 export const rogalikFlowStepAt = (mounting: string, stepIndex: number): RogalikFlowStep => {
+  if (stepIndex <= 1) return "kolor"
+  if (stepIndex === 2) return "mocowanie"
+
   if (rogalikMountingUsesBeads(mounting)) {
-    if (stepIndex <= 1) return "baza"
-    if (stepIndex === 2) return "dodatki"
-    if (stepIndex === 3) return "dane"
+    if (stepIndex === 3) return "dodatki"
+    if (stepIndex === 4) return "dane"
     return "podsumowanie"
   }
-  if (stepIndex <= 1) return "baza"
-  if (stepIndex === 2) return "free-karabinier"
-  if (stepIndex === 3) return "extra-karabinier"
-  if (stepIndex === 4) return "dane"
+
+  if (stepIndex === 3) return "free-karabinier"
+  if (stepIndex === 4) return "extra-karabinier"
+  if (stepIndex === 5) return "dane"
   return "podsumowanie"
 }
 
