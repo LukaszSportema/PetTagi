@@ -19,6 +19,8 @@ import {
 import type { DiscountPercent } from '@/lib/discount-codes';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import { scrollToConfiguratorSection } from '@/lib/configurator-scroll';
+import { fetchWarehouseStockMap } from './actions/warehouse';
+import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
 import FurgonetkaMap from './FurgonetkaMap';
 import {
   fulfillmentMessage,
@@ -211,7 +213,15 @@ const initialFormData: FormDataState = {
 
 const formDataForProduct = (slug: string): FormDataState => {
   if (slug === GLOW_TAG_PRODUCT.slug) {
-    return { ...initialFormData, ringColor: 'glow', baseOption: 'glow1', glowTextColor: 'zloty', wantSticker: 'nie', stickerOption: '' };
+    return {
+      ...initialFormData,
+      ringColor: 'glow',
+      baseOption: '',
+      glowTextColor: '',
+      charmOption: '',
+      wantSticker: 'nie',
+      stickerOption: '',
+    };
   }
   if (slug === ROGALIK_TAG_PRODUCT.slug) {
     return {
@@ -234,7 +244,12 @@ const formDataForProduct = (slug: string): FormDataState => {
       rogalikCharms: [],
     };
   }
-  return initialFormData;
+  return {
+    ...initialFormData,
+    ringColor: '',
+    baseOption: '',
+    charmOption: '',
+  };
 };
 
 type PlacedOrder = {
@@ -433,6 +448,7 @@ export default function Home() {
   const [showGoldRingInfoModal, setShowGoldRingInfoModal] = useState(false);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
   const [cartRemoveTarget, setCartRemoveTarget] = useState<{ id: string; title: string } | null>(null);
+  const [warehouseStock, setWarehouseStock] = useState<Record<string, number>>({});
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
   const [showCheckoutErrors, setShowCheckoutErrors] = useState(false);
@@ -681,6 +697,10 @@ export default function Home() {
     setShowAddedToCart(false);
     setShowRogalikErrors(false);
     setShowRogalikDodatkiErrors(false);
+    setShowRingErrors(false);
+    setShowBaseErrors(false);
+    setShowGlowTextErrors(false);
+    setShowFreeCharmErrors(false);
     setActiveProductSlug(product.slug);
     goToTab('configurator');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -801,6 +821,10 @@ export default function Home() {
   const [showOrderErrors, setShowOrderErrors] = useState(false);
   const [showStopperErrors, setShowStopperErrors] = useState(false);
   const [showStringErrors, setShowStringErrors] = useState(false);
+  const [showRingErrors, setShowRingErrors] = useState(false);
+  const [showBaseErrors, setShowBaseErrors] = useState(false);
+  const [showGlowTextErrors, setShowGlowTextErrors] = useState(false);
+  const [showFreeCharmErrors, setShowFreeCharmErrors] = useState(false);
   const [showExtraCharmsErrors, setShowExtraCharmsErrors] = useState(false);
   const [showExtraKarabinersErrors, setShowExtraKarabinersErrors] = useState(false);
   const [showStickerErrors, setShowStickerErrors] = useState(false);
@@ -847,7 +871,7 @@ export default function Home() {
     if (isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier') {
       setShowExtraKarabinersErrors(true);
       if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
-        scrollToConfiguratorSection('extra-karabiners-pick');
+        scrollToConfiguratorSection('extra-karabiners-choice');
         return;
       }
     }
@@ -866,17 +890,49 @@ export default function Home() {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
       return;
     }
+    if (contentStep === 1) {
+      setShowRingErrors(true);
+      if (!formData.ringColor.trim()) {
+        scrollToConfiguratorSection('classic-ring-choice');
+        return;
+      }
+    }
+    if (contentStep === 2) {
+      setShowBaseErrors(true);
+      const baseValid =
+        formData.baseOption.trim() !== '' &&
+        selectedBases.some((base) => base.id === formData.baseOption);
+      if (!baseValid) {
+        scrollToConfiguratorSection('classic-base-choice');
+        return;
+      }
+    }
+    if (contentStep === 12) {
+      setShowGlowTextErrors(true);
+      if (!formData.glowTextColor.trim()) {
+        scrollToConfiguratorSection('classic-glow-text-choice');
+        return;
+      }
+    }
+    if (contentStep === 3) {
+      setShowFreeCharmErrors(true);
+      const freeCharm = charmsList.find((item) => item.id === formData.charmOption);
+      if (!formData.charmOption.trim() || charmUnavailable(formData.charmOption, freeCharm?.unavailable)) {
+        scrollToConfiguratorSection('classic-free-charm-choice');
+        return;
+      }
+    }
     if (contentStep === 4) {
       setShowExtraCharmsErrors(true);
       if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) {
-        scrollToConfiguratorSection('extra-charms-pick');
+        scrollToConfiguratorSection('extra-charms-choice');
         return;
       }
     }
     if (contentStep === 6) {
       setShowExtraKarabinersErrors(true);
       if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
-        scrollToConfiguratorSection('extra-karabiners-pick');
+        scrollToConfiguratorSection('extra-karabiners-choice');
         return;
       }
     }
@@ -887,25 +943,25 @@ export default function Home() {
         return;
       }
       if (formData.wantString === 'tak' && selectedStringsCount === 0) {
-        scrollToConfiguratorSection('classic-string-pick');
+        scrollToConfiguratorSection('classic-string-choice');
         return;
       }
     }
     if (contentStep === 8) {
       setShowStopperErrors(true);
       if (formData.wantStopers === 'tak' && selectedStringsCount === 0) {
-        scrollToConfiguratorSection('classic-stopers-hint');
+        scrollToConfiguratorSection('classic-stopers-choice');
         return;
       }
       if (stopperSelectionRequired && !isStopperSelectionComplete) {
-        scrollToConfiguratorSection('classic-stopers-pick');
+        scrollToConfiguratorSection('classic-stopers-choice');
         return;
       }
     }
     if (contentStep === 9) {
       setShowStickerErrors(true);
       if (formData.wantSticker === 'tak' && !formData.stickerOption) {
-        scrollToConfiguratorSection('sticker-pick');
+        scrollToConfiguratorSection('sticker-choice');
         return;
       }
     }
@@ -1040,6 +1096,11 @@ export default function Home() {
   const charmLargeList = CHARM_LARGE_CATALOG.map(mapCharmItem);
   const charmsList = [...charmBestsellersList, ...charmCatalogList, ...charmSilverList, ...charmLargeList];
 
+  const charmUnavailable = (id: string, catalogUnavailable?: boolean) =>
+    isWarehouseOutOfStock(warehouseStock, id, catalogUnavailable);
+
+  const karabinerUnavailable = (id: string) => isWarehouseOutOfStock(warehouseStock, id, false);
+
   const karabinersList = KARABINER_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
@@ -1093,13 +1154,15 @@ export default function Home() {
     list.find((item) => item.id === id)?.title ?? fallback;
 
   const selectFreeCharm = (charmId: string) => {
-    if (charmsList.find((item) => item.id === charmId)?.unavailable) return;
+    const charm = charmsList.find((item) => item.id === charmId);
+    if (charmUnavailable(charmId, charm?.unavailable)) return;
     setFormData((prev) => ({ ...prev, charmOption: charmId }));
     setCharmMountingTarget({ type: 'free', charmId });
   };
 
   const selectExtraCharm = (charmId: string) => {
-    if (charmsList.find((item) => item.id === charmId)?.unavailable) return;
+    const charm = charmsList.find((item) => item.id === charmId);
+    if (charmUnavailable(charmId, charm?.unavailable)) return;
     setFormData((prev) => ({
       ...prev,
       extraCharms: prev.extraCharms.includes(charmId)
@@ -1140,7 +1203,7 @@ export default function Home() {
 
   const renderFreeCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
     const isSelected = formData.charmOption === charm.id;
-    const isDisabled = charm.unavailable;
+    const isDisabled = charmUnavailable(charm.id, charm.unavailable);
 
     return (
       <div
@@ -1180,7 +1243,7 @@ export default function Home() {
 
   const renderExtraCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
     const isSelected = formData.extraCharms.includes(charm.id);
-    const isDisabled = charm.unavailable;
+    const isDisabled = charmUnavailable(charm.id, charm.unavailable);
     const mounting = formData.extraCharmMountings[charm.id] ?? 'oddzielne';
 
     return (
@@ -1247,11 +1310,12 @@ export default function Home() {
 
   const renderFreeKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
     const isSelected = formData.karabinerOption === karabiner.id;
+    const isDisabled = karabinerUnavailable(karabiner.id);
 
     return (
       <div
         key={karabiner.id}
-        onClick={() => {
+        onClick={isDisabled ? undefined : () => {
           const isConnectingRing = connectingRingKarabinerIds.has(karabiner.id);
           const wasConnectingRing = connectingRingKarabinerIds.has(formData.karabinerOption);
           setFormData((prev) => ({
@@ -1266,39 +1330,58 @@ export default function Home() {
             stopersChoiceTouchedRef.current = false;
           }
         }}
-        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+          isDisabled
+            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
+            : isSelected
+              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
         }`}
       >
         <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
           <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-        <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-          {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-        </div>
+        {isDisabled && (
+          <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
+        )}
+        {!isDisabled && (
+          <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+          </div>
+        )}
       </div>
     );
   };
 
   const renderExtraKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
     const isSelected = formData.extraKarabiners.includes(karabiner.id);
+    const isDisabled = karabinerUnavailable(karabiner.id);
 
     return (
       <div
         key={karabiner.id}
-        onClick={() => toggleExtraKarabiner(karabiner.id)}
-        className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+        onClick={isDisabled ? undefined : () => toggleExtraKarabiner(karabiner.id)}
+        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+          isDisabled
+            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
+            : isSelected
+              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
         }`}
       >
         <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
           <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-        <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-        </div>
+        {isDisabled && (
+          <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
+        )}
+        {!isDisabled && (
+          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+          </div>
+        )}
       </div>
     );
   };
@@ -1328,6 +1411,7 @@ export default function Home() {
   );
 
   const toggleRogalikCharm = (id: string) => {
+    if (charmUnavailable(id, false)) return;
     setFormData((prev) => {
       const exists = prev.rogalikCharms.includes(id);
       if (exists) {
@@ -1503,6 +1587,10 @@ export default function Home() {
     stopersChoiceTouchedRef.current = false;
     setShowOrderErrors(false);
     setShowStringErrors(false);
+    setShowRingErrors(false);
+    setShowBaseErrors(false);
+    setShowGlowTextErrors(false);
+    setShowFreeCharmErrors(false);
     setShowExtraCharmsErrors(false);
     setShowExtraKarabinersErrors(false);
     setShowStickerErrors(false);
@@ -1717,6 +1805,7 @@ export default function Home() {
   };
 
   const toggleExtraKarabiner = (id: string) => {
+    if (karabinerUnavailable(id)) return;
     setFormData((prev) => {
       const exists = prev.extraKarabiners.includes(id);
       if (exists) {
@@ -2012,6 +2101,17 @@ export default function Home() {
   useEffect(() => {
     return () => {
       if (removedFromCartTimeoutRef.current) clearTimeout(removedFromCartTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchWarehouseStockMap().then((result) => {
+      if (cancelled || !result.ok) return;
+      setWarehouseStock(result.stock);
+    });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -3002,12 +3102,12 @@ export default function Home() {
         {activeTab === 'configurator' && isTagConfigurator && (
           <div>
             {/* Układ dwukolumnowy z panelem podsumowania po prawej */}
-            <div className={`mx-auto px-4 md:px-12 py-8 md:py-20 flex flex-col gap-8 md:gap-12 items-start ${currentStep >= totalSteps ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
+            <div className={`mx-auto px-4 md:px-12 pt-3 pb-6 md:pt-5 md:pb-10 flex flex-col gap-6 md:gap-8 items-start ${currentStep >= totalSteps ? 'max-w-3xl' : 'max-w-6xl lg:flex-row'}`}>
               
               {/* Kolumna główna (formularz/opcje) */}
               <div className="flex-grow min-w-0">
-                <div className="bg-[#F9F5ED] p-4 md:p-16 border border-[#D6C7AE] min-h-0 md:min-h-[450px] flex flex-col">
-                  <div className="space-y-6 md:space-y-8">
+                <div className="bg-[#F9F5ED] p-4 md:px-10 md:pt-5 md:pb-10 border border-[#D6C7AE] min-h-0 md:min-h-[450px] flex flex-col">
+                  <div className="space-y-4 md:space-y-5">
                     <span className="text-[#C4A574] font-light uppercase tracking-[0.22em] md:tracking-[0.28em] text-[11px]">Krok {currentStep} z {totalSteps} · {activeProduct.name}</span>
                     <h2 className="text-2xl md:text-4xl font-serif font-light text-[#161616]">
                       {stepsInfo[currentStep - 1].label}
@@ -3023,6 +3123,7 @@ export default function Home() {
                           stringSizeText={stringSizeText ?? ''}
                           step="kolor"
                           showNeckSection={false}
+                          warehouseStock={warehouseStock}
                         />
                       )}
 
@@ -3053,6 +3154,7 @@ export default function Home() {
                           stringSizeText={stringSizeText ?? ''}
                           step="mocowanie"
                           showNeckSection={false}
+                          warehouseStock={warehouseStock}
                         />
                       )}
 
@@ -3065,6 +3167,7 @@ export default function Home() {
                           stringSizeText={stringSizeText ?? ''}
                           step="dodatki"
                           showNeckSection={rogalikUsesBeadMounting}
+                          warehouseStock={warehouseStock}
                         />
                       )}
 
@@ -3077,6 +3180,7 @@ export default function Home() {
 
                       {isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier' && (
                         <div className="space-y-6">
+                          <div className="space-y-6 scroll-mt-28" data-configurator-section="extra-karabiners-choice">
                           <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
@@ -3104,11 +3208,9 @@ export default function Home() {
                           {showExtraKarabinersErrors && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0 && (
                             <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
                           )}
+                          </div>
                           {formData.wantExtraKarabiners === 'tak' && (
-                            <div
-                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
-                              data-configurator-section="extra-karabiners-pick"
-                            >
+                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
                               {renderExtraKarabinerGrid()}
                             </div>
@@ -3117,8 +3219,11 @@ export default function Home() {
                       )}
 
                       {!isRogalikTagConfigurator && contentStep === 1 && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-ring-choice">
                           <p className="font-bold text-base text-[#161616]">Wybierz kolor oprawy, który najlepiej podkreśli styl Twojego pupila:</p>
+                          {showRingErrors && !formData.ringColor.trim() && (
+                            <p className="text-sm text-red-500">Wybierz kolor oprawy.</p>
+                          )}
                           <div className={imageGridClass(ringsList.length)}>
                             {ringsList.map((item) => (
                               <div
@@ -3155,16 +3260,31 @@ export default function Home() {
                       )}
 
                       {!isRogalikTagConfigurator && contentStep === 2 && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-base-choice">
                           <p className="font-bold text-base text-[#161616]">
                             {isGlowTagConfigurator ? (
                               'Wybierz kolor adresówki'
                             ) : (
                               <>
-                                Wybierz bazę (dla oprawy: <span className="uppercase text-[#C4A574]">{oprawaLabel(formData.ringColor)}</span>):
+                                Wybierz bazę (dla oprawy:{' '}
+                                <span className="uppercase text-[#C4A574]">
+                                  {formData.ringColor ? oprawaLabel(formData.ringColor) : '—'}
+                                </span>
+                                ):
                               </>
                             )}
                           </p>
+                          {showBaseErrors &&
+                            (!formData.baseOption.trim() ||
+                              !selectedBases.some((base) => base.id === formData.baseOption)) && (
+                              <p className="text-sm text-red-500">
+                                {isGlowTagConfigurator ? 'Wybierz kolor adresówki.' : 'Wybierz bazę.'}
+                              </p>
+                            )}
+                          {!isGlowTagConfigurator && !formData.ringColor.trim() && (
+                            <p className="text-sm text-[#7A736C]">Najpierw wybierz oprawę w poprzednim kroku.</p>
+                          )}
+                          {(isGlowTagConfigurator || formData.ringColor.trim()) && (
                           <div className={imageGridClass(selectedBases.length)}>
                             {selectedBases.map((base) => (
                               <div
@@ -3206,12 +3326,16 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          )}
                         </div>
                       )}
 
                       {!isRogalikTagConfigurator && contentStep === 12 && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-glow-text-choice">
                           <p className="font-bold text-base text-[#161616]">Wybierz kolor napisu</p>
+                          {showGlowTextErrors && !formData.glowTextColor.trim() && (
+                            <p className="text-sm text-red-500">Wybierz kolor napisu.</p>
+                          )}
                           <div className={imageGridClass(GLOW_TEXT_OPTIONS.length)}>
                             {GLOW_TEXT_OPTIONS.map((option) => (
                               <div
@@ -3238,7 +3362,7 @@ export default function Home() {
                       )}
 
                       {!isRogalikTagConfigurator && contentStep === 3 && (
-                        <div className="space-y-6">
+                        <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-free-charm-choice">
                           <div className="space-y-2">
                             <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
                             {isGlowTagConfigurator && (
@@ -3247,6 +3371,19 @@ export default function Home() {
                               </p>
                             )}
                           </div>
+                          {showFreeCharmErrors && !formData.charmOption.trim() && (
+                            <p className="text-sm text-red-500">Wybierz darmowy charms.</p>
+                          )}
+                          {showFreeCharmErrors &&
+                            formData.charmOption.trim() &&
+                            charmUnavailable(
+                              formData.charmOption,
+                              charmsList.find((item) => item.id === formData.charmOption)?.unavailable,
+                            ) && (
+                              <p className="text-sm text-red-500">
+                                Wybrany charms jest chwilowo niedostępny — wybierz inny.
+                              </p>
+                            )}
 
                           {renderCharmSection('Charmsy główne', [...charmBestsellersList, ...charmCatalogList], renderFreeCharmCard)}
                           {renderCharmSection('Charmsy w srebrnym kolorze', charmSilverList, renderFreeCharmCard)}
@@ -3260,6 +3397,7 @@ export default function Home() {
 
                       {!isRogalikTagConfigurator && contentStep === 4 && (
                         <div className="space-y-6">
+                          <div className="space-y-6 scroll-mt-28" data-configurator-section="extra-charms-choice">
                           <p className="font-bold text-base text-[#161616]">Dodaj kolejne zawieszki, aby adresówka była jeszcze bardziej stylowa i przyciągała wzrok na spacerach</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
@@ -3288,12 +3426,10 @@ export default function Home() {
                           {showExtraCharmsErrors && formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0 && (
                             <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy charms.</p>
                           )}
+                          </div>
 
                           {formData.wantExtraCharms === 'tak' && (
-                            <div
-                              className="space-y-6 pt-6 border-t border-[#D6C7AE]"
-                              data-configurator-section="extra-charms-pick"
-                            >
+                            <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
                               <div className="space-y-2">
                                 <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
                                 {isGlowTagConfigurator && (
@@ -3317,6 +3453,7 @@ export default function Home() {
 
                       {!isRogalikTagConfigurator && contentStep === 6 && (
                         <div className="space-y-6">
+                          <div className="space-y-6 scroll-mt-28" data-configurator-section="extra-karabiners-choice">
                           <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
@@ -3344,12 +3481,10 @@ export default function Home() {
                           {showExtraKarabinersErrors && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0 && (
                             <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
                           )}
+                          </div>
 
                           {formData.wantExtraKarabiners === 'tak' && (
-                            <div
-                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
-                              data-configurator-section="extra-karabiners-pick"
-                            >
+                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
                               {renderExtraKarabinerGrid()}
                             </div>
@@ -3360,6 +3495,7 @@ export default function Home() {
                       {/* KROK 7: Sznurek */}
                       {!isRogalikTagConfigurator && contentStep === 7 && (
                         <div className="space-y-6">
+                          <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-string-choice">
                           <p className="font-bold text-base text-[#161616]">Dodaj dedykowany, lekki i trwały sznurek na szyję, aby adresówka była zawsze na swoim miejscu (nawet bez obroży):</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
@@ -3392,10 +3528,11 @@ export default function Home() {
                           {showStringErrors && formData.wantString === 'tak' && selectedStringsCount === 0 && (
                             <p className="text-sm text-red-500">Wybierz co najmniej jeden sznurek.</p>
                           )}
+                          </div>
 
                           {formData.wantString === 'tak' && (
                             <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
-                              <div className="space-y-2" data-configurator-section="classic-string-neck">
+                              <div className="space-y-2 scroll-mt-28" data-configurator-section="classic-string-neck">
                                 <label className="block font-bold text-base text-[#161616]">Wpisz obwód szyi Twojego pieska w centymetrach:</label>
                                 <input
                                   type="text"
@@ -3435,10 +3572,7 @@ export default function Home() {
                               </div>
 
                               {isGlowTagConfigurator && (
-                                <section
-                                  className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden"
-                                  data-configurator-section="classic-string-pick"
-                                >
+                                <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
                                   <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                     <h3 className="font-bold text-lg text-[#161616]">
                                       Dodaj sznurek Glow (możesz wybrać wiele)
@@ -3472,10 +3606,7 @@ export default function Home() {
                                 </section>
                               )}
 
-                              <section
-                                className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden"
-                                data-configurator-section={isGlowTagConfigurator ? undefined : 'classic-string-pick'}
-                              >
+                              <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
                                 <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                   <h3 className="font-bold text-lg text-[#161616]">
                                     Dodaj sznurek Premium (możesz wybrać wiele)
@@ -3547,6 +3678,7 @@ export default function Home() {
 
                       {!isRogalikTagConfigurator && contentStep === 8 && (
                         <div className="space-y-6">
+                          <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-stopers-choice">
                           <p className="font-bold text-base text-[#161616]">Dodaj stopery, aby precyzyjnie regulować długość sznurka i zapewnić psu maksymalny komfort:</p>
 
                           <div className="rounded-none border border-[#D6C7AE] bg-[#F4EFE6] p-4 space-y-1">
@@ -3589,19 +3721,19 @@ export default function Home() {
                           </div>
 
                           {formData.wantStopers === 'tak' && selectedStringsCount === 0 && (
-                            <p
-                              className="text-sm text-red-500"
-                              data-configurator-section="classic-stopers-hint"
-                            >
+                            <p className="text-sm text-red-500">
                               Najpierw dodaj sznurek w poprzednim kroku.
                             </p>
                           )}
+                          {showStopperErrors && stopperSelectionRequired && !isStopperSelectionComplete && (
+                            <p className="text-sm text-red-500">
+                              Wybierz stopery do wszystkich sznurków ({formData.extraStopers.length} / {selectedStringsCount}).
+                            </p>
+                          )}
+                          </div>
 
                           {formData.wantStopers === 'tak' && selectedStringsCount > 0 && (
-                            <div
-                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
-                              data-configurator-section="classic-stopers-pick"
-                            >
+                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz stopery (możesz powtórzyć ten sam wariant):</p>
                               <div className={imageGridClass(stopersList.length)}>
                                 {stopersList.map((stoper) => {
@@ -3668,6 +3800,7 @@ export default function Home() {
 
                       {!isRogalikTagConfigurator && contentStep === 9 && (
                         <div className="space-y-6">
+                          <div className="space-y-6 scroll-mt-28" data-configurator-section="sticker-choice">
                           <p className="font-bold text-base text-[#161616]">Wybierz ulubioną grafikę pieska i stwórz wyjątkową adresówkę dla swojego pupila.</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
@@ -3695,12 +3828,10 @@ export default function Home() {
                           {showStickerErrors && formData.wantSticker === 'tak' && !formData.stickerOption && (
                             <p className="text-sm text-red-500">Wybierz grafikę pieska.</p>
                           )}
+                          </div>
 
                           {formData.wantSticker === 'tak' && (
-                            <div
-                              className="space-y-4 pt-6 border-t border-[#D6C7AE]"
-                              data-configurator-section="sticker-pick"
-                            >
+                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz naklejkę:</p>
                               <div className={imageGridClass(stickersList.length)}>
                                 {stickersList.map((sticker) => (
@@ -3748,7 +3879,7 @@ export default function Home() {
 
                       {((isRogalikTagConfigurator && rogalikFlowStep === 'dane') || contentStep === 10) && (
                         <div className="space-y-5">
-                          <div className="space-y-2" data-configurator-section="order-pet-name">
+                          <div className="space-y-2 scroll-mt-28" data-configurator-section="order-pet-name">
                             <label className="block font-bold text-base text-[#161616]">Imię Twojego psa</label>
                             <input
                               type="text"
@@ -3815,7 +3946,7 @@ export default function Home() {
                           </div>
                           )}
 
-                          <div className="space-y-2" data-configurator-section="order-phone">
+                          <div className="space-y-2 scroll-mt-28" data-configurator-section="order-phone">
                             <label className="block font-bold text-base text-[#161616]">Numer telefonu</label>
                             {isRogalikTagConfigurator ? (
                               <input
@@ -3895,7 +4026,7 @@ export default function Home() {
                 className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:self-start"
                 style={{ top: topStackHeight + 16 }}
               >
-                <div className="bg-[#F9F5ED] p-5 md:p-8 border border-[#D6C7AE] space-y-6">
+                <div className="bg-[#F9F5ED] p-5 md:px-8 md:pt-5 md:pb-8 border border-[#D6C7AE] space-y-6">
                   <h3 className="font-serif font-light text-2xl text-[#161616] border-b border-[#D6C7AE] pb-4">
                     Twoje podsumowanie
                   </h3>

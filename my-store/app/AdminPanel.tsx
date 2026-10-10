@@ -49,10 +49,12 @@ import type { ReportPeriod } from '@/lib/report-periods';
 import { monthLabel, warsawYmd } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
 import { DiscountCodesPanel } from './DiscountCodesPanel';
+import { WarehousePanel } from './WarehousePanel';
 
 const adminTabs = [
   { id: 'orders', label: 'Zamówienia' },
   { id: 'discount-codes', label: 'Kody rabatowe' },
+  { id: 'warehouse', label: 'Magazyn' },
   { id: 'revenue', label: 'Przychody' },
   { id: 'analytics', label: 'Analityka' },
   { id: 'popularity', label: 'Popularność' },
@@ -454,6 +456,7 @@ export default function AdminPanel() {
       )}
 
       {activeAdminTab === 'discount-codes' && <DiscountCodesPanel />}
+      {activeAdminTab === 'warehouse' && <WarehousePanel />}
 
       {activeAdminTab === 'revenue' && (
         <RevenueTable

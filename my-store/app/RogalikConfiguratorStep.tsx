@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
 import {
   ROGALIK_BEADS_OPTIONS,
   ROGALIK_NECK_MAX,
@@ -32,6 +33,7 @@ type Props = {
   step: 'kolor' | 'mocowanie' | 'dodatki';
   /** Obwód szyi — pierwsza sekcja kroku DODATKI (mocowanie „Z koralikami”). */
   showNeckSection: boolean;
+  warehouseStock: Record<string, number>;
 };
 
 const sectionClass = 'space-y-4 pt-8 border-t border-[#D6C7AE] first:border-t-0 first:pt-0';
@@ -130,7 +132,7 @@ function NeckCircumferenceSection({
   sectionIndex: number;
 }) {
   return (
-    <section className={sectionClass} data-configurator-section="rogalik-neck">
+    <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-neck">
       <SectionTitle index={sectionIndex}>Podaj obwód szyi</SectionTitle>
       <div className="space-y-2">
         <label className="block text-sm text-[#7A736C] font-light">
@@ -184,6 +186,7 @@ export function RogalikConfiguratorStep({
   stringSizeText,
   step,
   showNeckSection,
+  warehouseStock,
 }: Props) {
   if (step === 'dodatki') {
     const cordIndex = showNeckSection ? 2 : 1;
@@ -202,7 +205,7 @@ export function RogalikConfiguratorStep({
           />
         )}
 
-        <section className={sectionClass} data-configurator-section="rogalik-cord">
+        <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-cord">
           <SectionTitle index={cordIndex}>Wybierz kolor sznureczka</SectionTitle>
           <OptionTiles
             options={ROGALIK_CORD_COLOR_OPTIONS}
@@ -215,7 +218,7 @@ export function RogalikConfiguratorStep({
           )}
         </section>
 
-        <section className={sectionClass} data-configurator-section="rogalik-beads">
+        <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-beads">
           <SectionTitle index={beadsIndex}>Wybierz koraliki</SectionTitle>
           <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
           <OptionTiles
@@ -237,16 +240,18 @@ export function RogalikConfiguratorStep({
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {ROGALIK_CHARM_OPTIONS.map((charm) => {
               const isSelected = formData.rogalikCharms.includes(charm.id);
+              const outOfStock = isWarehouseOutOfStock(warehouseStock, charm.id, false);
               const atLimit = !isSelected && formData.rogalikCharms.length >= ROGALIK_MAX_CHARMS;
+              const disabled = outOfStock || atLimit;
               return (
                 <button
                   key={charm.id}
                   type="button"
-                  disabled={atLimit}
+                  disabled={disabled}
                   onClick={() => onToggleCharm(charm.id)}
                   className={`rounded-none p-4 border flex flex-col items-center gap-2 transition-colors duration-300 ${
-                    atLimit
-                      ? 'opacity-40 cursor-not-allowed border-[#D6C7AE] bg-white'
+                    disabled
+                      ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
                       : isSelected
                         ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
                         : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
@@ -260,13 +265,18 @@ export function RogalikConfiguratorStep({
                     )}
                   </div>
                   <span className="text-sm font-medium text-[#161616]">{charm.label}</span>
-                  <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                      isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
-                    }`}
-                  >
-                    {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                  </div>
+                  {outOfStock && (
+                    <span className="text-xs text-[#7A736C]">Chwilowo niedostępny</span>
+                  )}
+                  {!outOfStock && (
+                    <div
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                        isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+                      }`}
+                    >
+                      {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -282,7 +292,7 @@ export function RogalikConfiguratorStep({
   if (step === 'kolor') {
     return (
       <div className="space-y-2">
-        <section className={sectionClass} data-configurator-section="rogalik-color">
+        <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-color">
           <SectionTitle index={1}>Wybierz kolor rogalika</SectionTitle>
           <p className={subtitleClass}>Wybierz kolor, który najbardziej Ci odpowiada:</p>
           <OptionTiles
@@ -301,7 +311,7 @@ export function RogalikConfiguratorStep({
 
   return (
     <div className="space-y-2">
-      <section className={sectionClass} data-configurator-section="rogalik-mounting">
+      <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-mounting">
         <SectionTitle index={1}>Wybierz sposób mocowania</SectionTitle>
         <p className={subtitleClass}>Wybierz w jaki sposób adresówka będzie mocowana:</p>
         <OptionTiles

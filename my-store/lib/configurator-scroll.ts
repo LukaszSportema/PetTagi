@@ -3,7 +3,7 @@ export const scrollToConfiguratorSection = (sectionId: string) => {
   window.setTimeout(() => {
     document.querySelector<HTMLElement>(`[data-configurator-section="${sectionId}"]`)?.scrollIntoView({
       behavior: 'smooth',
-      block: 'center',
+      block: 'start',
     });
-  }, 50);
+  }, 100);
 };
