@@ -41,23 +41,16 @@ export const reportPeriods = (nowIso = new Date().toISOString()): ReportPeriod[]
 
   const periods: ReportPeriod[] = [
     {
-      key: `year-${currentYear}`,
-      label: `Bieżący rok (${currentYear})`,
-      startYmd: `${currentYear}-01-01`,
+      key: `month-current-${currentMonthKey}`,
+      label: `Aktualny miesiąc (${monthLabel(currentYear, currentMonth)})`,
+      startYmd: `${currentMonthKey}-01`,
       endYmd: today,
       highlight: true,
     },
     {
-      key: `year-${previousYear}`,
-      label: `Poprzedni rok (${previousYear})`,
-      startYmd: `${previousYear}-01-01`,
-      endYmd: `${previousYear}-12-31`,
-      highlight: true,
-    },
-    {
-      key: `month-current-${currentMonthKey}`,
-      label: `Aktualny miesiąc (${monthLabel(currentYear, currentMonth)})`,
-      startYmd: `${currentMonthKey}-01`,
+      key: `year-${currentYear}`,
+      label: `Bieżący rok (${currentYear})`,
+      startYmd: `${currentYear}-01-01`,
       endYmd: today,
       highlight: true,
     },
@@ -72,6 +65,14 @@ export const reportPeriods = (nowIso = new Date().toISOString()): ReportPeriod[]
       highlight: false,
     })
   }
+
+  periods.push({
+    key: `year-${previousYear}`,
+    label: `Poprzedni rok (${previousYear})`,
+    startYmd: `${previousYear}-01-01`,
+    endYmd: `${previousYear}-12-31`,
+    highlight: true,
+  })
 
   return periods
 }

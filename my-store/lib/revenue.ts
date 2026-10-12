@@ -15,7 +15,8 @@ import { inPeriod, reportPeriods, warsawYmd, type ReportPeriod } from "@/lib/rep
 import type { PaymentRecipientId } from "@/lib/payment"
 
 export type RevenueOrder = {
-  createdAt: string
+  /** Moment oznaczenia zamówienia jako Opłacone (strefa Warszawa w raportach). */
+  paidAt: string
   paymentRecipient: PaymentRecipientId
   total: number
   shippingCost: number
@@ -88,7 +89,7 @@ const addOrder = (totals: RevenueTotals, order: RevenueOrder) => {
 const totalsForPeriod = (period: ReportPeriod, orders: RevenueOrder[]) => {
   const totals = emptyTotals()
   for (const order of orders) {
-    if (inPeriod(warsawYmd(order.createdAt), period)) addOrder(totals, order)
+    if (inPeriod(warsawYmd(order.paidAt), period)) addOrder(totals, order)
   }
   return roundTotals(totals)
 }
@@ -113,7 +114,7 @@ const addOrderQuantity = (totals: RevenueTotals, order: RevenueOrder) => {
 const totalsForQuantityPeriod = (period: ReportPeriod, orders: RevenueOrder[]) => {
   const totals = emptyTotals()
   for (const order of orders) {
-    if (inPeriod(warsawYmd(order.createdAt), period)) addOrderQuantity(totals, order)
+    if (inPeriod(warsawYmd(order.paidAt), period)) addOrderQuantity(totals, order)
   }
   totals.total =
     totals.base +
