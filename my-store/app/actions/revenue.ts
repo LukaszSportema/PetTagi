@@ -29,7 +29,7 @@ type RevenueItemRow = {
 }
 
 type RevenueOrderRow = {
-  paid_at: string
+  revenue_at: string
   payment_recipient?: string | null
   total: number | string
   shipping_cost: number | string
@@ -70,7 +70,7 @@ const toStringArray = (value: unknown): string[] => {
 }
 
 const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
-  paidAt: row.paid_at,
+  revenueAt: row.revenue_at,
   paymentRecipient: orderPaymentRecipient(row.payment_recipient),
   total: toMoney(row.total),
   shippingCost: toMoney(row.shipping_cost),
