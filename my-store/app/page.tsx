@@ -19,6 +19,7 @@ import {
 import type { DiscountPercent } from '@/lib/discount-codes';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import { scrollToConfiguratorSection } from '@/lib/configurator-scroll';
+import { COUNTRY_DIAL_CODES } from '@/lib/country-dial-codes';
 import { fetchWarehouseStockMap } from './actions/warehouse';
 import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
 import FurgonetkaMap from './FurgonetkaMap';
@@ -711,32 +712,6 @@ export default function Home() {
     if (count === 3) return 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-14';
     return 'grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-14';
   };
-
-  const countryCodes = [
-    { code: '+48', label: 'Polska (+48)' },
-    { code: '+49', label: 'Niemcy (+49)' },
-    { code: '+420', label: 'Czechy (+420)' },
-    { code: '+421', label: 'Słowacja (+421)' },
-    { code: '+380', label: 'Ukraina (+380)' },
-    { code: '+43', label: 'Austria (+43)' },
-    { code: '+36', label: 'Węgry (+36)' },
-    { code: '+370', label: 'Litwa (+370)' },
-    { code: '+371', label: 'Łotwa (+371)' },
-    { code: '+372', label: 'Estonia (+372)' },
-    { code: '+44', label: 'Wielka Brytania (+44)' },
-    { code: '+353', label: 'Irlandia (+353)' },
-    { code: '+33', label: 'Francja (+33)' },
-    { code: '+39', label: 'Włochy (+39)' },
-    { code: '+34', label: 'Hiszpania (+34)' },
-    { code: '+31', label: 'Holandia (+31)' },
-    { code: '+32', label: 'Belgia (+32)' },
-    { code: '+41', label: 'Szwajcaria (+41)' },
-    { code: '+46', label: 'Szwecja (+46)' },
-    { code: '+47', label: 'Norwegia (+47)' },
-    { code: '+45', label: 'Dania (+45)' },
-    { code: '+358', label: 'Finlandia (+358)' },
-    { code: '+1', label: 'USA / Kanada (+1)' },
-  ];
 
   const isLettersOnly = (value: string) => /^[\p{L}\s-]*$/u.test(value);
   const isDigitsOnly = (value: string) => /^\d*$/.test(value);
@@ -2807,8 +2782,8 @@ export default function Home() {
                             }`}
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
                           >
-                            {countryCodes.map((item) => (
-                              <option key={item.code} value={item.code}>{item.code}</option>
+                            {COUNTRY_DIAL_CODES.map((item) => (
+                              <option key={item.iso2} value={item.code}>{item.label}</option>
                             ))}
                           </select>
                           <input
@@ -3967,8 +3942,8 @@ export default function Home() {
                                 onChange={(e) => updateFormField('phoneCode', e.target.value)}
                                 className="w-full sm:w-44 p-3 rounded-xl border border-[#D6C7AE] bg-white text-base md:text-sm focus:outline-none focus:border-[#161616]"
                               >
-                                {countryCodes.map((item) => (
-                                  <option key={item.code} value={item.code}>{item.label}</option>
+                                {COUNTRY_DIAL_CODES.map((item) => (
+                                  <option key={item.iso2} value={item.code}>{item.label}</option>
                                 ))}
                               </select>
                               <input
