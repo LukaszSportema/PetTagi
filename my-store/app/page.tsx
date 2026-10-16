@@ -23,6 +23,7 @@ import { COUNTRY_DIAL_CODES } from '@/lib/country-dial-codes';
 import { fetchWarehouseStockMap } from './actions/warehouse';
 import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
 import FurgonetkaMap from './FurgonetkaMap';
+import OrderStatusLookupModal from './OrderStatusLookupModal';
 import {
   fulfillmentMessage,
   orderConfirmationTransferNote,
@@ -447,6 +448,7 @@ export default function Home() {
   const [showAddedToCart, setShowAddedToCart] = useState(false);
   const [charmMountingTarget, setCharmMountingTarget] = useState<{ type: 'free' | 'extra'; charmId: string } | null>(null);
   const [showGoldRingInfoModal, setShowGoldRingInfoModal] = useState(false);
+  const [showOrderStatusLookup, setShowOrderStatusLookup] = useState(false);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
   const [cartRemoveTarget, setCartRemoveTarget] = useState<{ id: string; title: string } | null>(null);
   const [warehouseStock, setWarehouseStock] = useState<Record<string, number>>({});
@@ -2092,6 +2094,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F4EFE6] text-[#161616] flex flex-col font-sans selection:bg-[#D6C7AE] overflow-x-clip">
+      <OrderStatusLookupModal
+        open={showOrderStatusLookup}
+        onClose={() => setShowOrderStatusLookup(false)}
+      />
       {showRemovedFromCart && (
         <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[70] bg-[#161616] text-[#F4EFE6] px-6 py-3 rounded-full shadow-lg text-sm font-medium text-center">
           Usunięto produkt z koszyka
@@ -2272,7 +2278,22 @@ export default function Home() {
                   </button>
                 </nav>
 
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="shrink-0 flex items-center gap-1.5 md:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowOrderStatusLookup(true)}
+                    className="hidden sm:inline-flex border border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6] px-2.5 md:px-4 py-1.5 md:py-2 rounded-none text-[9px] md:text-[10px] uppercase tracking-[0.12em] md:tracking-[0.16em] font-light transition-colors duration-300 whitespace-nowrap"
+                  >
+                    Sprawdź zamówienie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowOrderStatusLookup(true)}
+                    aria-label="Sprawdź zamówienie"
+                    className="sm:hidden border border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6] px-2 py-1.5 rounded-none text-[9px] uppercase tracking-[0.1em] font-light transition-colors duration-300"
+                  >
+                    Status
+                  </button>
                   <button 
                     onClick={() => goToTab('cart')}
                     className={`bg-[#3A5A40] hover:bg-[#2E4833] text-[#F4EFE6] px-3 md:px-5 py-1.5 md:py-2 rounded-none text-[10px] md:text-[11px] uppercase tracking-[0.16em] md:tracking-[0.22em] font-light transition-colors duration-300 flex items-center gap-2 md:gap-3 ${activeTab === 'cart' ? 'outline outline-1 outline-[#C4A574]' : ''}`}
@@ -2305,6 +2326,13 @@ export default function Home() {
                   className={`text-left text-[11px] uppercase tracking-[0.22em] font-light ${activeTab === 'products' ? 'text-[#161616]' : 'text-[#7A736C]'}`}
                 >
                   Produkty
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowOrderStatusLookup(true)}
+                  className="text-left text-[11px] uppercase tracking-[0.22em] font-light text-[#7A736C]"
+                >
+                  Sprawdź zamówienie
                 </button>
               </nav>
             </header>
