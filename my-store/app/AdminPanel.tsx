@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getConfiguratorAnalyticsReport } from './actions/configurator-analytics';
 import { getAnalyticsReport } from './actions/analytics';
 import {
@@ -136,6 +136,25 @@ export default function AdminPanel() {
     warsawYmd(new Date().toISOString()),
   );
   const paymentRecipientVersion = useRef(0);
+  const savedOrdersListScrollY = useRef<number | null>(null);
+
+  const openOrderDetail = (id: string) => {
+    savedOrdersListScrollY.current = window.scrollY;
+    setSelectedId(id);
+    window.scrollTo(0, 0);
+  };
+
+  const closeOrderDetail = () => {
+    setSelectedId(null);
+  };
+
+  useLayoutEffect(() => {
+    if (selectedId !== null) return;
+    const y = savedOrdersListScrollY.current;
+    if (y == null) return;
+    savedOrdersListScrollY.current = null;
+    window.scrollTo(0, y);
+  }, [selectedId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,27 +451,30 @@ export default function AdminPanel() {
       </div>
 
       {activeAdminTab === 'orders' && (
-        selectedId ? (
-          <OrderDetailView
-            detail={detail}
-            error={detailError}
-            isLoading={isLoadingDetail}
-            isUpdatingStatus={updatingStatusId === selectedId}
-            onStatusChange={requestOrderStatusChange}
-            onPhoneChange={changeOrderPhone}
-            onBack={() => setSelectedId(null)}
-          />
-        ) : (
-          <OrdersTable
-            orders={orders}
-            error={listError}
-            isLoading={isLoadingList}
-            updatingStatusId={updatingStatusId}
-            onStatusChange={requestOrderStatusChange}
-            onCommentChange={changeOrderComment}
-            onOpen={setSelectedId}
-          />
-        )
+        <>
+          <div hidden={selectedId !== null}>
+            <OrdersTable
+              orders={orders}
+              error={listError}
+              isLoading={isLoadingList}
+              updatingStatusId={updatingStatusId}
+              onStatusChange={requestOrderStatusChange}
+              onCommentChange={changeOrderComment}
+              onOpen={openOrderDetail}
+            />
+          </div>
+          {selectedId && (
+            <OrderDetailView
+              detail={detail}
+              error={detailError}
+              isLoading={isLoadingDetail}
+              isUpdatingStatus={updatingStatusId === selectedId}
+              onStatusChange={requestOrderStatusChange}
+              onPhoneChange={changeOrderPhone}
+              onBack={closeOrderDetail}
+            />
+          )}
+        </>
       )}
 
       {activeAdminTab === 'discount-codes' && <DiscountCodesPanel />}
