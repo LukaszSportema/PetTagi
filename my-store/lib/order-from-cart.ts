@@ -1,6 +1,10 @@
 import { cartItemBaseUnitPrice } from "@/lib/cart-item-pricing"
 import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { rogalikMountingUsesBeads, rogalikStringSizeFromNeckCm } from "@/lib/rogalik-options"
+import {
+  karabinerCatalogRingKey,
+  orderKarabinersFromQuantities,
+} from "@/lib/karabiner-pricing"
 import { stringSizeLabel } from "@/lib/pricing"
 import type { CreateOrderItemInput } from "@/lib/types/order"
 
@@ -24,6 +28,7 @@ export type CartItemForOrder = {
     karabinerOption: string
     wantExtraKarabiners: string
     extraKarabiners: string[]
+    karabinerQuantities?: Record<string, number>
     wantString: string
     premiumStrings: string[]
     classicStrings: string[]
@@ -86,9 +91,34 @@ export const mapRogalikCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
     baseColor: config.rogalikColor,
     baseCharms: PLACEHOLDER,
     extraCharms: [],
-    baseCarabiner: usesBeads ? PLACEHOLDER : config.karabinerOption,
-    extraCarabiner:
-      !usesBeads && config.wantExtraKarabiners === "tak" ? config.extraKarabiners : [],
+    baseCarabiner: usesBeads
+      ? PLACEHOLDER
+      : config.karabinerQuantities &&
+          Object.keys(config.karabinerQuantities).length > 0
+        ? orderKarabinersFromQuantities(
+            config.karabinerQuantities,
+            karabinerCatalogRingKey({
+              configuratorId: "rogalik-tag",
+              ringColor: config.ringColor,
+              glowTextColor: config.glowTextColor ?? "",
+            }),
+          ).baseCarabiner
+        : config.karabinerOption,
+    extraCarabiner: usesBeads
+      ? []
+      : config.karabinerQuantities &&
+          Object.keys(config.karabinerQuantities).length > 0
+        ? orderKarabinersFromQuantities(
+            config.karabinerQuantities,
+            karabinerCatalogRingKey({
+              configuratorId: "rogalik-tag",
+              ringColor: config.ringColor,
+              glowTextColor: config.glowTextColor ?? "",
+            }),
+          ).extraCarabiner
+        : config.wantExtraKarabiners === "tak"
+          ? config.extraKarabiners
+          : [],
     stringPremium: [],
     stringClassic: [],
     stringGlow: [],
@@ -111,6 +141,24 @@ export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
   const config = item.config
   const product = getCatalogProduct(item.productSlug)
   const skipsSticker = product?.configuratorId === "glow-tag" || config.ringColor === "kwiat"
+  const karabinerRing = karabinerCatalogRingKey({
+    configuratorId: product?.configuratorId,
+    ringColor: config.ringColor,
+    glowTextColor: config.glowTextColor ?? "",
+  })
+  const usesQuantityKarabiners =
+    (product?.configuratorId === "classic-tag" ||
+      product?.configuratorId === "glow-tag" ||
+      product?.configuratorId === "rogalik-tag") &&
+    config.karabinerQuantities &&
+    Object.keys(config.karabinerQuantities).length > 0
+  const karabiners = usesQuantityKarabiners
+    ? orderKarabinersFromQuantities(config.karabinerQuantities!, karabinerRing)
+    : {
+        baseCarabiner: config.karabinerOption,
+        extraCarabiner:
+          config.wantExtraKarabiners === "tak" ? config.extraKarabiners : [],
+      }
 
   return {
     quantity: item.quantity,
@@ -123,8 +171,8 @@ export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
     baseColor: config.baseOption,
     baseCharms: config.charmOption,
     extraCharms: config.wantExtraCharms === "tak" ? config.extraCharms : [],
-    baseCarabiner: config.karabinerOption,
-    extraCarabiner: config.wantExtraKarabiners === "tak" ? config.extraKarabiners : [],
+    baseCarabiner: karabiners.baseCarabiner,
+    extraCarabiner: karabiners.extraCarabiner,
     stringPremium: config.wantString === "tak" ? config.premiumStrings : [],
     stringClassic: config.wantString === "tak" ? config.classicStrings : [],
     stringGlow: config.wantString === "tak" ? config.glowStrings : [],

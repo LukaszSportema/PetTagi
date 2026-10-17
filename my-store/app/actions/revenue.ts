@@ -13,6 +13,7 @@ type RevenueItemRow = {
   quantity: number | string
   product_slug?: string | null
   ring_color?: string | null
+  base_carabiner?: string | null
   extra_charms: unknown
   extra_carabiner: unknown
   string_premium: unknown
@@ -79,6 +80,7 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
     quantity: Number(item.quantity) || 1,
     productSlug: item.product_slug ?? undefined,
     ringColor: item.ring_color ?? undefined,
+    baseCarabiner: item.base_carabiner ?? undefined,
     extraCharms: toStringArray(item.extra_charms),
     extraCarabiner: toStringArray(item.extra_carabiner),
     stringPremium: toStringArray(item.string_premium),

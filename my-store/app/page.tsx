@@ -87,7 +87,17 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, CONNECTING_RING_KARABINER_IDS, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, KARABINER_CATALOG, nameLayoutLabel, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
+import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, CONNECTING_RING_KARABINER_IDS, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, karabinersForRingColor, KARABINER_CATALOG, nameLayoutLabel, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
+import {
+  firstRowKarabinerIds,
+  karabinerCatalogRingKey,
+  karabinerChargePln,
+  karabinerPaidUnitsTotal,
+  karabinerQuantitiesTotal,
+  karabinerUnitPricePln,
+  karabinersForConfigurator,
+  orderKarabinersFromQuantities,
+} from '@/lib/karabiner-pricing';
 
 type FormDataState = {
   ringColor: string;
@@ -101,6 +111,7 @@ type FormDataState = {
   karabinerOption: string;
   wantExtraKarabiners: string;
   extraKarabiners: string[];
+  karabinerQuantities: Record<string, number>;
   wantString: string;
   stringLength: string;
   premiumStrings: string[];
@@ -188,9 +199,10 @@ const initialFormData: FormDataState = {
   wantExtraCharms: 'tak',
   extraCharms: [],
   extraCharmMountings: {},
-  karabinerOption: 'klasyczny',
-  wantExtraKarabiners: 'tak',
+  karabinerOption: 'klasyczny20g',
+  wantExtraKarabiners: 'nie',
   extraKarabiners: [],
+  karabinerQuantities: { klasyczny20g: 1 },
   wantString: 'tak',
   stringLength: '',
   premiumStrings: [],
@@ -465,12 +477,24 @@ export default function Home() {
   const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
   const isRogalikTagConfigurator = activeProduct.configuratorId === 'rogalik-tag';
   const rogalikUsesBeadMounting = rogalikMountingUsesBeads(formData.rogalikMounting);
+  const karabinerRingKey = karabinerCatalogRingKey({
+    configuratorId: activeProduct.configuratorId,
+    ringColor: formData.ringColor,
+    glowTextColor: formData.glowTextColor,
+  });
+  const usesKarabinerQuantityStep =
+    isClassicTagConfigurator ||
+    isGlowTagConfigurator ||
+    (isRogalikTagConfigurator && !rogalikUsesBeadMounting);
   const rogalikFlowStep = isRogalikTagConfigurator
     ? rogalikFlowStepAt(formData.rogalikMounting, currentStep)
     : null;
   const skipsGraphicsStep = isGlowTagConfigurator || formData.ringColor === 'kwiat';
-  const skipsStopersStep = (CONNECTING_RING_KARABINER_IDS as readonly string[]).includes(
-    formData.karabinerOption,
+  const selectedKarabinerIds = Object.entries(formData.karabinerQuantities)
+    .filter(([, qty]) => qty > 0)
+    .map(([id]) => id);
+  const skipsStopersStep = selectedKarabinerIds.some((id) =>
+    (CONNECTING_RING_KARABINER_IDS as readonly string[]).includes(id),
   );
 
   // --- LOGIKA OBLICZANIA CENY ---
@@ -478,7 +502,11 @@ export default function Home() {
     ? ROGALIK_BASE_PRICE
     : baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
   const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
-  const extraKarabinersCost = formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE : 0;
+  const extraKarabinersCost = usesKarabinerQuantityStep
+    ? karabinerChargePln(formData.karabinerQuantities, karabinerRingKey)
+    : formData.wantExtraKarabiners === 'tak'
+      ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE
+      : 0;
   const extraStopersCost = formData.wantStopers === 'tak' ? formData.extraStopers.length * STOPPER_PRICE : 0;
   const stickerCost = skipsGraphicsStep
     ? 0
@@ -595,19 +623,12 @@ export default function Home() {
     icon: '🔗',
     thumbnail: '/miniatury/darmowykarabinczyk.jpg',
   };
-  const rogalikStepFreeKarabiner = {
-    id: 2,
-    label: 'KARABIŃCZYK',
-    shortLabel: 'KARABIŃCZYK',
+  const rogalikStepKarabiners = {
+    id: 3,
+    label: 'Karabińczyki',
+    shortLabel: 'KARABIŃCZYKI',
     icon: '✍️',
     thumbnail: '/miniatury/darmowykarabinczyk.jpg',
-  };
-  const rogalikStepExtraKarabiners = {
-    id: 3,
-    label: 'Dodatkowe karabińczyki. Wygoda na codzień!',
-    shortLabel: 'DODATKOWE KARABIŃCZYKI',
-    icon: '✨',
-    thumbnail: '/miniatury/dodatkowykarabinczyk.jpg',
   };
   const rogalikStepDane = {
     label: 'Dane na adresówce',
@@ -638,10 +659,9 @@ export default function Home() {
   const rogalikStepsKarabinczyk = [
     rogalikStepKolor,
     rogalikStepMocowanie,
-    { ...rogalikStepFreeKarabiner, id: 3 },
-    { ...rogalikStepExtraKarabiners, id: 4 },
-    { ...rogalikStepDane, id: 5 },
-    { ...rogalikStepSummary, id: 6 },
+    rogalikStepKarabiners,
+    { ...rogalikStepDane, id: 4 },
+    { ...rogalikStepSummary, id: 5 },
   ];
   const rogalikStepsInfo =
     formData.rogalikMounting !== '' && !rogalikUsesBeadMounting
@@ -654,8 +674,7 @@ export default function Home() {
     { id: 12, label: 'NAPIS', shortLabel: 'NAPIS', icon: '✨', thumbnail: '/miniatury/napis.png' },
     { id: 3, label: 'Darmowy charms', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
     { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝', thumbnail: '/miniatury/dodatkowycharms.jpg' },
-    { id: 5, label: 'Darmowy karabińczyk', icon: '✍️', thumbnail: '/miniatury/darmowykarabinczyk.jpg' },
-    { id: 6, label: 'Dodatkowe karabińczyki. Wygoda na codzień!', shortLabel: 'Dodatkowe karabińczyki', icon: '✨', thumbnail: '/miniatury/dodatkowykarabinczyk.jpg' },
+    { id: 5, label: 'Karabińczyki', shortLabel: 'KARABIŃCZYKI', icon: '✍️', thumbnail: '/miniatury/darmowykarabinczyk.jpg' },
     { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
     { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵', thumbnail: '/miniatury/stopery.jpg' },
     { id: 9, label: 'Dodaj pieska', shortLabel: 'GRAFIKA', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
@@ -714,6 +733,8 @@ export default function Home() {
     if (count === 3) return 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-14';
     return 'grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-14';
   };
+
+  const karabinerGridClass = 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-10';
 
   const isLettersOnly = (value: string) => /^[\p{L}\s-]*$/u.test(value);
   const isDigitsOnly = (value: string) => /^\d*$/.test(value);
@@ -804,6 +825,7 @@ export default function Home() {
   const [showFreeCharmErrors, setShowFreeCharmErrors] = useState(false);
   const [showExtraCharmsErrors, setShowExtraCharmsErrors] = useState(false);
   const [showExtraKarabinersErrors, setShowExtraKarabinersErrors] = useState(false);
+  const [showFreeKarabinerErrors, setShowFreeKarabinerErrors] = useState(false);
   const [showStickerErrors, setShowStickerErrors] = useState(false);
   const [showRogalikErrors, setShowRogalikErrors] = useState(false);
   const [showRogalikDodatkiErrors, setShowRogalikDodatkiErrors] = useState(false);
@@ -845,10 +867,15 @@ export default function Home() {
         return;
       }
     }
-    if (isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier') {
-      setShowExtraKarabinersErrors(true);
-      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
-        scrollToConfiguratorSection('extra-karabiners-choice');
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'karabinier') {
+      setShowFreeKarabinerErrors(true);
+      const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
+        (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+        0,
+      );
+      const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
+      if (firstRowQty < 1 || totalQty < 1) {
+        scrollToConfiguratorSection('free-karabiner-choice');
         return;
       }
     }
@@ -906,9 +933,20 @@ export default function Home() {
         return;
       }
     }
-    if (contentStep === 6) {
-      setShowExtraKarabinersErrors(true);
-      if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
+    if (contentStep === 5) {
+      setShowFreeKarabinerErrors(true);
+      if (isClassicTagConfigurator || isGlowTagConfigurator) {
+        const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
+          (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+          0,
+        );
+        const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
+        if (firstRowQty < 1 || totalQty < 1) {
+          scrollToConfiguratorSection('free-karabiner-choice');
+          return;
+        }
+      } else if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0) {
+        setShowExtraKarabinersErrors(true);
         scrollToConfiguratorSection('extra-karabiners-choice');
         return;
       }
@@ -1082,12 +1120,18 @@ export default function Home() {
     id: item.id,
     title: item.label,
     image: item.image,
+    material: item.material,
   }));
+  const configuratorKarabinersList = karabinersForConfigurator(karabinerRingKey);
+  const firstRowKarabinerIdSet = new Set(firstRowKarabinerIds(karabinerRingKey));
   const connectingRingKarabinerIds = new Set<string>(CONNECTING_RING_KARABINER_IDS);
-  const freeKarabinersList = isTagConfigurator
-    ? karabinersList
+  const freeKarabinersList = usesKarabinerQuantityStep
+    ? configuratorKarabinersList
     : karabinersList.filter((item) => !connectingRingKarabinerIds.has(item.id));
-  const extraKarabinersList = karabinersList.filter((item) => !connectingRingKarabinerIds.has(item.id));
+  const extraKarabinersList = (usesKarabinerQuantityStep
+    ? configuratorKarabinersList
+    : karabinersList
+  ).filter((item) => !connectingRingKarabinerIds.has(item.id));
 
   const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
     id: item.id,
@@ -1285,60 +1329,179 @@ export default function Home() {
     </section>
   );
 
-  const renderFreeKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
-    const isSelected = formData.karabinerOption === karabiner.id;
+  const syncKarabinerLegacyFields = (
+    quantities: Record<string, number>,
+    ringColor: string,
+  ) => orderKarabinersFromQuantities(quantities, ringColor);
+
+  const changeKarabinerQty = (id: string, delta: number) => {
+    if (delta > 0 && karabinerUnavailable(id)) return;
+    setFormData((prev) => {
+      const current = prev.karabinerQuantities[id] ?? 0;
+      const nextQty = Math.max(0, current + delta);
+      const nextQuantities = { ...prev.karabinerQuantities };
+      if (nextQty === 0) delete nextQuantities[id];
+      else nextQuantities[id] = nextQty;
+
+      const legacy = syncKarabinerLegacyFields(
+        nextQuantities,
+        karabinerCatalogRingKey({
+          configuratorId: activeProduct.configuratorId,
+          ringColor: prev.ringColor,
+          glowTextColor: prev.glowTextColor,
+        }),
+      );
+      const isConnectingRing = connectingRingKarabinerIds.has(id);
+      const hadConnectingRing = Object.entries(prev.karabinerQuantities).some(
+        ([itemId, qty]) => qty > 0 && connectingRingKarabinerIds.has(itemId),
+      );
+
+      return {
+        ...prev,
+        karabinerQuantities: nextQuantities,
+        karabinerOption: legacy.baseCarabiner === '-' ? '' : legacy.baseCarabiner,
+        wantExtraKarabiners: legacy.extraCarabiner.length > 0 ? 'tak' : 'nie',
+        extraKarabiners: legacy.extraCarabiner,
+        ...(isConnectingRing && nextQty > 0 && current === 0
+          ? { wantStopers: 'nie' as const, extraStopers: [] }
+          : {}),
+        ...(hadConnectingRing && !Object.keys(nextQuantities).some((itemId) =>
+          connectingRingKarabinerIds.has(itemId) && (nextQuantities[itemId] ?? 0) > 0,
+        )
+          ? {}
+          : {}),
+      };
+    });
+
+    if (delta > 0 && connectingRingKarabinerIds.has(id)) {
+      const current = formData.karabinerQuantities[id] ?? 0;
+      if (current === 0) {
+        stopersChoiceTouchedRef.current = true;
+        setShowGoldRingInfoModal(true);
+      }
+    }
+  };
+
+  const renderKarabinerQuantityCard = (karabiner: {
+    id: string;
+    label: string;
+    image: string;
+    material: string;
+    pricePln: number;
+    firstRowFreeHint: boolean;
+  }) => {
+    const count = formData.karabinerQuantities[karabiner.id] ?? 0;
+    const isSelected = count > 0;
     const isDisabled = karabinerUnavailable(karabiner.id);
+    const stepperButtonClass =
+      'w-8 h-8 border flex items-center justify-center text-lg font-light transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed';
 
     return (
       <div
         key={karabiner.id}
-        onClick={isDisabled ? undefined : () => {
-          const isConnectingRing = connectingRingKarabinerIds.has(karabiner.id);
-          const wasConnectingRing = connectingRingKarabinerIds.has(formData.karabinerOption);
-          setFormData((prev) => ({
-            ...prev,
-            karabinerOption: karabiner.id,
-            ...(isConnectingRing ? { wantStopers: 'nie' as const, extraStopers: [] } : {}),
-          }));
-          if (isConnectingRing) {
-            stopersChoiceTouchedRef.current = true;
-            setShowGoldRingInfoModal(true);
-          } else if (wasConnectingRing) {
-            stopersChoiceTouchedRef.current = false;
-          }
-        }}
-        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+        className={`rounded-none p-3 md:p-6 border transition-colors duration-300 flex flex-col items-center text-center ${
           isDisabled
-            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
+            ? 'opacity-50 border-[#D6C7AE] bg-white'
             : isSelected
-              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
-              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+              : 'border-[#D6C7AE] bg-white'
         }`}
       >
-        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-          <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
+        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+          <img src={karabiner.image} alt={karabiner.label} className="w-full h-full object-cover" />
         </div>
-        <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
+        <span className="text-base font-medium text-[#161616]">{karabiner.label}</span>
+        <span className="mt-1 text-sm text-[#7A736C]">Materiał: {karabiner.material}</span>
+        <span className="mt-1 text-sm font-medium text-[#161616]">{karabiner.pricePln} zł / szt.</span>
         {isDisabled && (
           <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
         )}
         {!isDisabled && (
-          <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => changeKarabinerQty(karabiner.id, -1)}
+              disabled={count <= 0}
+              className={`${stepperButtonClass} border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6]`}
+              aria-label={`Zmniejsz ilość: ${karabiner.label}`}
+            >
+              −
+            </button>
+            <span className="min-w-[1.25rem] text-base font-medium text-[#161616] tabular-nums">{count}</span>
+            <button
+              type="button"
+              onClick={() => changeKarabinerQty(karabiner.id, 1)}
+              className={`${stepperButtonClass} border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6]`}
+              aria-label={`Zwiększ ilość: ${karabiner.label}`}
+            >
+              +
+            </button>
           </div>
         )}
       </div>
     );
   };
 
-  const renderExtraKarabinerCard = (karabiner: { id: string; title: string; image: string }) => {
-    const isSelected = formData.extraKarabiners.includes(karabiner.id);
+  const renderClassicKarabinerStep = () => {
+    const items = configuratorKarabinersList;
+    const firstRowItems = items.filter((item) => firstRowKarabinerIdSet.has(item.id));
+    const otherItems = items.filter((item) => !firstRowKarabinerIdSet.has(item.id));
+
+    return (
+      <div className="space-y-8 scroll-mt-28" data-configurator-section="free-karabiner-choice">
+        <div className="space-y-2">
+          <p className="font-bold text-base text-[#161616]">
+            Wybierz swoje karabińczyki:
+          </p>
+          {showFreeKarabinerErrors &&
+            firstRowKarabinerIds(karabinerRingKey).reduce(
+              (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+              0,
+            ) < 1 && (
+              <p className="text-sm text-red-500">
+                Dodaj co najmniej jeden karabińczyk z pierwszego wiersza (1 szt. gratis na zamówienie).
+              </p>
+            )}
+        </div>
+
+        <div className="rounded-xl border-2 border-[#3A5A40]/35 bg-[#E8F0EA]/80 p-4 md:p-6 space-y-3">
+          <p className="text-sm font-bold text-[#3A5A40] text-center">
+            Pierwsza sztuka jest darmowa!
+          </p>
+          <div className={karabinerGridClass}>{firstRowItems.map(renderKarabinerQuantityCard)}</div>
+        </div>
+
+        {otherItems.length > 0 && (
+          <div className={karabinerGridClass}>{otherItems.map(renderKarabinerQuantityCard)}</div>
+        )}
+      </div>
+    );
+  };
+
+  const renderRogalikKarabinerPickCard = (
+    karabiner: { id: string; title: string; image: string },
+    mode: 'single' | 'multi',
+  ) => {
+    const isSelected =
+      mode === 'single'
+        ? formData.karabinerOption === karabiner.id
+        : formData.extraKarabiners.includes(karabiner.id);
     const isDisabled = karabinerUnavailable(karabiner.id);
 
     return (
       <div
         key={karabiner.id}
-        onClick={isDisabled ? undefined : () => toggleExtraKarabiner(karabiner.id)}
+        onClick={
+          isDisabled
+            ? undefined
+            : () => {
+                if (mode === 'single') {
+                  setFormData((prev) => ({ ...prev, karabinerOption: karabiner.id }));
+                } else {
+                  toggleExtraKarabiner(karabiner.id);
+                }
+              }
+        }
         className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
           isDisabled
             ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
@@ -1351,12 +1514,16 @@ export default function Home() {
           <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-        {isDisabled && (
-          <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
-        )}
         {!isDisabled && (
-          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+          <div
+            className={`w-5 h-5 ${mode === 'multi' ? 'rounded-md' : 'rounded-full'} border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
+          >
+            {isSelected &&
+              (mode === 'multi' ? (
+                <span className="text-white text-xs font-bold">✓</span>
+              ) : (
+                <div className="w-2 h-2 rounded-full bg-white" />
+              ))}
           </div>
         )}
       </div>
@@ -1364,14 +1531,27 @@ export default function Home() {
   };
 
   const renderFreeKarabinerGrid = () => (
-    <div className={imageGridClass(freeKarabinersList.length)}>
-      {freeKarabinersList.map(renderFreeKarabinerCard)}
+    <div className={karabinerGridClass}>
+      {freeKarabinersList.map((karabiner) =>
+        isRogalikTagConfigurator
+          ? renderRogalikKarabinerPickCard(karabiner, 'single')
+          : renderKarabinerQuantityCard({
+              id: karabiner.id,
+              label: karabiner.title,
+              image: karabiner.image,
+              material: karabiner.material ?? '',
+              pricePln: karabinerUnitPricePln(karabiner.id),
+              firstRowFreeHint: false,
+            }),
+      )}
     </div>
   );
 
   const renderExtraKarabinerGrid = () => (
-    <div className={imageGridClass(extraKarabinersList.length)}>
-      {extraKarabinersList.map(renderExtraKarabinerCard)}
+    <div className={karabinerGridClass}>
+      {extraKarabinersList.map((karabiner) =>
+        renderRogalikKarabinerPickCard(karabiner, 'multi'),
+      )}
     </div>
   );
 
@@ -1417,6 +1597,7 @@ export default function Home() {
         karabinerOption: formData.karabinerOption,
         extraKarabiners:
           formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners : [],
+        karabinerQuantities: formData.karabinerQuantities,
         petName: formData.petName,
         phoneNumber: formData.phoneNumber,
       });
@@ -1462,15 +1643,15 @@ export default function Home() {
       });
     }
 
-    options.push({
-      label: 'Darmowy karabińczyk',
-      values: [findTitle(karabinersList, formData.karabinerOption, `Opcja nr ${formData.karabinerOption}`)],
-    });
-
-    if (formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length > 0) {
+    const karabinerSummaryEntries = Object.entries(formData.karabinerQuantities).filter(
+      ([, qty]) => qty > 0,
+    );
+    if (karabinerSummaryEntries.length > 0) {
       options.push({
-        label: 'Dodatkowe karabińczyki',
-        values: formData.extraKarabiners.map((id) => findTitle(karabinersList, id, id)),
+        label: 'Karabińczyki',
+        values: karabinerSummaryEntries.map(
+          ([id, qty]) => `${findTitle(karabinersList, id, id)} ×${qty}`,
+        ),
       });
     }
 
@@ -1861,9 +2042,19 @@ export default function Home() {
         <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
           <span className="min-w-0 pl-3">Darmowy charms x1</span>
         </div>
-        <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-          <span className="min-w-0 pl-3">Darmowy karabińczyk x1</span>
-        </div>
+        {usesKarabinerQuantityStep && karabinerQuantitiesTotal(formData.karabinerQuantities) > 0 && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">
+              Karabińczyki x{karabinerQuantitiesTotal(formData.karabinerQuantities)}
+              {karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey) > 0
+                ? ` (płatne: ${karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey)})`
+                : ' (1 szt. gratis)'}
+            </span>
+            {extraKarabinersCost > 0 && (
+              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{extraKarabinersCost} zł</span>
+            )}
+          </div>
+        )}
 
         {formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -1872,12 +2063,6 @@ export default function Home() {
           </div>
         )}
 
-        {formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Dodatkowe karabińczyki x{formData.extraKarabiners.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraKarabiners.length * 5} zł (5 zł/szt)</span>
-          </div>
-        )}
 
         {formData.wantString === 'tak' && formData.premiumStrings.length > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -1996,12 +2181,17 @@ export default function Home() {
             </span>
           </div>
         )}
-        {!rogalikUsesBeadMounting && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length > 0 && (
+        {!rogalikUsesBeadMounting && karabinerQuantitiesTotal(formData.karabinerQuantities) > 0 && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Dodatkowe karabińczyki ×{formData.extraKarabiners.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-              +{formData.extraKarabiners.length * EXTRA_KARABINER_PRICE} zł ({EXTRA_KARABINER_PRICE} zł/szt)
+            <span className="min-w-0 pl-3">
+              Karabińczyki ×{karabinerQuantitiesTotal(formData.karabinerQuantities)}
+              {karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey) > 0
+                ? ` (płatne: ${karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey)})`
+                : ' (1 szt. gratis)'}
             </span>
+            {rogalikExtraKarabinersCost > 0 && (
+              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{rogalikExtraKarabinersCost} zł</span>
+            )}
           </div>
         )}
         {formData.includePhoneCode === 'tak' && (
@@ -2031,6 +2221,12 @@ export default function Home() {
       rogalikCharms: item.config.rogalikCharms,
       extraKarabiners:
         item.config.wantExtraKarabiners === 'tak' ? item.config.extraKarabiners : [],
+      karabinerQuantities: item.config.karabinerQuantities,
+      karabinerCatalogRingKey: karabinerCatalogRingKey({
+        configuratorId: 'rogalik-tag',
+        ringColor: item.config.ringColor,
+        glowTextColor: item.config.glowTextColor,
+      }),
       includeDialCode: item.config.includePhoneCode === 'tak',
     });
 
@@ -3174,52 +3370,7 @@ export default function Home() {
                         />
                       )}
 
-                      {isRogalikTagConfigurator && rogalikFlowStep === 'free-karabinier' && (
-                        <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój karabińczyk do mocowania:</p>
-                          {renderFreeKarabinerGrid()}
-                        </div>
-                      )}
-
-                      {isRogalikTagConfigurator && rogalikFlowStep === 'extra-karabinier' && (
-                        <div className="space-y-6">
-                          <div className="space-y-6 scroll-mt-28" data-configurator-section="extra-karabiners-choice">
-                          <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[
-                              { id: 'tak', label: 'Tak' },
-                              { id: 'nie', label: 'Nie' },
-                            ].map((option) => (
-                              <div
-                                key={option.id}
-                                onClick={() => setFormData({
-                                  ...formData,
-                                  wantExtraKarabiners: option.id,
-                                  extraKarabiners: option.id === 'nie' ? [] : formData.extraKarabiners,
-                                })}
-                                className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                }`}
-                              >
-                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.wantExtraKarabiners === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {showExtraKarabinersErrors && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0 && (
-                            <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
-                          )}
-                          </div>
-                          {formData.wantExtraKarabiners === 'tak' && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
-                              <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
-                              {renderExtraKarabinerGrid()}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'karabinier' && renderClassicKarabinerStep()}
 
                       {!isRogalikTagConfigurator && contentStep === 1 && (
                         <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-ring-choice">
@@ -3231,12 +3382,30 @@ export default function Home() {
                             {ringsList.map((item) => (
                               <div
                                 key={item.id}
-                                onClick={() => setFormData({
-                                  ...formData,
-                                  ringColor: item.id,
-                                  baseOption: basesForRing(item.id)[0]?.id ?? '1',
-                                  ...(item.id === 'kwiat' ? { wantSticker: 'nie', stickerOption: '' } : {}),
-                                })}
+                                onClick={() => {
+                                  const nextKarabiners = karabinersForRingColor(item.id);
+                                  const nextKarabinerIds = new Set(nextKarabiners.map((k) => k.id));
+                                  const nextQuantities: Record<string, number> = {};
+                                  for (const [karabinerId, qty] of Object.entries(formData.karabinerQuantities)) {
+                                    if (nextKarabinerIds.has(karabinerId) && qty > 0) {
+                                      nextQuantities[karabinerId] = qty;
+                                    }
+                                  }
+                                  if (karabinerQuantitiesTotal(nextQuantities) === 0 && nextKarabiners[0]) {
+                                    nextQuantities[nextKarabiners[0].id] = 1;
+                                  }
+                                  const legacy = orderKarabinersFromQuantities(nextQuantities, item.id);
+                                  setFormData({
+                                    ...formData,
+                                    ringColor: item.id,
+                                    baseOption: basesForRing(item.id)[0]?.id ?? '1',
+                                    karabinerQuantities: nextQuantities,
+                                    karabinerOption: legacy.baseCarabiner === '-' ? '' : legacy.baseCarabiner,
+                                    wantExtraKarabiners: legacy.extraCarabiner.length > 0 ? 'tak' : 'nie',
+                                    extraKarabiners: legacy.extraCarabiner,
+                                    ...(item.id === 'kwiat' ? { wantSticker: 'nie', stickerOption: '' } : {}),
+                                  });
+                                }}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-stretch ${
                                   formData.ringColor === item.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
@@ -3343,7 +3512,33 @@ export default function Home() {
                             {GLOW_TEXT_OPTIONS.map((option) => (
                               <div
                                 key={option.id}
-                                onClick={() => updateFormField('glowTextColor', option.id)}
+                                onClick={() => {
+                                  const nextRingKey = karabinerCatalogRingKey({
+                                    configuratorId: activeProduct.configuratorId,
+                                    ringColor: formData.ringColor,
+                                    glowTextColor: option.id,
+                                  });
+                                  const nextKarabiners = karabinersForRingColor(nextRingKey);
+                                  const nextKarabinerIds = new Set(nextKarabiners.map((k) => k.id));
+                                  const nextQuantities: Record<string, number> = {};
+                                  for (const [karabinerId, qty] of Object.entries(formData.karabinerQuantities)) {
+                                    if (nextKarabinerIds.has(karabinerId) && qty > 0) {
+                                      nextQuantities[karabinerId] = qty;
+                                    }
+                                  }
+                                  if (karabinerQuantitiesTotal(nextQuantities) === 0 && nextKarabiners[0]) {
+                                    nextQuantities[nextKarabiners[0].id] = 1;
+                                  }
+                                  const legacy = orderKarabinersFromQuantities(nextQuantities, nextRingKey);
+                                  setFormData({
+                                    ...formData,
+                                    glowTextColor: option.id,
+                                    karabinerQuantities: nextQuantities,
+                                    karabinerOption: legacy.baseCarabiner === '-' ? '' : legacy.baseCarabiner,
+                                    wantExtraKarabiners: legacy.extraCarabiner.length > 0 ? 'tak' : 'nie',
+                                    extraKarabiners: legacy.extraCarabiner,
+                                  });
+                                }}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                   formData.glowTextColor === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
@@ -3447,53 +3642,7 @@ export default function Home() {
                         </div>
                       )}
 
-                      {!isRogalikTagConfigurator && contentStep === 5 && (
-                        <div className="space-y-4">
-                          <p className="font-bold text-base text-[#161616]">Wybierz swój darmowy karabińczyk do mocowania:</p>
-                          {renderFreeKarabinerGrid()}
-                        </div>
-                      )}
-
-                      {!isRogalikTagConfigurator && contentStep === 6 && (
-                        <div className="space-y-6">
-                          <div className="space-y-6 scroll-mt-28" data-configurator-section="extra-karabiners-choice">
-                          <p className="font-bold text-base text-[#161616]">Dobierz dodatkowy karabińczyk, aby łatwo przepinać adresówkę między różnymi obrożami lub szelkami:</p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[
-                              { id: 'tak', label: 'Tak' },
-                              { id: 'nie', label: 'Nie' },
-                            ].map((option) => (
-                              <div
-                                key={option.id}
-                                onClick={() => setFormData({
-                                  ...formData, 
-                                  wantExtraKarabiners: option.id,
-                                  extraKarabiners: option.id === 'nie' ? [] : formData.extraKarabiners
-                                })}
-                                className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                }`}
-                              >
-                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraKarabiners === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.wantExtraKarabiners === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {showExtraKarabinersErrors && formData.wantExtraKarabiners === 'tak' && formData.extraKarabiners.length === 0 && (
-                            <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy karabińczyk.</p>
-                          )}
-                          </div>
-
-                          {formData.wantExtraKarabiners === 'tak' && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
-                              <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe karabińczyki (możesz zaznaczyć wiele):</p>
-                              {renderExtraKarabinerGrid()}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {!isRogalikTagConfigurator && contentStep === 5 && usesKarabinerQuantityStep && renderClassicKarabinerStep()}
 
                       {/* KROK 7: Sznurek */}
                       {!isRogalikTagConfigurator && contentStep === 7 && (

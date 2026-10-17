@@ -190,6 +190,7 @@ export type RogalikConfiguratorOptionsInput = {
   rogalikCharms?: string[]
   karabinerOption?: string
   extraKarabiners?: string[]
+  karabinerQuantities?: Record<string, number>
   petName: string
   phoneNumber: string
 }
@@ -235,16 +236,26 @@ export const rogalikConfiguratorOptions = (input: RogalikConfiguratorOptionsInpu
       })
     }
   } else if (rogalikMountingUsesKarabinczyk(mounting)) {
-    const karabinerId = input.karabinerOption?.trim()
-    if (karabinerId && karabinerId !== "-") {
-      options.push({ label: "Karabińczyk", values: [optionTitle(karabinerId)] })
-    }
-    const extras = input.extraKarabiners ?? []
-    if (extras.length > 0) {
+    const quantityEntries = Object.entries(input.karabinerQuantities ?? {}).filter(
+      ([, qty]) => qty > 0,
+    )
+    if (quantityEntries.length > 0) {
       options.push({
-        label: "Dodatkowe karabińczyki",
-        values: extras.map(optionTitle),
+        label: "Karabińczyki",
+        values: quantityEntries.map(([id, qty]) => `${optionTitle(id)} ×${qty}`),
       })
+    } else {
+      const karabinerId = input.karabinerOption?.trim()
+      if (karabinerId && karabinerId !== "-") {
+        options.push({ label: "Karabińczyk", values: [optionTitle(karabinerId)] })
+      }
+      const extras = input.extraKarabiners ?? []
+      if (extras.length > 0) {
+        options.push({
+          label: "Dodatkowe karabińczyki",
+          values: extras.map(optionTitle),
+        })
+      }
     }
   }
 

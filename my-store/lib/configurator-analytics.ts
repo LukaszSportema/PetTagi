@@ -12,8 +12,8 @@ export const CONFIGURATOR_STEP_CATALOG: ConfiguratorStepMeta[] = [
   { key: "12", label: "NAPIS", order: 3 },
   { key: "3", label: "Darmowy charms", order: 4 },
   { key: "4", label: "Dodatkowe charmsy", order: 5 },
-  { key: "5", label: "Darmowy karabińczyk", order: 6 },
-  { key: "6", label: "Dodatkowe karabińczyki", order: 7 },
+  { key: "5", label: "Karabińczyki", order: 6 },
+  { key: "6", label: "Dodatkowe karabińczyki (legacy)", order: 7 },
   { key: "7", label: "Sznurek", order: 8 },
   { key: "8", label: "Stopery", order: 9 },
   { key: "9", label: "GRAFIKA", order: 10 },
@@ -37,6 +37,7 @@ export type ConfiguratorFormSnapshot = {
   karabinerOption: string
   wantExtraKarabiners: string
   extraKarabiners: string[]
+  karabinerQuantities?: Record<string, number>
   wantString: string
   stringLength: string
   premiumStrings: string[]
@@ -99,9 +100,16 @@ export const extractStepChoices = (
           : []),
       ]
     case "5":
-      return [{ choiceKey: "karabinczyk", choiceValue: form.karabinerOption || "—" }]
-    case "6":
+      if (form.karabinerQuantities && Object.keys(form.karabinerQuantities).length > 0) {
+        return Object.entries(form.karabinerQuantities)
+          .filter(([, qty]) => qty > 0)
+          .map(([id, qty]) => ({
+            choiceKey: `karabinczyk_${id}`,
+            choiceValue: String(qty),
+          }))
+      }
       return [
+        { choiceKey: "karabinczyk", choiceValue: form.karabinerOption || "—" },
         { choiceKey: "dodatkowe_karabinczyki", choiceValue: form.wantExtraKarabiners },
         ...(form.extraKarabiners.length
           ? form.extraKarabiners.map((item, index) => ({
@@ -110,6 +118,8 @@ export const extractStepChoices = (
             }))
           : []),
       ]
+    case "6":
+      return []
     case "7":
       return [
         { choiceKey: "sznurek", choiceValue: form.wantString },

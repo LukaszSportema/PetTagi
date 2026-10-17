@@ -101,8 +101,7 @@ export type RogalikFlowStep =
   | "kolor"
   | "mocowanie"
   | "dodatki"
-  | "free-karabinier"
-  | "extra-karabinier"
+  | "karabinier"
   | "dane"
   | "podsumowanie"
 
@@ -117,9 +116,8 @@ export const rogalikFlowStepAt = (mounting: string, stepIndex: number): RogalikF
     return "podsumowanie"
   }
 
-  if (stepIndex === 3) return "free-karabinier"
-  if (stepIndex === 4) return "extra-karabinier"
-  if (stepIndex === 5) return "dane"
+  if (stepIndex === 3) return "karabinier"
+  if (stepIndex === 4) return "dane"
   return "podsumowanie"
 }
 

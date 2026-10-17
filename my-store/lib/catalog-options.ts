@@ -267,105 +267,262 @@ export const nameLayoutLabel = (layout: NameLayoutId | string, petNameLength: nu
 
 export type KarabinerOption = CatalogOption & {
   image: string
+  material: string
 }
 
-export const GOLD_CONNECTING_RING_KARABINER: KarabinerOption = {
-  id: "kolkozlote",
-  label: "Kółko złote",
-  image: "/karabinczyk/kolkozlote.jpg",
-}
+const coloredClassicKarabiners = (): KarabinerOption[] => [
+  {
+    id: "pomaranczowyklasyczny",
+    label: "Pomarańczowy klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/karabinczykpomaranczowyklasyczny.jpg",
+  },
+  {
+    id: "zoltyklasyczny",
+    label: "Żółty klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/karabinczykzoltyklasyczny.jpg",
+  },
+  {
+    id: "bialyklasyczny",
+    label: "Biały klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/karabinczykbialyklasyczny.jpg",
+  },
+  {
+    id: "zielonyklasyczny",
+    label: "Zielony klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/karabinczykzielonyklasyczny.jpg",
+  },
+  {
+    id: "niebieskiklasyczny",
+    label: "Niebieski klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/karabinczykniebieskiklasyczny.jpg",
+  },
+  {
+    id: "jasnorozowyklasyczny",
+    label: "Jasnoróżowy klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/karabinczykjasnorozowyklasyczny.jpg",
+  },
+]
 
-export const GOLD_CONNECTING_RING_MEDIUM_KARABINER: KarabinerOption = {
-  id: "kolkozlotesrednie",
-  label: "Kółko złote średnie",
-  image: "/karabinczyk/kolkozlotesrednie.jpg",
-}
+/** Oprawa złota lub kwiat — lista karabińczyków w konfiguratorze. */
+export const GOLD_RING_KARABINERS: KarabinerOption[] = [
+  {
+    id: "klasyczny20g",
+    label: "Karabińczyk klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/1.jpg",
+  },
+  {
+    id: "kolko20g",
+    label: "Kółko łącznikowe 20 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/2.jpg",
+  },
+  {
+    id: "kolko25g",
+    label: "Kółko łącznikowe 25 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/3.jpg",
+  },
+  {
+    id: "serce22g",
+    label: "Karabińczyk serce 22 × 22 mm",
+    material: "stop metali",
+    image: "/karabinczyk/4.jpg",
+  },
+  {
+    id: "serce25g",
+    label: "Karabińczyk serce duże 25 × 25 mm",
+    material: "stop cynku",
+    image: "/karabinczyk/5.jpg",
+  },
+  {
+    id: "duzy25g",
+    label: "Karabińczyk duży 25 mm",
+    material: "metal",
+    image: "/karabinczyk/6.jpg",
+  },
+  {
+    id: "kolko28g",
+    label: "Kółko łącznikowe 28 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/7.jpg",
+  },
+  {
+    id: "klasyczny17g",
+    label: "Karabińczyk klasyczny 17 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/8.jpg",
+  },
+  {
+    id: "serce16g",
+    label: "Karabińczyk serce 16,4 × 15,4 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/9.jpg",
+  },
+  {
+    id: "mini14g",
+    label: "Karabińczyk mini 14,4 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/10.jpg",
+  },
+  {
+    id: "koralikowy23g",
+    label: "Karabińczyk koralikowy 23 × 10,5 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/11.jpg",
+  },
+  ...coloredClassicKarabiners(),
+]
 
-export const GOLD_CONNECTING_RING_LARGE_KARABINER: KarabinerOption = {
-  id: "kolkozloteduze",
-  label: "Kółko złote duże",
-  image: "/karabinczyk/kolkozloteduze.jpg",
-}
+/** Oprawa srebrna — lista karabińczyków w konfiguratorze. */
+export const SILVER_RING_KARABINERS: KarabinerOption[] = [
+  {
+    id: "klasyczny20s",
+    label: "Karabińczyk klasyczny 20 mm",
+    material: "metal",
+    image: "/karabinczyk/12.jpg",
+  },
+  {
+    id: "kolko20s",
+    label: "Kółko łącznikowe 20 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/13.jpg",
+  },
+  {
+    id: "kolko25s",
+    label: "Kółko łącznikowe 25 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/14.jpg",
+  },
+  {
+    id: "serce22s",
+    label: "Karabińczyk serce 22 × 22 mm",
+    material: "stop metali",
+    image: "/karabinczyk/15.jpg",
+  },
+  {
+    id: "klasyczny17s",
+    label: "Karabińczyk klasyczny 17 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/16.jpg",
+  },
+  {
+    id: "duzy25s",
+    label: "Karabińczyk duży 25 mm",
+    material: "metal",
+    image: "/karabinczyk/17.jpg",
+  },
+  {
+    id: "kolko28s",
+    label: "Kółko łącznikowe 28 mm",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/18.jpg",
+  },
+  ...coloredClassicKarabiners(),
+]
 
-export const SILVER_CONNECTING_RING_KARABINER: KarabinerOption = {
-  id: "kolkosrebrne",
-  label: "Kółko srebrne",
-  image: "/karabinczyk/kolkosrebrne.jpg",
-}
+/** Etykiety starych ID (zamówienia sprzed zmiany katalogu). */
+const LEGACY_KARABINER_OPTIONS: KarabinerOption[] = [
+  {
+    id: "kolkozlote",
+    label: "Kółko złote",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/kolkozlote.jpg",
+  },
+  {
+    id: "kolkozlotesrednie",
+    label: "Kółko złote średnie",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/kolkozlotesrednie.jpg",
+  },
+  {
+    id: "kolkozloteduze",
+    label: "Kółko złote duże",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/kolkozloteduze.jpg",
+  },
+  {
+    id: "kolkosrebrne",
+    label: "Kółko srebrne",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/kolkosrebrne.jpg",
+  },
+  {
+    id: "klasyczny",
+    label: "Klasyczny",
+    material: "metal",
+    image: "/karabinczyk/karabinczykklasyczny.jpg",
+  },
+  {
+    id: "serduszko",
+    label: "Serduszko",
+    material: "stop metali",
+    image: "/karabinczyk/karabinczykserduszko.jpg",
+  },
+  {
+    id: "duzy",
+    label: "Duży",
+    material: "metal",
+    image: "/karabinczyk/karabinczykduzy.jpg",
+  },
+  {
+    id: "klasycznysrebrny",
+    label: "Klasyczny srebrny",
+    material: "stal nierdzewna",
+    image: "/karabinczyk/karabinczykklasycznysrebrny.jpg",
+  },
+  {
+    id: "serduszkosrebrne",
+    label: "Serduszko srebrne",
+    material: "stop metali",
+    image: "/karabinczyk/karabinczykserduszkosrebrne.jpg",
+  },
+  {
+    id: "duzysrebrny",
+    label: "Duży srebrny",
+    material: "metal",
+    image: "/karabinczyk/karabinczykduzysrebrny.jpg",
+  },
+]
+
+export const karabinersForRingColor = (ringColor: string): KarabinerOption[] =>
+  ringColor === "srebrny" ? SILVER_RING_KARABINERS : GOLD_RING_KARABINERS
+
+export const defaultKarabinerForRing = (ringColor: string) =>
+  karabinersForRingColor(ringColor)[0]?.id ?? "klasyczny20g"
 
 export const CONNECTING_RING_KARABINER_IDS = [
+  "kolko20g",
+  "kolko25g",
+  "kolko28g",
+  "kolko20s",
+  "kolko25s",
+  "kolko28s",
   "kolkozlote",
   "kolkozlotesrednie",
   "kolkozloteduze",
   "kolkosrebrne",
 ] as const
 
-export const KARABINER_CATALOG: KarabinerOption[] = [
-  GOLD_CONNECTING_RING_KARABINER,
-  GOLD_CONNECTING_RING_MEDIUM_KARABINER,
-  GOLD_CONNECTING_RING_LARGE_KARABINER,
-  {
-    id: "klasyczny",
-    label: "Klasyczny",
-    image: "/karabinczyk/karabinczykklasyczny.jpg",
-  },
-  {
-    id: "serduszko",
-    label: "Serduszko",
-    image: "/karabinczyk/karabinczykserduszko.jpg",
-  },
-  {
-    id: "duzy",
-    label: "Duży",
-    image: "/karabinczyk/karabinczykduzy.jpg",
-  },
-  SILVER_CONNECTING_RING_KARABINER,
-  {
-    id: "klasycznysrebrny",
-    label: "Klasyczny srebrny",
-    image: "/karabinczyk/karabinczykklasycznysrebrny.jpg",
-  },
-  {
-    id: "serduszkosrebrne",
-    label: "Serduszko srebrne",
-    image: "/karabinczyk/karabinczykserduszkosrebrne.jpg",
-  },
-  {
-    id: "duzysrebrny",
-    label: "Duży srebrny",
-    image: "/karabinczyk/karabinczykduzysrebrny.jpg",
-  },
-  {
-    id: "pomaranczowyklasyczny",
-    label: "Pomarańczowy klasyczny",
-    image: "/karabinczyk/karabinczykpomaranczowyklasyczny.jpg",
-  },
-  {
-    id: "zoltyklasyczny",
-    label: "Zółty klasyczny",
-    image: "/karabinczyk/karabinczykzoltyklasyczny.jpg",
-  },
-  {
-    id: "bialyklasyczny",
-    label: "Biały klasyczny",
-    image: "/karabinczyk/karabinczykbialyklasyczny.jpg",
-  },
-  {
-    id: "zielonyklasyczny",
-    label: "Zielony klasyczny",
-    image: "/karabinczyk/karabinczykzielonyklasyczny.jpg",
-  },
-  {
-    id: "niebieskiklasyczny",
-    label: "Niebieski klasyczny",
-    image: "/karabinczyk/karabinczykniebieskiklasyczny.jpg",
-  },
-  {
-    id: "jasnorozowyklasyczny",
-    label: "Jasnoróżowy klasyczny",
-    image: "/karabinczyk/karabinczykjasnorozowyklasyczny.jpg",
-  },
-]
+const uniqueKarabinersById = (items: KarabinerOption[]) => {
+  const byId = new Map<string, KarabinerOption>()
+  for (const item of items) {
+    if (!byId.has(item.id)) byId.set(item.id, item)
+  }
+  return [...byId.values()]
+}
+
+export const KARABINER_CATALOG: KarabinerOption[] = uniqueKarabinersById([
+  ...GOLD_RING_KARABINERS,
+  ...SILVER_RING_KARABINERS,
+  ...LEGACY_KARABINER_OPTIONS,
+])
 
 export const KARABINER_OPTIONS: CatalogOption[] = KARABINER_CATALOG.map(({ id, label }) => ({ id, label }))
 

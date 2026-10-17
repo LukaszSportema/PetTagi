@@ -1,4 +1,9 @@
 import {
+  karabinerChargePln,
+  karabinerQuantitiesTotal,
+  type KarabinerCatalogRingKey,
+} from "@/lib/karabiner-pricing"
+import {
   DIAL_CODE_PRICE,
   EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
@@ -34,6 +39,8 @@ export type RogalikPricingInput = {
   rogalikBeads?: string | null
   rogalikCharms?: string[]
   extraKarabiners?: string[]
+  karabinerQuantities?: Record<string, number>
+  karabinerCatalogRingKey?: KarabinerCatalogRingKey
   includeDialCode?: boolean
 }
 
@@ -92,13 +99,25 @@ export const rogalikPriceBreakdown = (input: RogalikPricingInput): RogalikPriceL
     if (rogalikMountingUsesKarabinczyk(mounting)) {
       lines.push({ label: "Karabińczyk", amountPln: ROGALIK_MOUNTING_KARABINER_PRICE })
     }
-    const extraCount = input.extraKarabiners?.length ?? 0
-    if (extraCount > 0) {
+    const karabinerQtyTotal = input.karabinerQuantities
+      ? karabinerQuantitiesTotal(input.karabinerQuantities)
+      : 0
+    if (karabinerQtyTotal > 0 && input.karabinerQuantities) {
+      const ringKey = input.karabinerCatalogRingKey ?? "złoty"
+      const charge = karabinerChargePln(input.karabinerQuantities, ringKey)
       lines.push({
-        label: `Dodatkowe karabińczyki ×${extraCount}`,
-        amountPln: extraCount * EXTRA_KARABINER_PRICE,
-        detail: `${EXTRA_KARABINER_PRICE} zł/szt`,
+        label: `Karabińczyki ×${karabinerQtyTotal}`,
+        amountPln: charge,
       })
+    } else {
+      const extraCount = input.extraKarabiners?.length ?? 0
+      if (extraCount > 0) {
+        lines.push({
+          label: `Dodatkowe karabińczyki ×${extraCount}`,
+          amountPln: extraCount * EXTRA_KARABINER_PRICE,
+          detail: `${EXTRA_KARABINER_PRICE} zł/szt`,
+        })
+      }
     }
   }
 

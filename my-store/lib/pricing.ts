@@ -1,4 +1,9 @@
 import { stopperCountFromStored } from "@/lib/catalog-options"
+import {
+  karabinerQuantitiesFromOrder,
+  karabinerQuantitiesTotal,
+  karabinerRevenueFromOrder,
+} from "@/lib/karabiner-pricing"
 
 export const BASE_TAG_PRICES = {
   złoty: 60,
@@ -97,6 +102,7 @@ export type PricedOrderItem = {
   quantity: number
   productSlug?: string
   ringColor?: string
+  baseCarabiner?: string
   extraCharms: string[]
   extraCarabiner: string[]
   stringPremium: string[]
@@ -121,7 +127,12 @@ export const itemRevenueParts = (item: PricedOrderItem) => {
   return {
     base: baseTagPrice(item.ringColor ?? "złoty") * qty,
     charms: item.extraCharms.length * EXTRA_CHARM_PRICE * qty,
-    karabiners: item.extraCarabiner.length * EXTRA_KARABINER_PRICE * qty,
+    karabiners:
+      karabinerRevenueFromOrder(
+        item.baseCarabiner ?? "-",
+        item.extraCarabiner,
+        item.ringColor ?? "złoty",
+      ) * qty,
     strings: (item.stringPremium.length * premiumPrice + item.stringClassic.length * classicPrice + item.stringGlow.length * glowPrice) * qty,
     stoppers: stopperCountFromStored(item.stoppers) * STOPPER_PRICE * qty,
     stickers: item.sticker ? STICKER_PRICE * qty : 0,
@@ -136,7 +147,10 @@ export const itemQuantityParts = (item: PricedOrderItem) => {
   return {
     base: qty,
     charms: item.extraCharms.length * qty,
-    karabiners: item.extraCarabiner.length * qty,
+    karabiners:
+      karabinerQuantitiesTotal(
+        karabinerQuantitiesFromOrder(item.baseCarabiner ?? "-", item.extraCarabiner),
+      ) * qty,
     strings: stringCount * qty,
     stoppers: stopperCountFromStored(item.stoppers) * qty,
     stickers: item.sticker ? qty : 0,
