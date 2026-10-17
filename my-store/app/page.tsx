@@ -1125,14 +1125,6 @@ export default function Home() {
   const configuratorKarabinersList = karabinersForConfigurator(karabinerRingKey);
   const firstRowKarabinerIdSet = new Set(firstRowKarabinerIds(karabinerRingKey));
   const connectingRingKarabinerIds = new Set<string>(CONNECTING_RING_KARABINER_IDS);
-  const freeKarabinersList = usesKarabinerQuantityStep
-    ? configuratorKarabinersList
-    : karabinersList.filter((item) => !connectingRingKarabinerIds.has(item.id));
-  const extraKarabinersList = (usesKarabinerQuantityStep
-    ? configuratorKarabinersList
-    : karabinersList
-  ).filter((item) => !connectingRingKarabinerIds.has(item.id));
-
   const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
@@ -1477,83 +1469,6 @@ export default function Home() {
       </div>
     );
   };
-
-  const renderRogalikKarabinerPickCard = (
-    karabiner: { id: string; title: string; image: string },
-    mode: 'single' | 'multi',
-  ) => {
-    const isSelected =
-      mode === 'single'
-        ? formData.karabinerOption === karabiner.id
-        : formData.extraKarabiners.includes(karabiner.id);
-    const isDisabled = karabinerUnavailable(karabiner.id);
-
-    return (
-      <div
-        key={karabiner.id}
-        onClick={
-          isDisabled
-            ? undefined
-            : () => {
-                if (mode === 'single') {
-                  setFormData((prev) => ({ ...prev, karabinerOption: karabiner.id }));
-                } else {
-                  toggleExtraKarabiner(karabiner.id);
-                }
-              }
-        }
-        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-          isDisabled
-            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
-            : isSelected
-              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
-              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
-        }`}
-      >
-        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-          <img src={karabiner.image} alt={karabiner.title} className="w-full h-full object-cover" />
-        </div>
-        <span className="text-base font-medium text-[#161616]">{karabiner.title}</span>
-        {!isDisabled && (
-          <div
-            className={`w-5 h-5 ${mode === 'multi' ? 'rounded-md' : 'rounded-full'} border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
-          >
-            {isSelected &&
-              (mode === 'multi' ? (
-                <span className="text-white text-xs font-bold">✓</span>
-              ) : (
-                <div className="w-2 h-2 rounded-full bg-white" />
-              ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderFreeKarabinerGrid = () => (
-    <div className={karabinerGridClass}>
-      {freeKarabinersList.map((karabiner) =>
-        isRogalikTagConfigurator
-          ? renderRogalikKarabinerPickCard(karabiner, 'single')
-          : renderKarabinerQuantityCard({
-              id: karabiner.id,
-              label: karabiner.title,
-              image: karabiner.image,
-              material: karabiner.material ?? '',
-              pricePln: karabinerUnitPricePln(karabiner.id),
-              firstRowFreeHint: false,
-            }),
-      )}
-    </div>
-  );
-
-  const renderExtraKarabinerGrid = () => (
-    <div className={karabinerGridClass}>
-      {extraKarabinersList.map((karabiner) =>
-        renderRogalikKarabinerPickCard(karabiner, 'multi'),
-      )}
-    </div>
-  );
 
   const renderExtraCharmSections = () => (
     <div className="space-y-6">
@@ -1960,18 +1875,6 @@ export default function Home() {
     setDiscountError('');
     setShowCheckoutErrors(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const toggleExtraKarabiner = (id: string) => {
-    if (karabinerUnavailable(id)) return;
-    setFormData((prev) => {
-      const exists = prev.extraKarabiners.includes(id);
-      if (exists) {
-        return { ...prev, extraKarabiners: prev.extraKarabiners.filter((item) => item !== id) };
-      } else {
-        return { ...prev, extraKarabiners: [...prev.extraKarabiners, id] };
-      }
-    });
   };
 
   const togglePremiumString = (id: string) => {

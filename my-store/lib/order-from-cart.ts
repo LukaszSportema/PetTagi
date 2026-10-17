@@ -21,6 +21,7 @@ export type CartItemForOrder = {
   productName: string
   config: {
     ringColor: string
+    glowTextColor?: string
     baseOption: string
     charmOption: string
     wantExtraCharms: string
