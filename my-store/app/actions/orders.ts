@@ -2,7 +2,7 @@
 
 import { sendOrderPaidEmail, sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
-import { getPaymentRecipient } from "@/app/actions/settings"
+import { getExpressShippingEnabled, getPaymentRecipient } from "@/app/actions/settings"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
@@ -14,6 +14,7 @@ import type { OrderDiscountDetails } from "@/lib/types/order"
 import { DISCOUNT_PERCENTS, type DiscountPercent } from "@/lib/discount-codes"
 import { canSetOrderStatusToPending, orderFrameBaseLines } from "@/lib/order-display"
 import {
+  fastDeliveryCostForOrder,
   shippingCostForOrder,
   SHIPPING_KURIER_PRICE,
   SHIPPING_PACZKOMAT_PRICE,
@@ -133,12 +134,21 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     return { ok: false, message: "Nieprawidłowy koszt dostawy." }
   }
 
-  const expectedFastDeliveryCost = roundMoney(input.fastDelivery ? input.fastDeliveryCost : 0)
+  const expressSetting = await getExpressShippingEnabled()
+  const expressOffered = expressSetting.ok ? expressSetting.enabled : true
+  const tagCount = input.items.reduce((sum, item) => sum + item.quantity, 0)
+  const effectiveFastDelivery = expressOffered && Boolean(input.fastDelivery)
+  const expectedFastDeliveryCost = roundMoney(
+    fastDeliveryCostForOrder(tagCount, effectiveFastDelivery),
+  )
   const expectedTotal = roundMoney(
     expectedProductsValue + expectedShippingCost + expectedFastDeliveryCost,
   )
   if (roundMoney(input.total) !== expectedTotal) {
     return { ok: false, message: "Nieprawidłowa kwota zamówienia." }
+  }
+  if (Boolean(input.fastDelivery) && !expressOffered) {
+    return { ok: false, message: "Przyspieszony termin realizacji jest obecnie niedostępny." }
   }
 
   const supabase = await createClient()
@@ -161,8 +171,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     discount_code: discountCodeForOrder,
     products_value: roundMoney(input.productsValue),
     shipping_cost: roundMoney(input.shippingCost),
-    fast_delivery: Boolean(input.fastDelivery),
-    fast_delivery_cost: roundMoney(input.fastDelivery ? input.fastDeliveryCost : 0),
+    fast_delivery: effectiveFastDelivery,
+    fast_delivery_cost: expectedFastDeliveryCost,
     payment_recipient: paymentRecipient,
     total: roundMoney(input.total),
   }

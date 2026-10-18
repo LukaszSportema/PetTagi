@@ -12,7 +12,12 @@ import {
 } from './actions/orders';
 import { getPopularityReport } from './actions/popularity';
 import { getRevenueReport, type RevenueReportSlice } from './actions/revenue';
-import { getPaymentRecipient, setPaymentRecipient } from './actions/settings';
+import {
+  getExpressShippingEnabled,
+  getPaymentRecipient,
+  setExpressShippingEnabled,
+  setPaymentRecipient,
+} from './actions/settings';
 import { generateShippingLabel } from './actions/shipping';
 import {
   canSetOrderStatusToPending,
@@ -38,6 +43,10 @@ import {
   readStoredPaymentRecipient,
   type PaymentRecipientId,
 } from '@/lib/payment';
+import {
+  persistExpressShippingEnabled,
+  readStoredExpressShippingEnabled,
+} from '@/lib/express-shipping';
 import { orderDiscountCodeSummary } from '@/lib/order-discount-display';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
 import type { AnalyticsRow } from '@/lib/analytics-report';
@@ -109,6 +118,11 @@ export default function AdminPanel() {
   );
   const [paymentRecipientError, setPaymentRecipientError] = useState('');
   const [isSavingRecipient, setIsSavingRecipient] = useState(false);
+  const [expressShippingEnabled, setExpressShippingEnabledState] = useState(
+    () => readStoredExpressShippingEnabled() ?? true,
+  );
+  const [expressShippingError, setExpressShippingError] = useState('');
+  const [isSavingExpressShipping, setIsSavingExpressShipping] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [pendingPaidConfirmation, setPendingPaidConfirmation] = useState<PendingPaidConfirmation | null>(null);
@@ -136,6 +150,7 @@ export default function AdminPanel() {
     warsawYmd(new Date().toISOString()),
   );
   const paymentRecipientVersion = useRef(0);
+  const expressShippingVersion = useRef(0);
   const savedOrdersListScrollY = useRef<number | null>(null);
 
   const openOrderDetail = (id: string) => {
@@ -219,6 +234,28 @@ export default function AdminPanel() {
       setPaymentRecipientError('');
       setPaymentRecipientState(result.recipient);
       persistPaymentRecipient(result.recipient);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const version = expressShippingVersion.current;
+    const stored = readStoredExpressShippingEnabled();
+    const load = async () => {
+      const result = await getExpressShippingEnabled();
+      if (cancelled || version !== expressShippingVersion.current) return;
+      if (!result.ok) {
+        setExpressShippingError(result.message);
+        return;
+      }
+      if (stored != null) return;
+      setExpressShippingError('');
+      setExpressShippingEnabledState(result.enabled);
+      persistExpressShippingEnabled(result.enabled);
     };
     load();
     return () => {
@@ -387,6 +424,19 @@ export default function AdminPanel() {
     return result;
   };
 
+  const changeExpressShipping = async (enabled: boolean) => {
+    expressShippingVersion.current += 1;
+    setExpressShippingEnabledState(enabled);
+    persistExpressShippingEnabled(enabled);
+    setIsSavingExpressShipping(true);
+    setExpressShippingError('');
+    const result = await setExpressShippingEnabled(enabled);
+    setIsSavingExpressShipping(false);
+    if (!result.ok) {
+      setExpressShippingError(result.message);
+    }
+  };
+
   const changePaymentRecipient = async (value: PaymentRecipientId) => {
     paymentRecipientVersion.current += 1;
     setPaymentRecipientState(value);
@@ -404,27 +454,46 @@ export default function AdminPanel() {
     <div className="max-w-[1400px] mx-auto px-5 md:px-6 py-8 md:py-12">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
         <h1 className="text-4xl md:text-6xl font-serif font-light text-[#161616]">Panel administratora</h1>
-        <label className="flex flex-col gap-1.5 w-full md:w-auto">
-          <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
-            Odbiorca płatności
-          </span>
-          <select
-            value={paymentRecipient}
-            onChange={(e) => changePaymentRecipient(e.target.value as PaymentRecipientId)}
-            disabled={isSavingRecipient}
-            className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat disabled:opacity-60 w-full md:min-w-[220px]"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
-          >
-            {Object.values(PAYMENT_RECIPIENTS).map((recipient) => (
-              <option key={recipient.id} value={recipient.id}>
-                {recipient.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <label className="flex flex-col gap-1.5 w-full sm:flex-1 md:min-w-[200px]">
+            <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
+              Wysyłka ekspres
+            </span>
+            <select
+              value={expressShippingEnabled ? 'tak' : 'nie'}
+              onChange={(e) => changeExpressShipping(e.target.value === 'tak')}
+              disabled={isSavingExpressShipping}
+              className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat disabled:opacity-60 w-full"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
+            >
+              <option value="tak">Tak</option>
+              <option value="nie">Nie</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 w-full sm:flex-1 md:min-w-[220px]">
+            <span className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
+              Odbiorca płatności
+            </span>
+            <select
+              value={paymentRecipient}
+              onChange={(e) => changePaymentRecipient(e.target.value as PaymentRecipientId)}
+              disabled={isSavingRecipient}
+              className="appearance-none bg-white rounded-none border border-[#D6C7AE] pl-4 pr-10 py-2.5 text-sm text-[#161616] focus:outline-none focus:border-[#C4A574] bg-[length:10px] bg-[right_12px_center] bg-no-repeat disabled:opacity-60 w-full"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")` }}
+            >
+              {Object.values(PAYMENT_RECIPIENTS).map((recipient) => (
+                <option key={recipient.id} value={recipient.id}>
+                  {recipient.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
-      {paymentRecipientError && (
-        <p className="text-sm text-red-500 mb-6">{paymentRecipientError}</p>
+      {(paymentRecipientError || expressShippingError) && (
+        <p className="text-sm text-red-500 mb-6">
+          {[expressShippingError, paymentRecipientError].filter(Boolean).join(' ')}
+        </p>
       )}
       {statusError && (
         <p className="text-sm text-red-500 mb-6">{statusError}</p>

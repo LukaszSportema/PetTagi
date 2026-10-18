@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { isPolishMobilePhone } from '@/lib/phone';
 import { validateDiscountCodeForCheckout } from './actions/discount-codes';
 import { createOrder } from './actions/orders';
+import { getExpressShippingEnabled } from './actions/settings';
 import { cartItemToCreateOrderItem, isRogalikCartItem } from '@/lib/order-from-cart';
 import {
   formatRogalikPriceLineAmount,
@@ -477,6 +478,7 @@ export default function Home() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [checkoutSubmitError, setCheckoutSubmitError] = useState('');
+  const [expressShippingOffered, setExpressShippingOffered] = useState(true);
 
   const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
   const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
@@ -1750,8 +1752,31 @@ export default function Home() {
   const shippingCost = selectedShipping
     ? shippingCostForOrder(cartProductsValue, selectedShipping.price)
     : 0;
-  const fastDeliveryCost = fastDeliveryCostForOrder(cartCount, checkoutData.fastDelivery);
+  const checkoutFastDelivery = expressShippingOffered && checkoutData.fastDelivery;
+  const fastDeliveryCost = fastDeliveryCostForOrder(cartCount, checkoutFastDelivery);
   const checkoutTotal = cartProductsValue + shippingCost + fastDeliveryCost;
+
+  const fulfillmentOptions = useMemo(() => {
+    const options: {
+      value: boolean;
+      title: string;
+      subtitle: string;
+    }[] = [
+      {
+        value: false,
+        title: `Standardowy — ${standardFulfillmentRangeCompact()}`,
+        subtitle: 'Bez dodatkowej opłaty',
+      },
+    ];
+    if (expressShippingOffered) {
+      options.push({
+        value: true,
+        title: `Przyspieszony — ${expressFulfillmentRangeCompact()}`,
+        subtitle: `Dopłata: ${formatPrice(FAST_DELIVERY_COST)} za każdą adresówkę`,
+      });
+    }
+    return options;
+  }, [expressShippingOffered]);
 
   const applyDiscountCode = async () => {
     setDiscountError('');
@@ -1851,7 +1876,7 @@ export default function Home() {
 
     const deliveryType = checkoutData.shippingMethod === 'paczkomat' ? 'paczkomat' : 'kurier';
     const placedTotal = checkoutTotal;
-    const placedFastDelivery = checkoutData.fastDelivery;
+    const placedFastDelivery = checkoutFastDelivery;
 
     setIsPlacingOrder(true);
     const result = await createOrder({
@@ -1869,7 +1894,7 @@ export default function Home() {
       discountCode: appliedDiscountCode || null,
       productsValue: cartProductsValue,
       shippingCost,
-      fastDelivery: checkoutData.fastDelivery,
+      fastDelivery: checkoutFastDelivery,
       fastDeliveryCost,
       total: checkoutTotal,
       items: cartItems.map((item) =>
@@ -2222,6 +2247,23 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getExpressShippingEnabled().then((result) => {
+      if (cancelled) return;
+      if (result.ok) setExpressShippingOffered(result.enabled);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!expressShippingOffered && checkoutData.fastDelivery) {
+      setCheckoutData((prev) => ({ ...prev, fastDelivery: false }));
+    }
+  }, [expressShippingOffered, checkoutData.fastDelivery]);
 
   return (
     <div className="min-h-screen bg-[#F4EFE6] text-[#161616] flex flex-col font-sans selection:bg-[#D6C7AE] overflow-x-clip">
@@ -3039,18 +3081,7 @@ export default function Home() {
                     <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Termin realizacji zamówienia</h2>
                   </div>
                   <div className="space-y-3">
-                    {[
-                      {
-                        value: false,
-                        title: `Standardowy — ${standardFulfillmentRangeCompact()}`,
-                        subtitle: 'Bez dodatkowej opłaty',
-                      },
-                      {
-                        value: true,
-                        title: `Przyspieszony — ${expressFulfillmentRangeCompact()}`,
-                        subtitle: `Dopłata: ${formatPrice(FAST_DELIVERY_COST)} za każdą adresówkę`,
-                      },
-                    ].map((option) => {
+                    {fulfillmentOptions.map((option) => {
                       const isSelected = checkoutData.fastDelivery === option.value;
                       return (
                         <label
@@ -3177,7 +3208,7 @@ export default function Home() {
                           : 'wybierz metodę wysyłki'}
                     </span>
                   </div>
-                  {checkoutData.fastDelivery && (
+                  {checkoutFastDelivery && (
                     <div className="flex justify-between gap-3">
                       <span className="min-w-0">Przyspieszony termin realizacji</span>
                       <span className="font-medium text-[#161616] shrink-0">{formatPrice(fastDeliveryCost)}</span>
