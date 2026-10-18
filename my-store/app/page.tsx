@@ -1379,7 +1379,6 @@ export default function Home() {
     label: string;
     image: string;
     material: string;
-    pricePln: number;
     firstRowFreeHint: boolean;
   }) => {
     const count = formData.karabinerQuantities[karabiner.id] ?? 0;
@@ -1404,7 +1403,6 @@ export default function Home() {
         </div>
         <span className="text-base font-medium text-[#161616]">{karabiner.label}</span>
         <span className="mt-1 text-sm text-[#7A736C]">Materiał: {karabiner.material}</span>
-        <span className="mt-1 text-sm font-medium text-[#161616]">{karabiner.pricePln} zł / szt.</span>
         {isDisabled && (
           <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
         )}
