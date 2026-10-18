@@ -3,7 +3,8 @@ import {
   CHARM_CATALOG,
   CHARM_LARGE_CATALOG,
   CHARM_SILVER_CATALOG,
-  KARABINER_CATALOG,
+  GOLD_RING_KARABINERS,
+  SILVER_RING_KARABINERS,
 } from "@/lib/catalog-options"
 import { ROGALIK_CHARM_OPTIONS } from "@/lib/rogalik-options"
 
@@ -72,13 +73,22 @@ export const warehouseCatalogItems = (): WarehouseCatalogItem[] => {
       group: "Charmsy — rogalik",
     })
   }
-  for (const karabiner of KARABINER_CATALOG) {
+  for (const karabiner of GOLD_RING_KARABINERS) {
     pushUnique(items, seen, {
       id: karabiner.id,
       label: karabiner.label,
       kind: "karabiner",
       image: karabiner.image,
-      group: "Karabińczyki",
+      group: "Karabińczyki — złote",
+    })
+  }
+  for (const karabiner of SILVER_RING_KARABINERS) {
+    pushUnique(items, seen, {
+      id: karabiner.id,
+      label: karabiner.label,
+      kind: "karabiner",
+      image: karabiner.image,
+      group: "Karabińczyki — srebrne",
     })
   }
 

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
+import { ConfiguratorTileTitle, UniformTwoLineFontScope } from './components/TwoLineFitText';
 import {
   ROGALIK_BEADS_OPTIONS,
   ROGALIK_NECK_MAX,
@@ -69,7 +70,8 @@ function OptionTiles({
         : 'grid grid-cols-1 sm:grid-cols-2 gap-4';
 
   return (
-    <div className={gridClass}>
+    <UniformTwoLineFontScope titleTexts={options.map((option) => option.label)}>
+      <div className={gridClass} data-uniform-font-grid>
       {options.map((option) => {
         const disabled = option.comingSoon;
         const isSelected = !disabled && selectedId === option.id;
@@ -77,6 +79,7 @@ function OptionTiles({
           <button
             key={option.id}
             type="button"
+            data-uniform-font-cell
             disabled={disabled}
             onClick={() => !disabled && onSelect(option.id)}
             className={`rounded-none p-4 md:p-6 border transition-colors duration-300 flex flex-col gap-3 items-center text-center ${
@@ -98,7 +101,7 @@ function OptionTiles({
                 )}
               </div>
             )}
-            <span className="text-base font-medium text-[#161616]">{option.label}</span>
+            <ConfiguratorTileTitle text={option.label} />
             {option.comingSoon && (
               <span className="text-xs text-[#7A736C] font-light">już wkrótce</span>
             )}
@@ -114,7 +117,8 @@ function OptionTiles({
           </button>
         );
       })}
-    </div>
+      </div>
+    </UniformTwoLineFontScope>
   );
 }
 
@@ -237,7 +241,8 @@ export function RogalikConfiguratorStep({
           <p className={subtitleClass}>
             Możesz dodać do {ROGALIK_MAX_CHARMS} charmsów i stworzyć własną, wyjątkową adresówkę
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <UniformTwoLineFontScope titleTexts={ROGALIK_CHARM_OPTIONS.map((charm) => charm.label)}>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-uniform-font-grid>
             {ROGALIK_CHARM_OPTIONS.map((charm) => {
               const isSelected = formData.rogalikCharms.includes(charm.id);
               const outOfStock = isWarehouseOutOfStock(warehouseStock, charm.id, false);
@@ -247,6 +252,7 @@ export function RogalikConfiguratorStep({
                 <button
                   key={charm.id}
                   type="button"
+                  data-uniform-font-cell
                   disabled={disabled}
                   onClick={() => onToggleCharm(charm.id)}
                   className={`rounded-none p-4 border flex flex-col items-center gap-2 transition-colors duration-300 ${
@@ -264,7 +270,7 @@ export function RogalikConfiguratorStep({
                       <span className="text-[10px] text-[#9A9288] uppercase tracking-widest">Zdjęcie wkrótce</span>
                     )}
                   </div>
-                  <span className="text-sm font-medium text-[#161616]">{charm.label}</span>
+                  <ConfiguratorTileTitle text={charm.label} className="min-h-[2.4rem]" />
                   {outOfStock && (
                     <span className="text-xs text-[#7A736C]">Chwilowo niedostępny</span>
                   )}
@@ -281,6 +287,7 @@ export function RogalikConfiguratorStep({
               );
             })}
           </div>
+          </UniformTwoLineFontScope>
           <p className="text-xs text-[#7A736C]">
             Wybrano: {formData.rogalikCharms.length} / {ROGALIK_MAX_CHARMS}
           </p>

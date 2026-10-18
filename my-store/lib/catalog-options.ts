@@ -331,13 +331,13 @@ export const GOLD_RING_KARABINERS: KarabinerOption[] = [
   },
   {
     id: "serce22g",
-    label: "Karabińczyk serce 22 × 22 mm",
+    label: "Karabińczyk serce 22\u00A0×\u00A022\u00A0mm",
     material: "stop metali",
     image: "/karabinczyk/4.jpg",
   },
   {
     id: "serce25g",
-    label: "Karabińczyk serce duże 25 × 25 mm",
+    label: "Karabińczyk serce duże 25\u00A0×\u00A025\u00A0mm",
     material: "stop cynku",
     image: "/karabinczyk/5.jpg",
   },
@@ -361,7 +361,7 @@ export const GOLD_RING_KARABINERS: KarabinerOption[] = [
   },
   {
     id: "serce16g",
-    label: "Karabińczyk serce 16,4 × 15,4 mm",
+    label: "Karabińczyk serce 16,4\u00A0×\u00A015,4\u00A0mm",
     material: "stal nierdzewna",
     image: "/karabinczyk/9.jpg",
   },
@@ -373,7 +373,7 @@ export const GOLD_RING_KARABINERS: KarabinerOption[] = [
   },
   {
     id: "koralikowy23g",
-    label: "Karabińczyk koralikowy 23 × 10,5 mm",
+    label: "Karabińczyk koralikowy 23\u00A0×\u00A010,5\u00A0mm",
     material: "stal nierdzewna",
     image: "/karabinczyk/11.jpg",
   },
@@ -402,7 +402,7 @@ export const SILVER_RING_KARABINERS: KarabinerOption[] = [
   },
   {
     id: "serce22s",
-    label: "Karabińczyk serce 22 × 22 mm",
+    label: "Karabińczyk serce 22\u00A0×\u00A022\u00A0mm",
     material: "stop metali",
     image: "/karabinczyk/15.jpg",
   },
@@ -523,6 +523,26 @@ export const KARABINER_CATALOG: KarabinerOption[] = uniqueKarabinersById([
   ...SILVER_RING_KARABINERS,
   ...LEGACY_KARABINER_OPTIONS,
 ])
+
+/** Karabińczyki z konfiguratora (te same ID co w koszyku) — bez archiwalnych pozycji. */
+export const CONFIGURATOR_KARABINER_CATALOG: KarabinerOption[] = uniqueKarabinersById([
+  ...GOLD_RING_KARABINERS,
+  ...SILVER_RING_KARABINERS,
+])
+
+/** Mapowanie starych ID magazynu / zamówień na aktualne ID konfiguratora. */
+export const LEGACY_KARABINER_ID_TO_CONFIGURATOR: Record<string, string> = {
+  kolkozlote: "kolko20g",
+  kolkozlotesrednie: "kolko25g",
+  kolkozloteduze: "kolko28g",
+  kolkosrebrne: "kolko20s",
+  klasyczny: "klasyczny20g",
+  klasycznysrebrny: "klasyczny20s",
+  serduszko: "serce22g",
+  serduszkosrebrne: "serce22s",
+  duzy: "duzy25g",
+  duzysrebrny: "duzy25s",
+}
 
 export const KARABINER_OPTIONS: CatalogOption[] = KARABINER_CATALOG.map(({ id, label }) => ({ id, label }))
 

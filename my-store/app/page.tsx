@@ -25,6 +25,12 @@ import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
 import FurgonetkaMap from './FurgonetkaMap';
 import OrderStatusLookupModal from './OrderStatusLookupModal';
 import {
+  ConfiguratorChoiceLabel,
+  ConfiguratorTileSubtitle,
+  ConfiguratorTileTitle,
+  UniformTwoLineFontScope,
+} from './components/TwoLineFitText';
+import {
   fulfillmentMessage,
   orderConfirmationTransferNote,
   ORDER_CONFIRMATION_SUBTITLE,
@@ -1221,6 +1227,7 @@ export default function Home() {
     return (
       <div
         key={charm.id}
+        data-uniform-font-cell
         onClick={isDisabled ? undefined : () => selectFreeCharm(charm.id)}
         className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
           isDisabled
@@ -1238,12 +1245,12 @@ export default function Home() {
           )}
           <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
         </div>
-        <span className="text-base font-medium text-[#161616]">{charm.title}</span>
+        <ConfiguratorTileTitle text={charm.title} />
         {isDisabled && (
           <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
         )}
         {isSelected && (
-          <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(formData.charmMounting)}</span>
+          <ConfiguratorTileSubtitle text={charmMountingTileLabel(formData.charmMounting)} className="mt-1" />
         )}
         {!isDisabled && (
           <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
@@ -1262,6 +1269,7 @@ export default function Home() {
     return (
       <div
         key={charm.id}
+        data-uniform-font-cell
         onClick={isDisabled ? undefined : () => selectExtraCharm(charm.id)}
         className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
           isDisabled
@@ -1279,12 +1287,12 @@ export default function Home() {
           )}
           <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
         </div>
-        <span className="text-base font-medium text-[#161616]">{charm.title}</span>
+        <ConfiguratorTileTitle text={charm.title} />
         {isDisabled && (
           <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
         )}
         {isSelected && (
-          <span className="mt-1 text-[11px] md:text-xs text-[#7A736C]">{charmMountingTileLabel(mounting)}</span>
+          <ConfiguratorTileSubtitle text={charmMountingTileLabel(mounting)} className="mt-1" />
         )}
         {!isDisabled && (
           <div
@@ -1314,9 +1322,11 @@ export default function Home() {
         <h3 className="font-bold text-lg text-[#161616]">{title}</h3>
       </div>
       <div className="p-4 md:p-6">
-        <div className={imageGridClass(items.length)}>
-          {items.map(renderCard)}
-        </div>
+        <UniformTwoLineFontScope titleTexts={items.map((item) => item.title)}>
+          <div className={imageGridClass(items.length)} data-uniform-font-grid>
+            {items.map(renderCard)}
+          </div>
+        </UniformTwoLineFontScope>
       </div>
     </section>
   );
@@ -1390,23 +1400,28 @@ export default function Home() {
     return (
       <div
         key={karabiner.id}
+        data-uniform-font-cell
         className={`rounded-none p-3 md:p-6 border transition-colors duration-300 flex flex-col items-center text-center ${
           isDisabled
-            ? 'opacity-50 border-[#D6C7AE] bg-white'
+            ? 'border-[#D6C7AE] bg-white'
             : isSelected
               ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
               : 'border-[#D6C7AE] bg-white'
         }`}
       >
-        <div className="w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] relative">
+        <div
+          className={`w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] relative ${
+            isDisabled ? 'opacity-50' : ''
+          }`}
+        >
           <img
             src={karabiner.image}
             alt={karabiner.label}
             className="absolute inset-0 w-full h-full object-cover object-center"
           />
         </div>
-        <span className="text-base font-medium text-[#161616]">{karabiner.label}</span>
-        <span className="mt-1 text-sm text-[#7A736C]">Materiał: {karabiner.material}</span>
+        <ConfiguratorTileTitle text={karabiner.label} />
+        <ConfiguratorTileSubtitle text={`Materiał: ${karabiner.material}`} className="mt-0.5" />
         {isDisabled && (
           <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
         )}
@@ -1441,34 +1456,49 @@ export default function Home() {
     const firstRowItems = items.filter((item) => firstRowKarabinerIdSet.has(item.id));
     const otherItems = items.filter((item) => !firstRowKarabinerIdSet.has(item.id));
 
+    const titleTexts = items.map((item) => item.label);
+    const subtitleTexts = items.map((item) => `Materiał: ${item.material}`);
+
     return (
-      <div className="space-y-8 scroll-mt-28" data-configurator-section="free-karabiner-choice">
-        <div className="space-y-2">
-          <p className="font-bold text-base text-[#161616]">
-            Wybierz swoje karabińczyki:
-          </p>
-          {showFreeKarabinerErrors &&
-            firstRowKarabinerIds(karabinerRingKey).reduce(
-              (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
-              0,
-            ) < 1 && (
-              <p className="text-sm text-red-500">
-                Dodaj co najmniej jeden karabińczyk z pierwszego wiersza (1 szt. gratis na zamówienie).
-              </p>
-            )}
-        </div>
+      <UniformTwoLineFontScope
+        titleTexts={titleTexts}
+        subtitleTexts={subtitleTexts}
+        titleMax={20}
+        titleMin={11}
+        subtitleMax={14}
+      >
+        <div className="space-y-8 scroll-mt-28" data-configurator-section="free-karabiner-choice">
+          <div className="space-y-2">
+            <p className="font-bold text-base text-[#161616]">
+              Wybierz swoje karabińczyki:
+            </p>
+            {showFreeKarabinerErrors &&
+              firstRowKarabinerIds(karabinerRingKey).reduce(
+                (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+                0,
+              ) < 1 && (
+                <p className="text-sm text-red-500">
+                  Dodaj co najmniej jeden karabińczyk z pierwszego wiersza (1 szt. gratis na zamówienie).
+                </p>
+              )}
+          </div>
 
-        <div className="rounded-xl border-2 border-[#3A5A40]/35 bg-[#E8F0EA]/80 p-4 md:p-6 space-y-3">
-          <p className="text-sm font-bold text-[#3A5A40] text-center">
-            Pierwsza sztuka jest darmowa!
-          </p>
-          <div className={karabinerGridClass}>{firstRowItems.map(renderKarabinerQuantityCard)}</div>
-        </div>
+          <div className="rounded-xl border-2 border-[#3A5A40]/35 bg-[#E8F0EA]/80 p-4 md:p-6 space-y-3">
+            <p className="text-sm font-bold text-[#3A5A40] text-center">
+              Pierwsza sztuka jest darmowa!
+            </p>
+            <div className={karabinerGridClass} data-uniform-font-grid>
+              {firstRowItems.map(renderKarabinerQuantityCard)}
+            </div>
+          </div>
 
-        {otherItems.length > 0 && (
-          <div className={karabinerGridClass}>{otherItems.map(renderKarabinerQuantityCard)}</div>
-        )}
-      </div>
+          {otherItems.length > 0 && (
+            <div className={karabinerGridClass} data-uniform-font-grid>
+              {otherItems.map(renderKarabinerQuantityCard)}
+            </div>
+          )}
+        </div>
+      </UniformTwoLineFontScope>
     );
   };
 
@@ -2314,11 +2344,13 @@ export default function Home() {
             <h3 id="charm-mounting-title" className="font-serif font-light text-xl md:text-2xl text-[#161616] text-center">
               Wybierz sposób mocowania charmsa
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <UniformTwoLineFontScope titleTexts={CHARM_MOUNTING_OPTIONS.map((option) => option.label)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6" data-uniform-font-grid>
               {CHARM_MOUNTING_OPTIONS.map((option) => (
                 <button
                   key={option.id}
                   type="button"
+                  data-uniform-font-cell
                   onClick={() => selectCharmMounting(option.id)}
                   className={`text-left rounded-none border p-4 md:p-5 transition-colors duration-300 ${
                     modalSelectedMounting() === option.id
@@ -2329,7 +2361,7 @@ export default function Home() {
                   <div className="w-full aspect-[4/3] bg-[#EFE8DC] mb-4 overflow-hidden border border-[#D6C7AE]">
                     <img src={option.image} alt={option.label} className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-base font-medium text-[#161616] mb-3">{option.label}</p>
+                  <ConfiguratorTileTitle text={option.label} className="mb-3" />
                   <ul className="space-y-1.5 text-sm text-[#7A736C]">
                     {option.benefits.map((benefit) => (
                       <li key={benefit}>✔️ {benefit}</li>
@@ -2338,6 +2370,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            </UniformTwoLineFontScope>
             <p className="text-xs text-[#7A736C] font-light leading-relaxed pt-1 border-t border-[#D6C7AE]">
               *Informacja: Wybrany sposób mocowania traktujemy jako preferencję klienta. Zastrzegamy sobie prawo do zmiany techniki montażu ze względów estetycznych lub praktycznych, aby zapewnić najwyższą jakość i trwałość wyrobu.
             </p>
@@ -3283,10 +3316,12 @@ export default function Home() {
                           {showRingErrors && !formData.ringColor.trim() && (
                             <p className="text-sm text-red-500">Wybierz kolor oprawy.</p>
                           )}
-                          <div className={imageGridClass(ringsList.length)}>
+                          <UniformTwoLineFontScope titleTexts={ringsList.map((item) => item.title)}>
+                          <div className={imageGridClass(ringsList.length)} data-uniform-font-grid>
                             {ringsList.map((item) => (
                               <div
                                 key={item.id}
+                                data-uniform-font-cell
                                 onClick={() => {
                                   const nextKarabiners = karabinersForRingColor(item.id);
                                   const nextKarabinerIds = new Set(nextKarabiners.map((k) => k.id));
@@ -3318,7 +3353,7 @@ export default function Home() {
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                                 </div>
-                                <span className="text-base font-medium text-[#161616] text-center">{item.title}</span>
+                                <ConfiguratorTileTitle text={item.title} />
                                 <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
                                   {item.details.map((detail) => (
                                     <li key={detail.label} className="whitespace-nowrap">
@@ -3333,6 +3368,7 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          </UniformTwoLineFontScope>
                         </div>
                       )}
 
@@ -3362,10 +3398,12 @@ export default function Home() {
                             <p className="text-sm text-[#7A736C]">Najpierw wybierz oprawę w poprzednim kroku.</p>
                           )}
                           {(isGlowTagConfigurator || formData.ringColor.trim()) && (
-                          <div className={imageGridClass(selectedBases.length)}>
+                          <UniformTwoLineFontScope titleTexts={selectedBases.map((base) => base.title)}>
+                          <div className={imageGridClass(selectedBases.length)} data-uniform-font-grid>
                             {selectedBases.map((base) => (
                               <div
                                 key={base.id}
+                                data-uniform-font-cell
                                 onClick={() => setFormData({...formData, baseOption: base.id})}
                                 className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col ${
                                   base.details ? 'items-stretch' : 'items-center text-center'
@@ -3380,7 +3418,7 @@ export default function Home() {
                                     <img src={basePreviewImage(base)} alt={base.title} className="w-full h-full object-cover" />
                                   )}
                                 </div>
-                                <span className={`text-base font-medium text-[#161616] ${base.details ? 'text-center' : ''}`}>{base.title}</span>
+                                <ConfiguratorTileTitle text={base.title} />
                                 {base.details && (
                                   <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
                                     {base.details.map((detail, detailIndex) => (
@@ -3403,6 +3441,7 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                          </UniformTwoLineFontScope>
                           )}
                         </div>
                       )}
@@ -3413,10 +3452,15 @@ export default function Home() {
                           {showGlowTextErrors && !formData.glowTextColor.trim() && (
                             <p className="text-sm text-red-500">Wybierz kolor napisu.</p>
                           )}
-                          <div className={imageGridClass(GLOW_TEXT_OPTIONS.length)}>
+                          <UniformTwoLineFontScope
+                            titleTexts={GLOW_TEXT_OPTIONS.map((option) => option.label)}
+                            subtitleTexts={GLOW_TEXT_OPTIONS.map((option) => `— ${option.recommendation}`)}
+                          >
+                          <div className={imageGridClass(GLOW_TEXT_OPTIONS.length)} data-uniform-font-grid>
                             {GLOW_TEXT_OPTIONS.map((option) => (
                               <div
                                 key={option.id}
+                                data-uniform-font-cell
                                 onClick={() => {
                                   const nextRingKey = karabinerCatalogRingKey({
                                     configuratorId: activeProduct.configuratorId,
@@ -3451,16 +3495,15 @@ export default function Home() {
                                 <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                   <img src={option.image} alt={option.label} className="w-full h-full object-cover" />
                                 </div>
-                                <span className="text-base font-medium text-[#161616]">
-                                  {option.label}
-                                </span>
-                                <p className="mt-1 text-sm text-[#7A736C]">— {option.recommendation}</p>
+                                <ConfiguratorTileTitle text={option.label} />
+                                <ConfiguratorTileSubtitle text={`— ${option.recommendation}`} className="mt-1" />
                                 <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.glowTextColor === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.glowTextColor === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
                             ))}
                           </div>
+                          </UniformTwoLineFontScope>
                         </div>
                       )}
 
@@ -3519,7 +3562,7 @@ export default function Home() {
                                   formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
+                                <ConfiguratorChoiceLabel text={option.label} />
                                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantExtraCharms === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
@@ -3575,7 +3618,7 @@ export default function Home() {
                                   formData.wantString === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
+                                <ConfiguratorChoiceLabel text={option.label} />
                                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantString === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantString === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
@@ -3637,12 +3680,14 @@ export default function Home() {
                                     </h3>
                                   </div>
                                   <div className="p-4 md:p-6">
-                                    <div className={imageGridClass(glowStringsList.length)}>
+                                    <UniformTwoLineFontScope titleTexts={glowStringsList.map((item) => item.title)}>
+                                    <div className={imageGridClass(glowStringsList.length)} data-uniform-font-grid>
                                       {glowStringsList.map((item) => {
                                         const isSelected = formData.glowStrings.includes(item.id);
                                         return (
                                           <div
                                             key={item.id}
+                                            data-uniform-font-cell
                                             onClick={() => toggleGlowString(item.id)}
                                             className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                               isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -3651,7 +3696,7 @@ export default function Home() {
                                             <div className="w-full mb-3 md:mb-5">
                                               <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                             </div>
-                                            <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                            <ConfiguratorTileTitle text={item.title} />
                                             <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                               {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                             </div>
@@ -3659,6 +3704,7 @@ export default function Home() {
                                         );
                                       })}
                                     </div>
+                                    </UniformTwoLineFontScope>
                                   </div>
                                 </section>
                               )}
@@ -3671,12 +3717,14 @@ export default function Home() {
                                   </h3>
                                 </div>
                                 <div className="p-4 md:p-6">
-                                  <div className={imageGridClass(premiumStringsList.length)}>
+                                  <UniformTwoLineFontScope titleTexts={premiumStringsList.map((item) => item.title)}>
+                                  <div className={imageGridClass(premiumStringsList.length)} data-uniform-font-grid>
                                     {premiumStringsList.map((item) => {
                                       const isSelected = formData.premiumStrings.includes(item.id);
                                       return (
                                         <div
                                           key={item.id}
+                                          data-uniform-font-cell
                                           onClick={() => togglePremiumString(item.id)}
                                           className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                             isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -3685,7 +3733,7 @@ export default function Home() {
                                           <div className="w-full mb-3 md:mb-5">
                                             <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                           </div>
-                                          <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                          <ConfiguratorTileTitle text={item.title} />
                                           <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                             {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                           </div>
@@ -3693,6 +3741,7 @@ export default function Home() {
                                       );
                                     })}
                                   </div>
+                                  </UniformTwoLineFontScope>
                                 </div>
                               </section>
 
@@ -3704,12 +3753,14 @@ export default function Home() {
                                   </h3>
                                 </div>
                                 <div className="p-4 md:p-6">
-                                  <div className={imageGridClass(classicStringsList.length)}>
+                                  <UniformTwoLineFontScope titleTexts={classicStringsList.map((item) => item.title)}>
+                                  <div className={imageGridClass(classicStringsList.length)} data-uniform-font-grid>
                                     {classicStringsList.map((item) => {
                                       const isSelected = formData.classicStrings.includes(item.id);
                                       return (
                                         <div
                                           key={item.id}
+                                          data-uniform-font-cell
                                           onClick={() => toggleClassicString(item.id)}
                                           className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                             isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -3718,7 +3769,7 @@ export default function Home() {
                                           <div className="w-full mb-3 md:mb-5">
                                             <ImageGallery items={item.images} alt={item.title} stopPropagation />
                                           </div>
-                                          <span className="text-base font-medium text-[#161616]">{item.title}</span>
+                                          <ConfiguratorTileTitle text={item.title} />
                                           <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                             {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                           </div>
@@ -3726,6 +3777,7 @@ export default function Home() {
                                       );
                                     })}
                                   </div>
+                                  </UniformTwoLineFontScope>
                                 </div>
                               </section>
                             </div>
@@ -3769,7 +3821,7 @@ export default function Home() {
                                   formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
+                                <ConfiguratorChoiceLabel text={option.label} />
                                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantStopers === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
@@ -3792,7 +3844,8 @@ export default function Home() {
                           {formData.wantStopers === 'tak' && selectedStringsCount > 0 && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz stopery (możesz powtórzyć ten sam wariant):</p>
-                              <div className={imageGridClass(stopersList.length)}>
+                              <UniformTwoLineFontScope titleTexts={stopersList.map((stoper) => stoper.title)}>
+                              <div className={imageGridClass(stopersList.length)} data-uniform-font-grid>
                                 {stopersList.map((stoper) => {
                                   const count = formData.extraStopers.filter((id) => id === stoper.id).length;
                                   const isSelected = count > 0;
@@ -3803,6 +3856,7 @@ export default function Home() {
                                   return (
                                     <div
                                       key={stoper.id}
+                                      data-uniform-font-cell
                                       className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                         isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white'
                                       }`}
@@ -3810,7 +3864,7 @@ export default function Home() {
                                       <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                         <img src={stoper.image} alt={stoper.title} className="w-full h-full object-cover" />
                                       </div>
-                                      <span className="text-base font-medium text-[#161616]">{stoper.title}</span>
+                                      <ConfiguratorTileTitle text={stoper.title} />
                                       {isSelected ? (
                                         <div className="mt-3 flex items-center gap-3">
                                           <button
@@ -3847,6 +3901,7 @@ export default function Home() {
                                   );
                                 })}
                               </div>
+                              </UniformTwoLineFontScope>
                               <p className={`text-sm ${showStopperErrors && !isStopperSelectionComplete ? 'text-red-500' : 'text-[#7A736C]'}`}>
                                 Wybrano stopery: {formData.extraStopers.length} / {selectedStringsCount}
                               </p>
@@ -3875,7 +3930,7 @@ export default function Home() {
                                   formData.wantSticker === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <span className="text-lg font-medium text-[#161616]">{option.label}</span>
+                                <ConfiguratorChoiceLabel text={option.label} />
                                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantSticker === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                   {formData.wantSticker === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
@@ -3890,10 +3945,12 @@ export default function Home() {
                           {formData.wantSticker === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz naklejkę:</p>
-                              <div className={imageGridClass(stickersList.length)}>
+                              <UniformTwoLineFontScope titleTexts={stickersList.map((sticker) => sticker.title)}>
+                              <div className={imageGridClass(stickersList.length)} data-uniform-font-grid>
                                 {stickersList.map((sticker) => (
                                   <div
                                     key={sticker.id}
+                                    data-uniform-font-cell
                                     onClick={() => setFormData({ ...formData, stickerOption: sticker.id })}
                                     className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
                                       formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
@@ -3902,13 +3959,14 @@ export default function Home() {
                                     <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
                                       <img src={sticker.image} alt={sticker.title} className="w-full h-full object-cover" />
                                     </div>
-                                    <span className="text-base font-medium text-[#161616]">{sticker.title}</span>
+                                    <ConfiguratorTileTitle text={sticker.title} />
                                     <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                       {formData.stickerOption === sticker.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                   </div>
                                 ))}
                               </div>
+                              </UniformTwoLineFontScope>
                             </div>
                           )}
                         </div>
@@ -3990,7 +4048,7 @@ export default function Home() {
                                       alt={option.alt}
                                       className="w-full max-w-[9.33rem] border border-[#D6C7AE] bg-[#EFE8DC]"
                                     />
-                                    <span className="mt-2 text-sm font-medium text-[#161616]">{option.caption}</span>
+                                    <ConfiguratorTileTitle text={option.caption} className="mt-2 min-h-[2.2rem]" />
                                     <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${
                                       formData.nameLayout === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
                                     }`}>
@@ -4061,10 +4119,13 @@ export default function Home() {
                               formData.includePhoneCode === 'tak' ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                             }`}
                           >
-                            <span className="text-base font-medium text-[#161616] pr-4">
-                              Umieść numer kierunkowy na adresówce
-                              <span className="block text-sm font-normal text-[#7A736C] mt-1">+{DIAL_CODE_PRICE} zł</span>
-                            </span>
+                            <div className="pr-4 flex-1 min-w-0">
+                              <ConfiguratorTileTitle
+                                text="Umieść numer kierunkowy na adresówce"
+                                className="text-left"
+                              />
+                              <ConfiguratorTileSubtitle text={`+${DIAL_CODE_PRICE} zł`} className="mt-1 text-left" />
+                            </div>
                             <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${formData.includePhoneCode === 'tak' ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                               {formData.includePhoneCode === 'tak' && <span className="text-white text-xs font-bold">✓</span>}
                             </div>
