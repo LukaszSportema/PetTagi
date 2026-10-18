@@ -38,15 +38,9 @@ import {
 import {
   DEFAULT_PAYMENT_RECIPIENT,
   paymentRecipientLabel,
-  persistPaymentRecipient,
   PAYMENT_RECIPIENTS,
-  readStoredPaymentRecipient,
   type PaymentRecipientId,
 } from '@/lib/payment';
-import {
-  persistExpressShippingEnabled,
-  readStoredExpressShippingEnabled,
-} from '@/lib/express-shipping';
 import { orderDiscountCodeSummary } from '@/lib/order-discount-display';
 import type { OrderDetail, OrderRecord, OrderStatus } from '@/lib/types/order';
 import type { AnalyticsRow } from '@/lib/analytics-report';
@@ -114,13 +108,11 @@ export default function AdminPanel() {
   const [detailError, setDetailError] = useState('');
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [paymentRecipient, setPaymentRecipientState] = useState<PaymentRecipientId>(
-    () => readStoredPaymentRecipient() ?? DEFAULT_PAYMENT_RECIPIENT,
+    DEFAULT_PAYMENT_RECIPIENT,
   );
   const [paymentRecipientError, setPaymentRecipientError] = useState('');
   const [isSavingRecipient, setIsSavingRecipient] = useState(false);
-  const [expressShippingEnabled, setExpressShippingEnabledState] = useState(
-    () => readStoredExpressShippingEnabled() ?? true,
-  );
+  const [expressShippingEnabled, setExpressShippingEnabledState] = useState(true);
   const [expressShippingError, setExpressShippingError] = useState('');
   const [isSavingExpressShipping, setIsSavingExpressShipping] = useState(false);
   const [statusError, setStatusError] = useState('');
@@ -222,7 +214,6 @@ export default function AdminPanel() {
   useEffect(() => {
     let cancelled = false;
     const version = paymentRecipientVersion.current;
-    const stored = readStoredPaymentRecipient();
     const load = async () => {
       const result = await getPaymentRecipient();
       if (cancelled || version !== paymentRecipientVersion.current) return;
@@ -230,10 +221,8 @@ export default function AdminPanel() {
         setPaymentRecipientError(result.message);
         return;
       }
-      if (stored) return;
       setPaymentRecipientError('');
       setPaymentRecipientState(result.recipient);
-      persistPaymentRecipient(result.recipient);
     };
     load();
     return () => {
@@ -244,7 +233,6 @@ export default function AdminPanel() {
   useEffect(() => {
     let cancelled = false;
     const version = expressShippingVersion.current;
-    const stored = readStoredExpressShippingEnabled();
     const load = async () => {
       const result = await getExpressShippingEnabled();
       if (cancelled || version !== expressShippingVersion.current) return;
@@ -252,10 +240,8 @@ export default function AdminPanel() {
         setExpressShippingError(result.message);
         return;
       }
-      if (stored != null) return;
       setExpressShippingError('');
       setExpressShippingEnabledState(result.enabled);
-      persistExpressShippingEnabled(result.enabled);
     };
     load();
     return () => {
@@ -427,27 +413,33 @@ export default function AdminPanel() {
   const changeExpressShipping = async (enabled: boolean) => {
     expressShippingVersion.current += 1;
     setExpressShippingEnabledState(enabled);
-    persistExpressShippingEnabled(enabled);
     setIsSavingExpressShipping(true);
     setExpressShippingError('');
     const result = await setExpressShippingEnabled(enabled);
     setIsSavingExpressShipping(false);
     if (!result.ok) {
       setExpressShippingError(result.message);
+      const fresh = await getExpressShippingEnabled();
+      if (fresh.ok) setExpressShippingEnabledState(fresh.enabled);
+      return;
     }
+    setExpressShippingEnabledState(result.enabled);
   };
 
   const changePaymentRecipient = async (value: PaymentRecipientId) => {
     paymentRecipientVersion.current += 1;
     setPaymentRecipientState(value);
-    persistPaymentRecipient(value);
     setIsSavingRecipient(true);
     setPaymentRecipientError('');
     const result = await setPaymentRecipient(value);
     setIsSavingRecipient(false);
     if (!result.ok) {
       setPaymentRecipientError(result.message);
+      const fresh = await getPaymentRecipient();
+      if (fresh.ok) setPaymentRecipientState(fresh.recipient);
+      return;
     }
+    setPaymentRecipientState(result.recipient);
   };
 
   return (

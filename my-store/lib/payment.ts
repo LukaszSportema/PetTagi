@@ -29,9 +29,6 @@ export const PAYMENT_RECIPIENTS: Record<PaymentRecipientId, PaymentRecipient> = 
 
 export const DEFAULT_PAYMENT_RECIPIENT: PaymentRecipientId = "wiktoria"
 
-export const PAYMENT_RECIPIENT_COOKIE = "pettagi_payment_recipient"
-export const PAYMENT_RECIPIENT_STORAGE_KEY = "pettagi.paymentRecipient"
-
 export const asPaymentRecipientId = (value: unknown): PaymentRecipientId =>
   value === "lukasz" || value === "wiktoria" ? value : DEFAULT_PAYMENT_RECIPIENT
 
@@ -41,25 +38,6 @@ export const parsePaymentRecipientId = (value: unknown): PaymentRecipientId | nu
 export const paymentRecipientLabel = (value: unknown) => {
   const id = parsePaymentRecipientId(value)
   return id ? PAYMENT_RECIPIENTS[id].label : null
-}
-
-export const readStoredPaymentRecipient = (): PaymentRecipientId | null => {
-  if (typeof window === "undefined") return null
-  try {
-    return parsePaymentRecipientId(window.localStorage.getItem(PAYMENT_RECIPIENT_STORAGE_KEY))
-  } catch {
-    return null
-  }
-}
-
-export const persistPaymentRecipient = (recipient: PaymentRecipientId) => {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(PAYMENT_RECIPIENT_STORAGE_KEY, recipient)
-    document.cookie = `${PAYMENT_RECIPIENT_COOKIE}=${recipient}; Path=/; Max-Age=31536000; SameSite=Lax`
-  } catch {
-    // ignore storage failures
-  }
 }
 
 export const fulfillmentMessage = (orderId: string, fastDelivery: boolean) =>

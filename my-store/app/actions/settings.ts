@@ -1,13 +1,11 @@
 "use server"
 
-import { cookies } from "next/headers"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import {
   asPaymentRecipientId,
   DEFAULT_PAYMENT_RECIPIENT,
   parsePaymentRecipientId,
-  PAYMENT_RECIPIENT_COOKIE,
   type PaymentRecipientId,
 } from "@/lib/payment"
 
@@ -19,24 +17,7 @@ export type SetPaymentRecipientResult =
   | { ok: true; recipient: PaymentRecipientId }
   | { ok: false; message: string }
 
-const writeRecipientCookie = async (recipient: PaymentRecipientId) => {
-  const cookieStore = await cookies()
-  cookieStore.set(PAYMENT_RECIPIENT_COOKIE, recipient, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  })
-}
-
-const readRecipientCookie = async (): Promise<PaymentRecipientId | null> => {
-  const cookieStore = await cookies()
-  return parsePaymentRecipientId(cookieStore.get(PAYMENT_RECIPIENT_COOKIE)?.value)
-}
-
 export async function getPaymentRecipient(): Promise<GetPaymentRecipientResult> {
-  const fromCookie = await readRecipientCookie()
-  if (fromCookie) return { ok: true, recipient: fromCookie }
-
   try {
     const supabase = await createClient()
     const { data, error } = await supabase.rpc("get_payment_recipient")
@@ -61,7 +42,6 @@ export async function setPaymentRecipient(
   if (!auth.ok) return { ok: false, message: auth.message }
 
   const value = asPaymentRecipientId(recipient)
-  await writeRecipientCookie(value)
 
   try {
     const supabase = await createClient()
