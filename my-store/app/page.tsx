@@ -1398,8 +1398,12 @@ export default function Home() {
               : 'border-[#D6C7AE] bg-white'
         }`}
       >
-        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-          <img src={karabiner.image} alt={karabiner.label} className="w-full h-full object-cover" />
+        <div className="w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] relative">
+          <img
+            src={karabiner.image}
+            alt={karabiner.label}
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
         </div>
         <span className="text-base font-medium text-[#161616]">{karabiner.label}</span>
         <span className="mt-1 text-sm text-[#7A736C]">Materiał: {karabiner.material}</span>
