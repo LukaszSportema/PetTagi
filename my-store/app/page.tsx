@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from '@/lib/fulfillment-dates';
 import { isPolishMobilePhone } from '@/lib/phone';
 import { validateDiscountCodeForCheckout } from './actions/discount-codes';
@@ -472,6 +472,8 @@ export default function Home() {
   const [cartRemoveTarget, setCartRemoveTarget] = useState<{ id: string; title: string } | null>(null);
   const [warehouseStock, setWarehouseStock] = useState<Record<string, number>>({});
   const removedFromCartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevActiveTabRef = useRef(activeTab);
+  const fulfillmentFieldName = useId();
   const [checkoutData, setCheckoutData] = useState<CheckoutData>(initialCheckoutData);
   const [showCheckoutErrors, setShowCheckoutErrors] = useState(false);
   const [checkoutPhoneTouched, setCheckoutPhoneTouched] = useState(false);
@@ -2249,15 +2251,26 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const enteredCheckout =
+      activeTab === 'checkout' &&
+      prevActiveTabRef.current !== 'checkout' &&
+      !placedOrder;
+    prevActiveTabRef.current = activeTab;
+    if (!enteredCheckout) return;
+
+    setCheckoutData((prev) =>
+      prev.fastDelivery ? { ...prev, fastDelivery: false } : prev,
+    );
+
     let cancelled = false;
     void getExpressShippingEnabled().then((result) => {
-      if (cancelled) return;
-      if (result.ok) setExpressShippingOffered(result.enabled);
+      if (cancelled || !result.ok) return;
+      setExpressShippingOffered(result.enabled);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeTab, placedOrder]);
 
   useEffect(() => {
     if (!expressShippingOffered && checkoutData.fastDelivery) {
@@ -3075,7 +3088,7 @@ export default function Home() {
                   </div>
                 </section>
 
-                <section>
+                <section aria-label="Termin realizacji zamówienia">
                   <div className="flex items-center gap-3 mb-6">
                     <span className="w-8 h-8 shrink-0 rounded-none bg-[#161616] text-[#F4EFE6] flex items-center justify-center text-[11px] tracking-widest font-light">3</span>
                     <h2 className="text-2xl md:text-3xl font-serif font-light text-[#161616] min-w-0">Termin realizacji zamówienia</h2>
@@ -3092,7 +3105,8 @@ export default function Home() {
                         >
                           <input
                             type="radio"
-                            name="fulfillment"
+                            name={fulfillmentFieldName}
+                            autoComplete="off"
                             checked={isSelected}
                             onChange={() => updateCheckoutField('fastDelivery', option.value)}
                             className="sr-only"
