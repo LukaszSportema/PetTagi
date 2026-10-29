@@ -12,6 +12,7 @@ import {
   rogalikOptionLabel,
 } from "@/lib/rogalik-options"
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
+import { formatPolishMobile, normalizePolishPhone } from "@/lib/phone"
 import { rogalikPriceBreakdown, type RogalikPriceLine } from "@/lib/rogalik-pricing"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
@@ -175,10 +176,19 @@ export const rogalikOrderItemPriceLines = (item: OrderItemOptionsSource): Rogali
     includeDialCode: item.dialCodeInfo,
   })
 
-const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) => {
-  if (dialCodeInfo) return numberOnTag
-  return numberOnTag.replace(/^\+\d{1,4}\s*/, "").trim()
+const formatTagPhoneNumber = (numberOnTag: string, includeDialCode = false) => {
+  const trimmed = numberOnTag.trim()
+  if (!trimmed) return trimmed
+  const digits = normalizePolishPhone(trimmed)
+  const grouped = formatPolishMobile(digits)
+  if (includeDialCode && /^\d{9}$/.test(digits)) {
+    return `+48 ${grouped}`
+  }
+  return grouped
 }
+
+const tagPhoneDisplay = (numberOnTag: string, dialCodeInfo: boolean) =>
+  formatTagPhoneNumber(numberOnTag, dialCodeInfo)
 
 export type RogalikConfiguratorOptionsInput = {
   rogalikColor: string
@@ -193,6 +203,7 @@ export type RogalikConfiguratorOptionsInput = {
   karabinerQuantities?: Record<string, number>
   petName: string
   phoneNumber: string
+  includeDialCode?: boolean
 }
 
 /** Lista opcji rogalika — koszyk, admin, maile (ten sam układ). */
@@ -260,7 +271,10 @@ export const rogalikConfiguratorOptions = (input: RogalikConfiguratorOptionsInpu
   }
 
   options.push({ label: "Imię pupila", values: [input.petName] })
-  options.push({ label: "Nr telefonu", values: [input.phoneNumber.trim()] })
+  options.push({
+    label: "Nr telefonu",
+    values: [formatTagPhoneNumber(input.phoneNumber, input.includeDialCode === true)],
+  })
 
   return options
 }
@@ -277,6 +291,7 @@ const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
     extraKarabiners: item.extraCarabiner,
     petName: item.dogName,
     phoneNumber: item.numberOnTag,
+    includeDialCode: item.dialCodeInfo,
   })
 
 export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
