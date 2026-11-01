@@ -15,7 +15,7 @@ import { inPeriod, reportPeriods, warsawYmd, type ReportPeriod } from "@/lib/rep
 import type { PaymentRecipientId } from "@/lib/payment"
 
 export type RevenueOrder = {
-  /** Data przypisania do okresu w raporcie (strefa Warszawa): created_at lub paid_at — zależnie od daty złożenia. */
+  /** Data przypisania do okresu w raporcie (strefa Warszawa): paid_at — Data płatności. */
   revenueAt: string
   paymentRecipient: PaymentRecipientId
   total: number

@@ -49,6 +49,14 @@ export const formatOrderDate = (iso: string) =>
     minute: "2-digit",
   })
 
+export const formatOrderDateOnly = (iso: string) =>
+  new Date(iso).toLocaleDateString("pl-PL", {
+    timeZone: "Europe/Warsaw",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+
 export const formatAddress = (street: string, postcode: string, city: string) =>
   [street.trim(), [postcode.trim(), city.trim()].filter(Boolean).join(" ")]
     .filter(Boolean)

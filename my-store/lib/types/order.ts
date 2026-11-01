@@ -95,6 +95,8 @@ export type OrderRecord = {
   paymentRecipient: PaymentRecipientId | null
   total: number
   createdAt: string
+  /** Data opłacenia (status paid lub późniejszy). */
+  paidAt: string | null
   frameBaseLines: string[]
   /** Imiona pupili z pozycji zamówienia (unikalne, kolejność jak w koszyku). */
   petNames: string[]
@@ -146,7 +148,7 @@ export type GetOrderResult =
   | { ok: false; message: string }
 
 export type UpdateOrderStatusResult =
-  | { ok: true }
+  | { ok: true; paidAt?: string | null }
   | { ok: false; message: string }
 
 export type UpdateOrderPhoneResult =
@@ -155,4 +157,8 @@ export type UpdateOrderPhoneResult =
 
 export type UpdateOrderCommentResult =
   | { ok: true; comment: string | null }
+  | { ok: false; message: string }
+
+export type UpdateOrderPaidAtResult =
+  | { ok: true; paidAt: string }
   | { ok: false; message: string }

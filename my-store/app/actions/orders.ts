@@ -30,6 +30,7 @@ import type {
   OrderStatus,
   UpdateOrderStatusResult,
   UpdateOrderCommentResult,
+  UpdateOrderPaidAtResult,
   UpdateOrderPhoneResult,
 } from "@/lib/types/order"
 
@@ -274,6 +275,7 @@ type OrderRow = {
   payment_recipient?: string | null
   total: number | string
   created_at: string
+  paid_at?: string | null
   admin_comment?: string | null
 }
 
@@ -374,6 +376,7 @@ const mapOrder = (row: OrderRow): OrderRecord => ({
   paymentRecipient: parsePaymentRecipientId(row.payment_recipient),
   total: toMoney(row.total),
   createdAt: row.created_at,
+  paidAt: row.paid_at ?? null,
   frameBaseLines: [],
   petNames: [],
   adminComment: row.admin_comment?.trim() || null,
@@ -659,6 +662,16 @@ export async function updateOrderStatus(
     await sendOrderPaidEmail(paidEmailTarget)
   }
 
+  if (status === "paid") {
+    const { data: orderPayload, error: orderError } = await supabase.rpc("admin_get_order", {
+      p_id: orderUuid,
+    })
+    if (!orderError && orderPayload) {
+      const row = (orderPayload as { order: OrderRow }).order
+      return { ok: true, paidAt: row.paid_at ?? null }
+    }
+  }
+
   return { ok: true }
 }
 
@@ -695,6 +708,40 @@ export async function updateOrderClientPhone(
   }
 
   return { ok: true, phone: stored }
+}
+
+export async function updateOrderPaidAt(
+  orderUuid: string,
+  paidAtIso: string,
+): Promise<UpdateOrderPaidAtResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
+  const parsed = new Date(paidAtIso)
+  if (Number.isNaN(parsed.getTime())) {
+    return { ok: false, message: "Nieprawidłowa data płatności." }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("admin_set_paid_at", {
+    p_id: orderUuid,
+    p_paid_at: parsed.toISOString(),
+  })
+
+  if (error) {
+    console.error("admin_set_paid_at failed", error)
+    return {
+      ok: false,
+      message: error.message.includes("admin_set_paid_at")
+        ? "Brak funkcji admin_set_paid_at w Supabase. Uruchom migrację 20261101_admin_set_paid_at.sql."
+        : error.message.includes("pending or cancelled")
+          ? "Daty płatności nie można ustawić dla oczekujących ani anulowanych zamówień."
+          : "Nie udało się zapisać daty płatności. Spróbuj ponownie.",
+    }
+  }
+
+  const stored = typeof data === "string" ? data : String(data ?? parsed.toISOString())
+  return { ok: true, paidAt: stored }
 }
 
 export async function updateOrderAdminComment(

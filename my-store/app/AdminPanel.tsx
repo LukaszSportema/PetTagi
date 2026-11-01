@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { getConfiguratorAnalyticsReport } from './actions/configurator-analytics';
 import { getAnalyticsReport } from './actions/analytics';
 import {
@@ -8,6 +9,7 @@ import {
   listOrders,
   updateOrderAdminComment,
   updateOrderClientPhone,
+  updateOrderPaidAt,
   updateOrderStatus,
 } from './actions/orders';
 import { getPopularityReport } from './actions/popularity';
@@ -24,6 +26,7 @@ import {
   deliveryLabel,
   formatAddress,
   formatOrderDate,
+  formatOrderDateOnly,
   formatPrice,
   fulfillmentRangeLabel,
   formatRogalikPriceLineAmount,
@@ -51,6 +54,7 @@ import { DEFAULT_POPULARITY_GROUP, POPULARITY_GROUPS, type PopularityRow } from 
 import type { ReportPeriod } from '@/lib/report-periods';
 import { monthLabel, warsawYmd } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
+import { AdminDatePicker } from './components/AdminDatePicker';
 import { DiscountCodesPanel } from './DiscountCodesPanel';
 import { WarehousePanel } from './WarehousePanel';
 
@@ -127,6 +131,7 @@ export default function AdminPanel() {
   );
   const [revenueError, setRevenueError] = useState('');
   const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
+  const [revenueReloadNonce, setRevenueReloadNonce] = useState(0);
   const [analyticsRows, setAnalyticsRows] = useState<AnalyticsRow[]>([]);
   const [analyticsError, setAnalyticsError] = useState('');
   const [analyticsWarning, setAnalyticsWarning] = useState('');
@@ -269,7 +274,7 @@ export default function AdminPanel() {
     return () => {
       cancelled = true;
     };
-  }, [activeAdminTab]);
+  }, [activeAdminTab, revenueReloadNonce]);
 
   useEffect(() => {
     if (activeAdminTab !== 'analytics') return;
@@ -342,21 +347,58 @@ export default function AdminPanel() {
   }, [activeAdminTab, configuratorStartedDay]);
 
   const changeOrderStatus = async (id: string, status: OrderStatus) => {
-    const previous = orders.find((order) => order.id === id)?.status;
+    const previous = orders.find((order) => order.id === id);
     setStatusError('');
     setUpdatingStatusId(id);
-    setOrders((current) => current.map((order) => (order.id === id ? { ...order, status } : order)));
-    setDetail((current) => (current?.id === id ? { ...current, status } : current));
+    const transitioningToPaid = status === 'paid' && previous?.status !== 'paid';
+    const paidAtNow = transitioningToPaid ? new Date().toISOString() : undefined;
+    setOrders((current) =>
+      current.map((order) =>
+        order.id === id
+          ? {
+              ...order,
+              status,
+              ...(paidAtNow ? { paidAt: paidAtNow } : {}),
+            }
+          : order,
+      ),
+    );
+    setDetail((current) =>
+      current?.id === id
+        ? {
+            ...current,
+            status,
+            ...(paidAtNow ? { paidAt: paidAtNow } : {}),
+          }
+        : current,
+    );
 
     const result = await updateOrderStatus(id, status);
     setUpdatingStatusId(null);
-    if (result.ok) return;
+    if (result.ok) {
+      if (status === 'paid' && result.paidAt) {
+        setOrders((current) =>
+          current.map((order) => (order.id === id ? { ...order, paidAt: result.paidAt! } : order)),
+        );
+        setDetail((current) =>
+          current?.id === id ? { ...current, paidAt: result.paidAt! } : current,
+        );
+      }
+      setRevenueReloadNonce((value) => value + 1);
+      return;
+    }
 
     if (previous) {
       setOrders((current) =>
-        current.map((order) => (order.id === id ? { ...order, status: previous } : order)),
+        current.map((order) =>
+          order.id === id ? { ...order, status: previous.status, paidAt: previous.paidAt } : order,
+        ),
       );
-      setDetail((current) => (current?.id === id ? { ...current, status: previous } : current));
+      setDetail((current) =>
+        current?.id === id
+          ? { ...current, status: previous.status, paidAt: previous.paidAt }
+          : current,
+      );
     }
     setStatusError(result.message);
   };
@@ -392,6 +434,20 @@ export default function AdminPanel() {
       current.map((order) => (order.id === id ? { ...order, clientPhone: result.phone } : order)),
     );
     setDetail((current) => (current?.id === id ? { ...current, clientPhone: result.phone } : current));
+    return result;
+  };
+
+  const changeOrderPaidAt = async (id: string, paidAtIso: string) => {
+    const result = await updateOrderPaidAt(id, paidAtIso);
+    if (!result.ok) return result;
+
+    setOrders((current) =>
+      current.map((order) => (order.id === id ? { ...order, paidAt: result.paidAt } : order)),
+    );
+    setDetail((current) =>
+      current?.id === id ? { ...current, paidAt: result.paidAt } : current,
+    );
+    setRevenueReloadNonce((value) => value + 1);
     return result;
   };
 
@@ -521,6 +577,7 @@ export default function AdminPanel() {
               updatingStatusId={updatingStatusId}
               onStatusChange={requestOrderStatusChange}
               onCommentChange={changeOrderComment}
+              onPaidAtChange={changeOrderPaidAt}
               onOpen={openOrderDetail}
             />
           </div>
@@ -1050,6 +1107,251 @@ const isOverdueUnpaidOrder = (order: OrderRecord) => {
 const isNieoplaconeTabOrder = (order: OrderRecord) =>
   order.status === 'cancelled' || isOverdueUnpaidOrder(order);
 
+const canEditOrderPaidAt = (order: OrderRecord) =>
+  order.status !== 'pending' && order.status !== 'cancelled';
+
+const combinePaidAtDate = (ymd: string, previousIso: string | null) => {
+  const [year, month, day] = ymd.split('-').map(Number);
+  if (previousIso) {
+    const previous = new Date(previousIso);
+    const merged = new Date(previous);
+    merged.setFullYear(year, month - 1, day);
+    return merged.toISOString();
+  }
+  return new Date(`${ymd}T12:00:00`).toISOString();
+};
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className={className}
+      aria-hidden
+    >
+      <rect x="3" y="5" width="18" height="16" rx="1" />
+      <path d="M8 3v4M16 3v4M3 10h18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function AdminCenteredDialog({
+  open,
+  onBackdropClose,
+  children,
+}: {
+  open: boolean;
+  onBackdropClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onBackdropClose();
+      }}
+    >
+      <div
+        className="w-full max-w-md min-w-0 bg-white border border-[#D6C7AE] shadow-lg p-6 md:p-7 space-y-5 overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function OrderPaidAtField({
+  orderId,
+  paidAt,
+  editable,
+  onSave,
+}: {
+  orderId: string;
+  paidAt: string | null;
+  editable: boolean;
+  onSave: (
+    id: string,
+    paidAtIso: string,
+  ) => Promise<{ ok: true; paidAt: string } | { ok: false; message: string }>;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [step, setStep] = useState<'edit' | 'confirm'>('edit');
+  const [draftYmd, setDraftYmd] = useState('');
+  const [pendingIso, setPendingIso] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const openDialog = () => {
+    setStep('edit');
+    setDraftYmd(paidAt ? warsawYmd(paidAt) : warsawYmd(new Date().toISOString()));
+    setPendingIso(null);
+    setError('');
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setStep('edit');
+    setPendingIso(null);
+    setError('');
+  };
+
+  const requestSave = () => {
+    if (!draftYmd) {
+      setError('Wybierz datę płatności.');
+      return;
+    }
+    const nextIso = combinePaidAtDate(draftYmd, paidAt);
+    if (paidAt && warsawYmd(nextIso) === warsawYmd(paidAt)) {
+      closeDialog();
+      return;
+    }
+    setPendingIso(nextIso);
+    setStep('confirm');
+    setError('');
+  };
+
+  const confirmSave = async () => {
+    if (!pendingIso) return;
+    setIsSaving(true);
+    const result = await onSave(orderId, pendingIso);
+    setIsSaving(false);
+    if (!result.ok) {
+      setError(result.message);
+      setStep('edit');
+      return;
+    }
+    closeDialog();
+  };
+
+  if (!editable) {
+    return <span className="text-[#9A9288]">{dash}</span>;
+  }
+
+  const displayDate = paidAt ? formatOrderDateOnly(paidAt) : null;
+
+  return (
+    <>
+      <div
+        className="inline-flex items-center gap-1.5 min-w-[7.5rem]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span className="text-[#161616] tabular-nums">{displayDate ?? '—'}</span>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            openDialog();
+          }}
+          className="p-1 text-[#7A736C] hover:text-[#161616] transition-colors"
+          aria-label={displayDate ? 'Zmień datę płatności' : 'Ustaw datę płatności'}
+          title={displayDate ? 'Zmień datę płatności' : 'Ustaw datę płatności'}
+        >
+          <CalendarIcon className="w-4 h-4" />
+        </button>
+      </div>
+
+      <AdminCenteredDialog
+        open={dialogOpen}
+        onBackdropClose={() => {
+          if (!isSaving) closeDialog();
+        }}
+      >
+        {step === 'edit' ? (
+          <>
+            <h2 className="text-xl font-serif font-light text-[#161616]">Data płatności</h2>
+            <p className="text-[11px] font-bold tracking-wider text-[#9A9288] uppercase">
+              Wybierz datę
+            </p>
+            <AdminDatePicker
+              value={draftYmd}
+              disabled={isSaving}
+              onChange={(ymd) => {
+                setDraftYmd(ymd);
+                setError('');
+              }}
+            />
+            {error ? <p className="text-sm text-red-500">{error}</p> : null}
+            <div className="flex flex-wrap gap-3 justify-end pt-2 border-t border-[#EBE4D6]">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={closeDialog}
+                className="px-5 py-2.5 rounded-none border border-[#D6C7AE] text-sm text-[#161616] hover:border-[#C4A574] transition-colors disabled:opacity-60"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={requestSave}
+                className="px-5 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors disabled:opacity-60"
+              >
+                Zapisz
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-base text-[#161616] leading-relaxed">
+              Czy chcesz zmienić datę płatności
+              {paidAt ? (
+                <>
+                  {' '}
+                  z <strong>{formatOrderDateOnly(paidAt)}</strong> na{' '}
+                  <strong>
+                    {formatOrderDateOnly(pendingIso ?? combinePaidAtDate(draftYmd, paidAt))}
+                  </strong>
+                  ?
+                </>
+              ) : (
+                <>
+                  {' '}
+                  na{' '}
+                  <strong>
+                    {formatOrderDateOnly(pendingIso ?? combinePaidAtDate(draftYmd, paidAt))}
+                  </strong>
+                  ?
+                </>
+              )}
+            </p>
+            {error ? <p className="text-sm text-red-500">{error}</p> : null}
+            <div className="flex flex-wrap gap-3 justify-end">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  setStep('edit');
+                  setError('');
+                }}
+                className="px-5 py-2.5 rounded-none border border-[#D6C7AE] text-sm text-[#161616] hover:border-[#C4A574] transition-colors disabled:opacity-60"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => void confirmSave()}
+                className="px-5 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors disabled:opacity-60"
+              >
+                {isSaving ? 'Zapisywanie…' : 'Zmień'}
+              </button>
+            </div>
+          </>
+        )}
+      </AdminCenteredDialog>
+    </>
+  );
+}
+
 function OrderCommentField({
   orderId,
   value,
@@ -1108,6 +1410,7 @@ function OrdersTable({
   updatingStatusId,
   onStatusChange,
   onCommentChange,
+  onPaidAtChange,
   onOpen,
 }: {
   orders: OrderRecord[];
@@ -1116,6 +1419,10 @@ function OrdersTable({
   updatingStatusId: string | null;
   onStatusChange: (request: StatusChangeRequest) => void;
   onCommentChange: (id: string, comment: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  onPaidAtChange: (
+    id: string,
+    paidAtIso: string,
+  ) => Promise<{ ok: true; paidAt: string } | { ok: false; message: string }>;
   onOpen: (id: string) => void;
 }) {
   const [selectedMonth, setSelectedMonth] = useState('all');
@@ -1220,10 +1527,11 @@ function OrdersTable({
         </div>
       ) : (
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1100px] text-left text-sm">
+        <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="bg-[#EFE8DC] text-[11px] font-bold tracking-wider uppercase text-[#9A9288]">
             <tr>
               <th className="px-4 py-3 whitespace-nowrap">Data zamówienia</th>
+              <th className="px-4 py-3 whitespace-nowrap">Data płatności</th>
               <th className="px-4 py-3 whitespace-nowrap">ID zamówienia</th>
               <th className="px-4 py-3 whitespace-nowrap">Kwota zamówienia</th>
               <th className="px-4 py-3 whitespace-nowrap">Płatność</th>
@@ -1251,6 +1559,14 @@ function OrdersTable({
                 className={orderRowClass(order.status, order.fastDelivery)}
               >
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">{formatOrderDate(order.createdAt)}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <OrderPaidAtField
+                    orderId={order.id}
+                    paidAt={order.paidAt}
+                    editable={canEditOrderPaidAt(order)}
+                    onSave={onPaidAtChange}
+                  />
+                </td>
                 <td className="px-4 py-3 whitespace-nowrap font-medium text-[#161616]">{order.orderId}</td>
                 <td className="px-4 py-3 whitespace-nowrap font-medium text-[#161616]">{formatPrice(order.total)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#161616]">
