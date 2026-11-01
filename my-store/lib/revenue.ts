@@ -15,7 +15,7 @@ import { inPeriod, reportPeriods, warsawYmd, type ReportPeriod } from "@/lib/rep
 import type { PaymentRecipientId } from "@/lib/payment"
 
 export type RevenueOrder = {
-  /** Data przypisania do okresu w raporcie (strefa Warszawa): paid_at — Data płatności. */
+  /** Data przypisania do okresu (Warszawa): paid_at od PT-20261031-0146, wcześniejsze — reguła hybrid. */
   revenueAt: string
   paymentRecipient: PaymentRecipientId
   total: number
