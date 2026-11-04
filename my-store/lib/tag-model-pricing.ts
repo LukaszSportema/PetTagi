@@ -27,10 +27,10 @@ export const DEFAULT_TAG_MODEL_BASE_PRICES: TagModelBasePrices = {
 const isTagModelId = (value: string): value is TagModelId =>
   TAG_MODEL_IDS.includes(value as TagModelId)
 
-const parseTagModelPriceRecord = <T extends Record<TagModelId, number>>(
+const parseTagModelPriceRecord = (
   raw: unknown,
-  defaults: T,
-): T => {
+  defaults: Record<TagModelId, number>,
+): Record<TagModelId, number> => {
   const merged = { ...defaults }
   if (!raw || typeof raw !== "object") return merged
 
@@ -50,10 +50,10 @@ const parseTagModelPriceRecord = <T extends Record<TagModelId, number>>(
 }
 
 export const parseTagModelStartPrices = (raw: unknown): TagModelStartPrices =>
-  parseTagModelPriceRecord(raw, DEFAULT_TAG_MODEL_START_PRICES)
+  parseTagModelPriceRecord(raw, DEFAULT_TAG_MODEL_START_PRICES) as TagModelStartPrices
 
 export const parseTagModelBasePrices = (raw: unknown): TagModelBasePrices =>
-  parseTagModelPriceRecord(raw, DEFAULT_TAG_MODEL_BASE_PRICES)
+  parseTagModelPriceRecord(raw, DEFAULT_TAG_MODEL_BASE_PRICES) as TagModelBasePrices
 
 export const OPRAWA_KWIAT_SURCHARGE_PLN = 1
 

@@ -1,7 +1,7 @@
 import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
 import { getCatalogProduct } from "@/lib/catalog"
 import { charmsTotalPln } from "@/lib/charm-pricing"
-import { tagModelKarabinersAllUnitsPaid } from "@/lib/catalog-options"
+import { tagModelKarabinersAllUnitsPaid, tagModelSkipsStringAndKarabinerAddonCharges } from "@/lib/catalog-options"
 import {
   inferGlowTextColorFromKarabiners,
   karabinerCatalogRingKey,
@@ -132,6 +132,7 @@ export type PricedOrderItem = {
   rogalikCordColor?: string | null
   rogalikBeads?: string | null
   rogalikCharms?: string[]
+  beadNecklaceColors?: string[]
 }
 
 export type ItemRevenuePricingContext = {

@@ -1520,7 +1520,7 @@ export default function Home() {
   };
 
   const extraCharmDisplayValue = (id: string) =>
-    charmSummaryLine(id, findTitle(charmsList, id, undefined), charmUnitPrices);
+    charmSummaryLine(id, findTitle(charmsList, id, id), charmUnitPrices);
 
   const premiumStringDisplayValue = (id: string) =>
     stringSummaryLine(findTitle(premiumStringsList, id, id), premiumStringPrice);
