@@ -51,7 +51,7 @@ export const stringWithoutKarabinerPaidAddonOrder = (
 export const tagOnlyWithKarabinerPaidAddonOrder = (
   ringColor?: string,
 ): BeadNecklacePaidAddonKind[] => {
-  const order: BeadNecklacePaidAddonKind[] = ["sticker", "charms", "dialCode"]
+  const order: BeadNecklacePaidAddonKind[] = ["sticker", "karabiners", "charms", "dialCode"]
   if (ringColor?.trim() === "kwiat") {
     return order.filter((kind) => kind !== "sticker")
   }

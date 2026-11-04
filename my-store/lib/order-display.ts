@@ -602,7 +602,7 @@ export const orderItemOptions = (
       stringsClassic: null,
       stringsGlow: null,
       charms: charmsBlock,
-      karabiners: null,
+      karabiners: karabinersBlock,
       stopers: null,
       dialCode: dialCodeBlock,
     })

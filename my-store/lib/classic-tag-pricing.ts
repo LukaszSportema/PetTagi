@@ -6,7 +6,7 @@ import {
   isTagOnlyWithKarabinerTagModel,
   tagModelKarabinersAllUnitsPaid,
   tagModelLabel,
-  tagModelSkipsStringAndKarabinerAddonCharges,
+  tagModelSkipsStringAndStopperAddonCharges,
 } from "@/lib/catalog-options"
 import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
 import { charmsTotalPln } from "@/lib/charm-pricing"
@@ -101,7 +101,7 @@ export const classicTagPriceBreakdown = (
   const size = stringSizeFromNeckCm(input.dogNeck)
   const sizeText = stringSizeLabel(size)
   const isBead = input.tagModel === BEAD_NECKLACE_TAG_MODEL_ID
-  const skipStringKarabinerCharges = tagModelSkipsStringAndKarabinerAddonCharges(input.tagModel)
+  const skipStringsStopperCharges = tagModelSkipsStringAndStopperAddonCharges(input.tagModel)
   const skipsSticker = configuratorId === "glow-tag" || input.ringColor === "kwiat"
   const ring = karabinerRingKey(input)
 
@@ -132,7 +132,7 @@ export const classicTagPriceBreakdown = (
   const glowUnit = glowStringUnitPrice(size) ?? 0
 
   const premiumStringsLine: RogalikPriceLine | null =
-    !skipStringKarabinerCharges &&
+    !skipStringsStopperCharges &&
     input.stringPremium.length > 0 &&
     premiumUnit > 0
       ? {
@@ -142,7 +142,7 @@ export const classicTagPriceBreakdown = (
         }
       : null
   const classicStringsLine: RogalikPriceLine | null =
-    !skipStringKarabinerCharges &&
+    !skipStringsStopperCharges &&
     input.stringClassic.length > 0 &&
     classicUnit > 0
       ? {
@@ -152,7 +152,7 @@ export const classicTagPriceBreakdown = (
         }
       : null
   const glowStringsLine: RogalikPriceLine | null =
-    !skipStringKarabinerCharges && input.stringGlow.length > 0 && glowUnit > 0
+    !skipStringsStopperCharges && input.stringGlow.length > 0 && glowUnit > 0
       ? {
           label: `Sznurek Glow ×${input.stringGlow.length}`,
           amountPln: input.stringGlow.length * glowUnit,
@@ -166,9 +166,7 @@ export const classicTagPriceBreakdown = (
       ? { label: `Charmsy ×${input.extraCharms.length}`, amountPln: charmsTotal }
       : null
 
-  const karabinerCharge = skipStringKarabinerCharges
-    ? 0
-    : karabinerRevenueFromOrder(
+  const karabinerCharge = karabinerRevenueFromOrder(
         input.baseCarabiner ?? "-",
         input.extraCarabiner,
         ring,
@@ -178,7 +176,7 @@ export const classicTagPriceBreakdown = (
     karabinerCharge > 0 ? { label: "Karabińczyki", amountPln: karabinerCharge } : null
 
   const stopersLine: RogalikPriceLine | null =
-    !skipStringKarabinerCharges && input.stoppers
+    !skipStringsStopperCharges && input.stoppers
       ? { label: "Stopery", amountPln: STOPPER_PRICE }
       : null
 
@@ -262,6 +260,9 @@ export const classicTagPriceBreakdown = (
       switch (kind) {
         case "sticker":
           pushLine(stickerLine)
+          break
+        case "karabiners":
+          pushLine(karabinersLine)
           break
         case "charms":
           pushLine(charmsLine)

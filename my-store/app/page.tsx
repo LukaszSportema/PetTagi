@@ -130,7 +130,7 @@ import {
   classicTagShowsItemPriceBreakdown,
   isStringWithoutKarabinerTagModel,
   isTagOnlyWithKarabinerTagModel,
-  tagModelSkipsStringAndKarabinerAddonCharges,
+  tagModelSkipsStringAndStopperAddonCharges,
   tagModelKarabinersOptionalInConfigurator,
   tagModelSkipsDefaultKarabinerSelection,
   tagModelUsesNecklaceStyleKarabinerStep,
@@ -582,7 +582,7 @@ export default function Home() {
     isClassicTagConfigurator && tagModelKarabinersOptionalInConfigurator(formData.tagModel);
   const isTagOnlyWithKarabinerModel =
     isClassicTagConfigurator && isTagOnlyWithKarabinerTagModel(formData.tagModel);
-  const skipsStringKarabinerAddonCharges = tagModelSkipsStringAndKarabinerAddonCharges(
+  const skipsStringStopperAddonCharges = tagModelSkipsStringAndStopperAddonCharges(
     formData.tagModel,
   );
   const usesNecklaceStyleKarabinerStep =
@@ -680,10 +680,10 @@ export default function Home() {
       dialCodeCost
     : basePrice +
       extraCharmsCost +
-      (skipsStringKarabinerAddonCharges ? 0 : extraKarabinersCost) +
-      (skipsStringKarabinerAddonCharges ? 0 : extraStopersCost) +
+      extraKarabinersCost +
+      (skipsStringStopperAddonCharges ? 0 : extraStopersCost) +
       stickerCost +
-      (skipsStringKarabinerAddonCharges
+      (skipsStringStopperAddonCharges
         ? 0
         : premiumStringsCost + classicStringsCost + glowStringsCost) +
       beadNecklacePrice +
@@ -815,7 +815,7 @@ export default function Home() {
   const classicTagContentStepOrder = isBeadNecklaceModel
     ? [13, 1, 9, 14, 7, 3, 5, 10, 11]
     : isTagOnlyWithKarabinerModel
-      ? [13, 1, 9, 3, 10, 11]
+      ? [13, 1, 9, 5, 3, 10, 11]
       : isStringWithoutKarabinerModel
         ? [13, 1, 9, 7, 3, 5, 10, 11]
         : [13, 1, 9, 5, 3, 7, 10, 11];
@@ -1206,7 +1206,7 @@ export default function Home() {
         }
       }
     }
-    if (contentStep === 5 && !isTagOnlyWithKarabinerModel) {
+    if (contentStep === 5) {
       setShowFreeKarabinerErrors(true);
       if (isClassicTagConfigurator || isGlowTagConfigurator) {
         const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
@@ -2044,7 +2044,7 @@ export default function Home() {
         stringsClassic: null,
         stringsGlow: null,
         charms: charmsOptionBlock,
-        karabiners: null,
+        karabiners: karabinersOptionBlock,
         stopers: null,
         dialCode: dialCodeOptionBlock,
       });
@@ -2433,8 +2433,8 @@ export default function Home() {
     if (summaryAddonKindVisible('sticker') && !skipsGraphicsStep) sum += stickerCost;
     if (summaryAddonKindVisible('beadNecklace')) sum += beadNecklacePrice;
     if (summaryAddonKindVisible('charms')) sum += extraCharmsCost;
-    if (!skipsStringKarabinerAddonCharges) {
-      if (summaryAddonKindVisible('karabiners')) sum += extraKarabinersCost;
+    if (summaryAddonKindVisible('karabiners')) sum += extraKarabinersCost;
+    if (!skipsStringStopperAddonCharges) {
       if (summaryAddonKindVisible('stopers')) sum += extraStopersCost;
       if (summaryAddonKindVisible('stringsPremium')) sum += premiumStringsCost;
       if (summaryAddonKindVisible('stringsClassic')) sum += classicStringsCost;

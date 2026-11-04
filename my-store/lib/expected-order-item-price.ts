@@ -22,7 +22,7 @@ import {
   type PricedOrderItem,
 } from "@/lib/pricing"
 import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
-import { BEAD_NECKLACE_TAG_MODEL_ID, tagModelKarabinersAllUnitsPaid, tagModelSkipsStringAndKarabinerAddonCharges } from "@/lib/catalog-options"
+import { BEAD_NECKLACE_TAG_MODEL_ID, tagModelKarabinersAllUnitsPaid, tagModelSkipsStringAndStopperAddonCharges } from "@/lib/catalog-options"
 import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
 import type { CreateOrderItemInput } from "@/lib/types/order"
 
@@ -113,24 +113,22 @@ export const expectedOrderItemUnitPrice = (
 
   const charms = charmsTotalPln(item.extraCharms, ctx.charmPrices)
   const karabinerRing = jewelryKarabinerRingKey(item)
-  const skipStringKarabiner = tagModelSkipsStringAndKarabinerAddonCharges(item.tagModel)
+  const skipStringsStopers = tagModelSkipsStringAndStopperAddonCharges(item.tagModel)
   const karabinerOpts = tagModelKarabinersAllUnitsPaid(item.tagModel)
     ? { allUnitsPaid: true as const }
     : undefined
-  const karabiners = skipStringKarabiner
-    ? 0
-    : karabinerRevenueFromOrder(
-        item.baseCarabiner,
-        item.extraCarabiner,
-        karabinerRing,
-        karabinerOpts,
-      )
-  const strings = skipStringKarabiner
+  const karabiners = karabinerRevenueFromOrder(
+    item.baseCarabiner,
+    item.extraCarabiner,
+    karabinerRing,
+    karabinerOpts,
+  )
+  const strings = skipStringsStopers
     ? 0
     : item.stringPremium.length * premiumPrice +
       item.stringClassic.length * classicPrice +
       item.stringGlow.length * glowPrice
-  const stoppers = skipStringKarabiner ? 0 : item.stoppers ? STOPPER_PRICE : 0
+  const stoppers = skipStringsStopers ? 0 : item.stoppers ? STOPPER_PRICE : 0
   const skipsSticker = product?.configuratorId === "glow-tag" || item.ringColor === "kwiat"
   const stickers = !skipsSticker && item.sticker ? STICKER_PRICE : 0
   const dialCode = item.dialCodeInfo ? DIAL_CODE_PRICE : 0

@@ -76,9 +76,12 @@ export const isTagOnlyWithKarabinerTagModel = (tagModel?: string | null) =>
 export const tagModelKarabinerIncludedInBasePrice = (tagModel?: string | null) =>
   isTagOnlyWithKarabinerTagModel(tagModel)
 
-/** Bez dopłat za sznurki, stopery i karabińczyki z konfiguratora (tylko charms, naklejka, kierunkowy). */
-export const tagModelSkipsStringAndKarabinerAddonCharges = (tagModel?: string | null) =>
+/** Bez dopłat za sznurki i stopery (model „Sama adresówka z karabińczykiem”). Karabińczyki — osobny krok i dopłaty jak na sznurku z karabińczykiem. */
+export const tagModelSkipsStringAndStopperAddonCharges = (tagModel?: string | null) =>
   isTagOnlyWithKarabinerTagModel(tagModel)
+
+/** @alias Zachowane dla wcześniejszych importów — dotyczy tylko sznurków i stoperów. */
+export const tagModelSkipsStringAndKarabinerAddonCharges = tagModelSkipsStringAndStopperAddonCharges
 
 /** Karabińczyki — każda sztuka płatna (naszyjnik z koralikami, sznurek bez karabińczyka w komplecie). */
 export const tagModelKarabinersAllUnitsPaid = (tagModel?: string | null) =>
@@ -95,9 +98,7 @@ export const tagModelKarabinersOptionalInConfigurator = (tagModel?: string | nul
 
 /** Nie ustawiaj domyślnie 1 szt. karabińczyka (wybór modelu / oprawy). */
 export const tagModelSkipsDefaultKarabinerSelection = (tagModel?: string | null) =>
-  isBeadNecklaceTagModel(tagModel) ||
-  isStringWithoutKarabinerTagModel(tagModel) ||
-  isTagOnlyWithKarabinerTagModel(tagModel)
+  isBeadNecklaceTagModel(tagModel) || isStringWithoutKarabinerTagModel(tagModel)
 
 export const classicTagShowsDetailedPriceBreakdown = (tagModel?: string | null) =>
   isBeadNecklaceTagModel(tagModel) ||
