@@ -1,9 +1,17 @@
-import { stopperCountFromStored } from "@/lib/catalog-options"
+import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { getCatalogProduct } from "@/lib/catalog"
+import { charmsTotalPln } from "@/lib/charm-pricing"
+import { tagModelKarabinersAllUnitsPaid } from "@/lib/catalog-options"
 import {
+  inferGlowTextColorFromKarabiners,
+  karabinerCatalogRingKey,
   karabinerQuantitiesFromOrder,
   karabinerQuantitiesTotal,
   karabinerRevenueFromOrder,
+  type KarabinerPricingOptions,
 } from "@/lib/karabiner-pricing"
+import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
+export { EXTRA_CHARM_PRICE } from "@/lib/pricing-constants"
 
 export const BASE_TAG_PRICES = {
   złoty: 60,
@@ -17,9 +25,9 @@ export const baseTagPrice = (ringColor: string) =>
 
 /** @deprecated Użyj baseTagPrice(ringColor) */
 export const BASE_TAG_PRICE = BASE_TAG_PRICES.złoty
-export const EXTRA_CHARM_PRICE = 4
+
 export const EXTRA_KARABINER_PRICE = 5
-export const STOPPER_PRICE = 5
+export const STOPPER_PRICE = 6
 export const STICKER_PRICE = 5
 export const DIAL_CODE_PRICE = 2
 export const FREE_SHIPPING_THRESHOLD = 299
@@ -98,9 +106,17 @@ export const classicStringUnitPrice = (size: StringSize | null): number | null =
 export const glowStringUnitPrice = (size: StringSize | null): number | null =>
   premiumStringUnitPrice(size)
 
+/** Wiersz w podsumowaniu / koszyku / mailu, np. „Cappuccino (+12 zł)”. */
+export const stringSummaryLine = (label: string, unitPrice: number | null): string => {
+  const name = label.trim()
+  if (!name) return name
+  return unitPrice != null ? `${name} (+${unitPrice} zł)` : name
+}
+
 export type PricedOrderItem = {
   quantity: number
   productSlug?: string
+  tagModel?: string | null
   ringColor?: string
   baseCarabiner?: string
   extraCharms: string[]
@@ -118,23 +134,69 @@ export type PricedOrderItem = {
   rogalikCharms?: string[]
 }
 
-export const itemRevenueParts = (item: PricedOrderItem) => {
+export type ItemRevenuePricingContext = {
+  charmPrices?: CharmUnitPrices
+  tagModelBasePrices?: TagModelBasePrices
+}
+
+const jewelryKarabinerRingForRevenue = (item: PricedOrderItem) => {
+  const productSlug = item.productSlug?.trim() ?? ""
+  const product = productSlug ? getCatalogProduct(productSlug) : null
+  const configuratorId = product?.configuratorId
+  const ringColor = item.ringColor ?? "złoty"
+  const glowTextColor =
+    configuratorId === "glow-tag"
+      ? inferGlowTextColorFromKarabiners(item.baseCarabiner ?? "-", item.extraCarabiner)
+      : ""
+  return karabinerCatalogRingKey({ configuratorId, ringColor, glowTextColor })
+}
+
+export const itemRevenueParts = (
+  item: PricedOrderItem,
+  ctx: ItemRevenuePricingContext = {},
+) => {
   const qty = item.quantity > 0 ? item.quantity : 1
   const size = stringSizeFromNeckCm(item.dogNeck)
   const premiumPrice = premiumStringUnitPrice(size) ?? 0
   const classicPrice = classicStringUnitPrice(size) ?? 0
   const glowPrice = premiumPrice
+  const productSlug = item.productSlug?.trim() ?? ""
+  const ringColor = item.ringColor ?? "złoty"
+  const baseUnit =
+    productSlug && getCatalogProduct(productSlug)?.configuratorId === "classic-tag"
+      ? classicTagBaseUnitPrice({
+          tagModel: item.tagModel,
+          ringColor,
+          tagModelBasePrices: ctx.tagModelBasePrices,
+        })
+      : baseTagPrice(ringColor === "glow" ? "glow" : ringColor)
+
+  const karabinerRing = jewelryKarabinerRingForRevenue(item)
+  const skipStringKarabiner = tagModelSkipsStringAndKarabinerAddonCharges(item.tagModel)
+  const karabinerOpts: KarabinerPricingOptions | undefined = tagModelKarabinersAllUnitsPaid(
+    item.tagModel,
+  )
+    ? { allUnitsPaid: true }
+    : undefined
+
   return {
-    base: baseTagPrice(item.ringColor ?? "złoty") * qty,
-    charms: item.extraCharms.length * EXTRA_CHARM_PRICE * qty,
-    karabiners:
-      karabinerRevenueFromOrder(
-        item.baseCarabiner ?? "-",
-        item.extraCarabiner,
-        item.ringColor ?? "złoty",
-      ) * qty,
-    strings: (item.stringPremium.length * premiumPrice + item.stringClassic.length * classicPrice + item.stringGlow.length * glowPrice) * qty,
-    stoppers: stopperCountFromStored(item.stoppers) * STOPPER_PRICE * qty,
+    base: baseUnit * qty,
+    charms: charmsTotalPln(item.extraCharms, ctx.charmPrices) * qty,
+    karabiners: skipStringKarabiner
+      ? 0
+      : karabinerRevenueFromOrder(
+          item.baseCarabiner ?? "-",
+          item.extraCarabiner,
+          karabinerRing,
+          karabinerOpts,
+        ) * qty,
+    strings: skipStringKarabiner
+      ? 0
+      : (item.stringPremium.length * premiumPrice +
+          item.stringClassic.length * classicPrice +
+          item.stringGlow.length * glowPrice) *
+        qty,
+    stoppers: skipStringKarabiner ? 0 : item.stoppers ? STOPPER_PRICE * qty : 0,
     stickers: item.sticker ? STICKER_PRICE * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
@@ -152,7 +214,7 @@ export const itemQuantityParts = (item: PricedOrderItem) => {
         karabinerQuantitiesFromOrder(item.baseCarabiner ?? "-", item.extraCarabiner),
       ) * qty,
     strings: stringCount * qty,
-    stoppers: stopperCountFromStored(item.stoppers) * qty,
+    stoppers: item.stoppers ? qty : 0,
     stickers: item.sticker ? qty : 0,
     dialCode: item.dialCodeInfo ? qty : 0,
   }

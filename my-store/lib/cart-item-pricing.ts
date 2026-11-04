@@ -2,6 +2,7 @@ import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 import type { CartItemForOrder } from "@/lib/order-from-cart"
 import { baseTagPrice } from "@/lib/pricing"
+import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
 import { ROGALIK_BASE_PRICE } from "@/lib/rogalik-options"
 
 export const roundMoney = (value: number) => Math.round(value * 100) / 100
@@ -10,6 +11,8 @@ export const roundMoney = (value: number) => Math.round(value * 100) / 100
 export const orderItemBaseUnitPriceFromOrder = (item: {
   productSlug: string
   ringColor: string
+  tagModel?: string | null
+  tagModelBasePrices?: TagModelBasePrices
 }) => {
   const product = getCatalogProduct(item.productSlug)
   if (
@@ -22,12 +25,20 @@ export const orderItemBaseUnitPriceFromOrder = (item: {
   if (product?.configuratorId === "glow-tag") {
     return baseTagPrice("glow")
   }
+  if (product?.configuratorId === "classic-tag") {
+    return classicTagBaseUnitPrice({
+      tagModel: item.tagModel,
+      ringColor: item.ringColor,
+      tagModelBasePrices: item.tagModelBasePrices,
+    })
+  }
   return baseTagPrice(item.ringColor)
 }
 
 /** Cena bazowa jednej adresówki (bez dodatków) — z konfiguracji koszyka. */
 export const cartItemBaseUnitPrice = (
   item: Pick<CartItemForOrder, "productSlug" | "config">,
+  tagModelBasePrices?: TagModelBasePrices,
 ): number => {
   const product = getCatalogProduct(item.productSlug)
   if (product?.configuratorId === "rogalik-tag" || item.productSlug === ROGALIK_TAG_PRODUCT.slug) {
@@ -35,6 +46,13 @@ export const cartItemBaseUnitPrice = (
   }
   if (product?.configuratorId === "glow-tag") {
     return baseTagPrice("glow")
+  }
+  if (product?.configuratorId === "classic-tag") {
+    return classicTagBaseUnitPrice({
+      tagModel: item.config.tagModel,
+      ringColor: item.config.ringColor ?? "złoty",
+      tagModelBasePrices,
+    })
   }
   return baseTagPrice(item.config.ringColor)
 }

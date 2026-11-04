@@ -4,6 +4,7 @@ import {
   formatAddress,
   formatPrice,
   formatRogalikPriceLineAmount,
+  classicOrderItemPriceLines,
   isRogalikOrderItem,
   orderItemOptions,
   orderItemTitle,
@@ -20,6 +21,13 @@ import {
 } from "@/lib/payment"
 import { orderDiscountCodeSummary } from "@/lib/order-discount-display"
 import type { CreateOrderInput } from "@/lib/types/order"
+import { getCharmUnitPrices, getTagModelBasePrices } from "@/app/actions/settings"
+import {
+  classicTagShowsItemPriceBreakdown,
+} from "@/lib/catalog-options"
+import { getCatalogProduct } from "@/lib/catalog"
+import { buildDefaultCharmUnitPrices, type CharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { DEFAULT_TAG_MODEL_BASE_PRICES } from "@/lib/tag-model-pricing"
 
 const FROM = "Pettagi <no-reply@pettagi.com>"
 
@@ -53,7 +61,15 @@ export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput): Promis
     return false
   }
 
-  const { html, text } = renderOrderPlacedEmail(input)
+  const charmPricesResult = await getCharmUnitPrices()
+  const tagModelBasePricesResult = await getTagModelBasePrices()
+  const charmPrices: CharmUnitPrices = charmPricesResult.ok
+    ? charmPricesResult.prices
+    : buildDefaultCharmUnitPrices()
+  const tagModelBasePrices = tagModelBasePricesResult.ok
+    ? tagModelBasePricesResult.prices
+    : DEFAULT_TAG_MODEL_BASE_PRICES
+  const { html, text } = renderOrderPlacedEmail(input, charmPrices, tagModelBasePrices)
   const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
     from: FROM,
@@ -71,7 +87,11 @@ export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput): Promis
   return true
 }
 
-function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
+function renderOrderPlacedEmail(
+  input: OrderPlacedEmailInput,
+  charmPrices: CharmUnitPrices,
+  tagModelBasePrices: import("@/lib/tag-model-pricing").TagModelBasePrices,
+) {
   const recipient = PAYMENT_RECIPIENTS[input.paymentRecipient]
   const order = input.order
   const total = formatPrice(order.total)
@@ -83,7 +103,7 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
   const itemBlocks = order.items.map((item) => {
     const title = orderItemTitle(item)
     const qty = item.quantity > 1 ? ` × ${item.quantity}` : ""
-    const options = orderItemOptions(item)
+    const options = orderItemOptions(item, charmPrices)
     const optionLines = options
       .map((option) => `${option.label}: ${option.values.join(", ")}`)
       .join("\n")
@@ -97,7 +117,12 @@ function renderOrderPlacedEmail(input: OrderPlacedEmailInput) {
       )
       .join("")
 
-    const priceLines = isRogalikOrderItem(item) ? rogalikOrderItemPriceLines(item) : []
+    const priceLines = isRogalikOrderItem(item)
+      ? rogalikOrderItemPriceLines(item, charmPrices)
+      : getCatalogProduct(item.productSlug)?.configuratorId === "classic-tag" &&
+          classicTagShowsItemPriceBreakdown(item.tagModel, item.ringColor)
+        ? classicOrderItemPriceLines(item, { charmPrices, tagModelBasePrices })
+        : []
     const priceLineLabel = (label: string, detail?: string) =>
       detail ? `${label} (${detail})` : label
     const priceLinesText = priceLines

@@ -335,7 +335,11 @@ function UniformOrFitText({
   );
 }
 
-export function ConfiguratorTileTitle({ text, className = '' }: PresetProps) {
+export function ConfiguratorTileTitle({
+  text,
+  className = '',
+  reserveTwoLines = true,
+}: PresetProps & { reserveTwoLines?: boolean }) {
   const { titleFontPx } = useContext(UniformFontContext);
   return (
     <UniformOrFitText
@@ -343,7 +347,7 @@ export function ConfiguratorTileTitle({ text, className = '' }: PresetProps) {
       uniformPx={titleFontPx}
       maxFontPx={16}
       minFontPx={10}
-      reserveTwoLines
+      reserveTwoLines={reserveTwoLines}
       className={`text-center font-medium text-[#161616] ${className}`}
     />
   );

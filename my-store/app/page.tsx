@@ -5,18 +5,31 @@ import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from 
 import { isPolishMobilePhone } from '@/lib/phone';
 import { validateDiscountCodeForCheckout } from './actions/discount-codes';
 import { createOrder } from './actions/orders';
-import { getExpressShippingEnabled } from './actions/settings';
+import { getExpressShippingEnabled, getCharmUnitPrices, getTagModelBasePrices, getTagModelStartPrices } from './actions/settings';
 import { cartItemToCreateOrderItem, isRogalikCartItem } from '@/lib/order-from-cart';
+import { classicCartPriceBreakdown } from '@/lib/classic-tag-pricing';
 import {
   formatRogalikPriceLineAmount,
   rogalikConfiguratorOptions,
 } from '@/lib/order-display';
+import { beadNecklaceCostPln } from '@/lib/bead-necklace-pricing';
+import { appendBeadNecklaceOrderedOptions, appendJewelryConfiguratorAddonOptions, beadNecklacePaidAddonOrder, configuratorAddonKindContentStepId, isBeadNecklaceTagModel, jewelryConfiguratorAddonOrder, tagOnlyWithKarabinerPaidAddonOrder, type ConfiguratorSummaryAddonKind } from '@/lib/configurator-options-order';
 import { rogalikPriceBreakdown, type RogalikPriceLine } from '@/lib/rogalik-pricing';
 import {
   cartItemBaseUnitPrice,
   discountAmountForLines,
   discountedProductsValue,
 } from '@/lib/cart-item-pricing';
+import {
+  DEFAULT_TAG_MODEL_BASE_PRICES,
+  DEFAULT_TAG_MODEL_START_PRICES,
+  classicTagBaseUnitPrice,
+  OPRAWA_KWIAT_SURCHARGE_PLN,
+  oprawaKwiatSurchargePln,
+  tagModelStartPriceLabel,
+  type TagModelBasePrices,
+  type TagModelStartPrices,
+} from '@/lib/tag-model-pricing';
 import type { DiscountPercent } from '@/lib/discount-codes';
 import { useConfiguratorAnalytics } from './hooks/useConfiguratorAnalytics';
 import { scrollToConfiguratorSection } from '@/lib/configurator-scroll';
@@ -29,8 +42,10 @@ import {
   ConfiguratorChoiceLabel,
   ConfiguratorTileSubtitle,
   ConfiguratorTileTitle,
+  TwoLineFitText,
   UniformTwoLineFontScope,
 } from './components/TwoLineFitText';
+import { ConfiguratorTileFillImage, warmupConfiguratorTileFillBounds } from './components/ConfiguratorTileFillImage';
 import {
   fulfillmentMessage,
   orderConfirmationTransferNote,
@@ -72,7 +87,6 @@ import { RogalikConfiguratorStep } from './RogalikConfiguratorStep';
 import {
   baseTagPrice,
   classicStringUnitPrice,
-  EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
   FAST_DELIVERY_COST,
   fastDeliveryCostForOrder,
@@ -94,19 +108,70 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from '@/lib/pricing';
-import { CLASSIC_STRING_CATALOG, CHARM_BESTSELLERS, CHARM_CATALOG, CHARM_LARGE_CATALOG, CHARM_MOUNTING_OPTIONS, CHARM_SILVER_CATALOG, CONNECTING_RING_KARABINER_IDS, charmMountingTileLabel, FLOWER_BASE_CATALOG, GLOW_BASE_CATALOG, GLOW_STRING_CATALOG, GLOW_TEXT_OPTIONS, GOLD_BASE_CATALOG, karabinersForRingColor, KARABINER_CATALOG, nameLayoutLabel, PREMIUM_STRING_CATALOG, SILVER_BASE_CATALOG, stopperSelectionLabel, type CharmMountingId } from '@/lib/catalog-options';
+
+function stringSummaryLine(label: string, unitPrice: number | null): string {
+  const name = label.trim();
+  if (!name) return name;
+  return unitPrice != null ? `${name} (+${unitPrice} zł)` : name;
+}
+import { charmSummaryLine, charmsTotalPln, type CharmUnitPrices } from '@/lib/charm-pricing';
+import { buildDefaultCharmUnitPrices } from '@/lib/charm-unit-pricing';
+import {
+  CHARM_MOUNTING_OPTIONS,
+  CLASSIC_STRING_CATALOG,
+  CONFIGURATOR_CHARM_CATALOG,
+  CONNECTING_RING_KARABINER_IDS,
+  STICKER_CATALOG,
+  TAG_MODEL_OPTIONS,
+  BEAD_NECKLACE_TAG_MODEL_ID,
+  STRING_WITHOUT_KARABINER_TAG_MODEL_ID,
+  TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID,
+  classicTagShowsDetailedPriceBreakdown,
+  classicTagShowsItemPriceBreakdown,
+  isStringWithoutKarabinerTagModel,
+  isTagOnlyWithKarabinerTagModel,
+  tagModelSkipsStringAndKarabinerAddonCharges,
+  tagModelKarabinersOptionalInConfigurator,
+  tagModelSkipsDefaultKarabinerSelection,
+  tagModelUsesNecklaceStyleKarabinerStep,
+  BEAD_NECKLACE_COLOR_OPTIONS,
+  beadNecklaceColorLabels,
+  MAX_BEAD_NECKLACE_COLOR_SELECTIONS,
+  charmConfiguratorSectionsForRing,
+  charmMountingTileLabel,
+  configuratorCharmCatalogForRing,
+  FLOWER_BASE_CATALOG,
+  GLOW_BASE_CATALOG,
+  GLOW_STRING_CATALOG,
+  GLOW_TEXT_OPTIONS,
+  GOLD_BASE_CATALOG,
+  karabinersForRingColor,
+  KARABINER_CATALOG,
+  nameLayoutLabel,
+  oprawaDisplayAdjective,
+  PREMIUM_STRING_CATALOG,
+  SILVER_BASE_CATALOG,
+  stickerLabel,
+  stopperSelectionLabel,
+  tagModelLabel,
+  type CharmCatalogItem,
+  type CharmMountingId,
+} from '@/lib/catalog-options';
 import {
   firstRowKarabinerIds,
   karabinerCatalogRingKey,
   karabinerChargePln,
   karabinerPaidUnitsTotal,
   karabinerQuantitiesTotal,
+  karabinerSummaryLines,
   karabinerUnitPricePln,
   karabinersForConfigurator,
   orderKarabinersFromQuantities,
 } from '@/lib/karabiner-pricing';
 
 type FormDataState = {
+  tagModel: string;
+  beadNecklaceColors: string[];
   ringColor: string;
   glowTextColor: string;
   baseOption: string;
@@ -198,10 +263,12 @@ const shippingOptions = [
 ];
 
 const initialFormData: FormDataState = {
+  tagModel: '',
+  beadNecklaceColors: [],
   ringColor: 'złoty',
   glowTextColor: 'zloty',
   baseOption: '1',
-  charmOption: 'kostkabiala',
+  charmOption: '',
   charmMounting: 'oddzielne',
   wantExtraCharms: 'tak',
   extraCharms: [],
@@ -215,7 +282,7 @@ const initialFormData: FormDataState = {
   premiumStrings: [],
   classicStrings: [],
   glowStrings: [],
-  wantStopers: 'tak',
+  wantStopers: 'nie',
   extraStopers: [],
   wantSticker: 'tak',
   stickerOption: '',
@@ -248,7 +315,6 @@ const formDataForProduct = (slug: string): FormDataState => {
     return {
       ...initialFormData,
       wantString: 'tak',
-      wantExtraCharms: 'nie',
       extraCharms: [],
       wantExtraKarabiners: 'nie',
       extraKarabiners: [],
@@ -267,6 +333,7 @@ const formDataForProduct = (slug: string): FormDataState => {
   }
   return {
     ...initialFormData,
+    tagModel: '',
     ringColor: '',
     baseOption: '',
     charmOption: '',
@@ -454,7 +521,6 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const topStackRef = useRef<HTMLDivElement>(null);
   const stepsScrollRef = useRef<HTMLDivElement>(null);
-  const stopersChoiceTouchedRef = useRef(false);
   const [topStackHeight, setTopStackHeight] = useState(40);
   const [formData, setFormData] = useState<FormDataState>(initialFormData);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -465,7 +531,7 @@ export default function Home() {
   const [discountError, setDiscountError] = useState('');
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [showAddedToCart, setShowAddedToCart] = useState(false);
-  const [charmMountingTarget, setCharmMountingTarget] = useState<{ type: 'free' | 'extra'; charmId: string } | null>(null);
+  const [freeCharmMountingCharmId, setFreeCharmMountingCharmId] = useState<string | null>(null);
   const [showGoldRingInfoModal, setShowGoldRingInfoModal] = useState(false);
   const [showOrderStatusLookup, setShowOrderStatusLookup] = useState(false);
   const [showRemovedFromCart, setShowRemovedFromCart] = useState(false);
@@ -481,6 +547,15 @@ export default function Home() {
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [checkoutSubmitError, setCheckoutSubmitError] = useState('');
   const [expressShippingOffered, setExpressShippingOffered] = useState(true);
+  const [tagModelStartPrices, setTagModelStartPrices] = useState<TagModelStartPrices>(
+    DEFAULT_TAG_MODEL_START_PRICES,
+  );
+  const [tagModelBasePrices, setTagModelBasePrices] = useState<TagModelBasePrices>(
+    DEFAULT_TAG_MODEL_BASE_PRICES,
+  );
+  const [charmUnitPrices, setCharmUnitPrices] = useState<CharmUnitPrices>(() =>
+    buildDefaultCharmUnitPrices(),
+  );
 
   const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
   const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
@@ -492,10 +567,29 @@ export default function Home() {
     ringColor: formData.ringColor,
     glowTextColor: formData.glowTextColor,
   });
+  const stopperFinishPreviewSrc =
+    karabinerRingKey === 'srebrny' ? '/stopery/silver.jpg' : '/stopery/gold.jpg';
+  const defaultStopperId = karabinerRingKey === 'srebrny' ? '2' : '1';
   const usesKarabinerQuantityStep =
     isClassicTagConfigurator ||
     isGlowTagConfigurator ||
     (isRogalikTagConfigurator && !rogalikUsesBeadMounting);
+  const isBeadNecklaceModel =
+    isClassicTagConfigurator && formData.tagModel.trim() === BEAD_NECKLACE_TAG_MODEL_ID;
+  const isStringWithoutKarabinerModel =
+    isClassicTagConfigurator && isStringWithoutKarabinerTagModel(formData.tagModel);
+  const karabinersOptionalInConfigurator =
+    isClassicTagConfigurator && tagModelKarabinersOptionalInConfigurator(formData.tagModel);
+  const isTagOnlyWithKarabinerModel =
+    isClassicTagConfigurator && isTagOnlyWithKarabinerTagModel(formData.tagModel);
+  const skipsStringKarabinerAddonCharges = tagModelSkipsStringAndKarabinerAddonCharges(
+    formData.tagModel,
+  );
+  const usesNecklaceStyleKarabinerStep =
+    isClassicTagConfigurator && tagModelUsesNecklaceStyleKarabinerStep(formData.tagModel);
+  const beadNecklaceKarabinerPricing = usesNecklaceStyleKarabinerStep
+    ? ({ allUnitsPaid: true } as const)
+    : undefined;
   const rogalikFlowStep = isRogalikTagConfigurator
     ? rogalikFlowStepAt(formData.rogalikMounting, currentStep)
     : null;
@@ -510,14 +604,28 @@ export default function Home() {
   // --- LOGIKA OBLICZANIA CENY ---
   const basePrice = isRogalikTagConfigurator
     ? ROGALIK_BASE_PRICE
-    : baseTagPrice(isGlowTagConfigurator ? 'glow' : formData.ringColor);
-  const extraCharmsCost = formData.wantExtraCharms === 'tak' ? formData.extraCharms.length * EXTRA_CHARM_PRICE : 0;
+    : isClassicTagConfigurator
+      ? classicTagBaseUnitPrice({
+          tagModel: formData.tagModel,
+          ringColor: formData.ringColor,
+          tagModelBasePrices,
+        })
+      : baseTagPrice('glow');
+  const oprawaKwiatSurcharge = isClassicTagConfigurator
+    ? oprawaKwiatSurchargePln(formData.ringColor)
+    : 0;
+  const summaryCatalogBasePrice = basePrice - oprawaKwiatSurcharge;
+  const extraCharmsCost = isRogalikTagConfigurator
+    ? 0
+    : formData.wantExtraCharms === 'tak'
+      ? charmsTotalPln(formData.extraCharms, charmUnitPrices)
+      : 0;
   const extraKarabinersCost = usesKarabinerQuantityStep
-    ? karabinerChargePln(formData.karabinerQuantities, karabinerRingKey)
+    ? karabinerChargePln(formData.karabinerQuantities, karabinerRingKey, beadNecklaceKarabinerPricing)
     : formData.wantExtraKarabiners === 'tak'
       ? formData.extraKarabiners.length * EXTRA_KARABINER_PRICE
       : 0;
-  const extraStopersCost = formData.wantStopers === 'tak' ? formData.extraStopers.length * STOPPER_PRICE : 0;
+  const extraStopersCost = formData.wantStopers === 'tak' ? STOPPER_PRICE : 0;
   const stickerCost = skipsGraphicsStep
     ? 0
     : formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
@@ -530,19 +638,17 @@ export default function Home() {
   const premiumStringPrice = premiumStringUnitPrice(stringSize);
   const classicStringPrice = classicStringUnitPrice(stringSize);
   const glowStringPrice = glowStringUnitPrice(stringSize);
-  const premiumStringsCost = formData.wantString === 'tak' && premiumStringPrice
+  const premiumStringsCost = premiumStringPrice
     ? formData.premiumStrings.length * premiumStringPrice
     : 0;
-  const classicStringsCost = formData.wantString === 'tak' && classicStringPrice
+  const classicStringsCost = classicStringPrice
     ? formData.classicStrings.length * classicStringPrice
     : 0;
-  const glowStringsCost = formData.wantString === 'tak' && glowStringPrice
-    ? formData.glowStrings.length * glowStringPrice
-    : 0;
+  const glowStringsCost = glowStringPrice ? formData.glowStrings.length * glowStringPrice : 0;
 
   const rogalikCharmsCost =
     isRogalikTagConfigurator && rogalikUsesBeadMounting
-      ? formData.rogalikCharms.length * EXTRA_CHARM_PRICE
+      ? charmsTotalPln(formData.rogalikCharms, charmUnitPrices)
       : 0;
   const rogalikCordPrice =
     isRogalikTagConfigurator && rogalikUsesBeadMounting && formData.rogalikCordColor
@@ -554,6 +660,10 @@ export default function Home() {
       ? rogalikBeadsUnitPrice(stringSize)
       : null;
   const rogalikBeadsCost = rogalikBeadsPrice ?? 0;
+  const beadNecklacePrice =
+    isBeadNecklaceModel && formData.beadNecklaceColors.length > 0
+      ? beadNecklaceCostPln(stringSize, formData.beadNecklaceColors.length)
+      : 0;
   const rogalikExtraKarabinersCost =
     isRogalikTagConfigurator && !rogalikUsesBeadMounting ? extraKarabinersCost : 0;
   const rogalikMountingKarabinerCost =
@@ -568,51 +678,47 @@ export default function Home() {
       rogalikMountingKarabinerCost +
       rogalikExtraKarabinersCost +
       dialCodeCost
-    : basePrice + extraCharmsCost + extraKarabinersCost + extraStopersCost + stickerCost + premiumStringsCost + classicStringsCost + glowStringsCost + dialCodeCost;
+    : basePrice +
+      extraCharmsCost +
+      (skipsStringKarabinerAddonCharges ? 0 : extraKarabinersCost) +
+      (skipsStringKarabinerAddonCharges ? 0 : extraStopersCost) +
+      stickerCost +
+      (skipsStringKarabinerAddonCharges
+        ? 0
+        : premiumStringsCost + classicStringsCost + glowStringsCost) +
+      beadNecklacePrice +
+      dialCodeCost;
 
-  const countSelectedStrings = (data: Pick<FormDataState, 'wantString' | 'premiumStrings' | 'classicStrings' | 'glowStrings'>) =>
-    data.wantString === 'tak'
-      ? data.premiumStrings.length + data.classicStrings.length + data.glowStrings.length
-      : 0;
-
-  const trimStopersToStringCount = (data: FormDataState): FormDataState => {
-    const max = countSelectedStrings(data);
-    if (data.extraStopers.length <= max) return data;
-    return { ...data, extraStopers: data.extraStopers.slice(0, max) };
-  };
+  const countSelectedStrings = (data: Pick<FormDataState, 'premiumStrings' | 'classicStrings' | 'glowStrings'>) =>
+    data.premiumStrings.length + data.classicStrings.length + data.glowStrings.length;
 
   const selectedStringsCount = countSelectedStrings(formData);
-  const stringSelectionSummaryParts = [
-    formData.premiumStrings.length > 0 ? `Premium ×${formData.premiumStrings.length}` : null,
-    formData.classicStrings.length > 0 ? `Klasyczny ×${formData.classicStrings.length}` : null,
-    formData.glowStrings.length > 0 ? `Glow ×${formData.glowStrings.length}` : null,
-  ].filter(Boolean) as string[];
-  const stopperSelectionRequired = formData.wantStopers === 'tak' && selectedStringsCount > 0;
-  const isStopperSelectionComplete =
-    !stopperSelectionRequired || formData.extraStopers.length === selectedStringsCount;
 
   useEffect(() => {
-    if (selectedStringsCount === 0) {
-      stopersChoiceTouchedRef.current = false;
-      setFormData((prev) => {
-        if (prev.wantStopers === 'nie' && prev.extraStopers.length === 0) return prev;
-        return { ...prev, wantStopers: 'nie', extraStopers: [] };
-      });
-      return;
-    }
+    if (skipsStopersStep) return;
+    setFormData((prev) => {
+      if (prev.wantStopers !== 'tak') return prev;
+      if (prev.extraStopers.length === 1 && prev.extraStopers[0] === defaultStopperId) return prev;
+      return { ...prev, extraStopers: [defaultStopperId] };
+    });
+  }, [defaultStopperId, skipsStopersStep, formData.wantStopers]);
 
-    if (skipsStopersStep) {
-      setFormData((prev) => {
-        if (prev.wantStopers === 'nie' && prev.extraStopers.length === 0) return prev;
-        return { ...prev, wantStopers: 'nie', extraStopers: [] };
-      });
-      return;
-    }
+  useEffect(() => {
+    if (!skipsStopersStep) return;
+    setFormData((prev) => {
+      if (prev.wantStopers === 'nie' && prev.extraStopers.length === 0) return prev;
+      return { ...prev, wantStopers: 'nie', extraStopers: [] };
+    });
+  }, [skipsStopersStep]);
 
-    if (!stopersChoiceTouchedRef.current) {
-      setFormData((prev) => (prev.wantStopers === 'tak' ? prev : { ...prev, wantStopers: 'tak' }));
+  useEffect(() => {
+    if (isRogalikTagConfigurator) return;
+    const urls: string[] = [...CONFIGURATOR_CHARM_CATALOG.map((item) => item.image)];
+    if (!skipsGraphicsStep) {
+      urls.push(...STICKER_CATALOG.map((item) => item.image));
     }
-  }, [selectedStringsCount, skipsStopersStep]);
+    warmupConfiguratorTileFillBounds(urls);
+  }, [isRogalikTagConfigurator, skipsGraphicsStep]);
 
   const goToTab = (tab: string) => {
     setActiveTab(tab);
@@ -679,28 +785,89 @@ export default function Home() {
       : rogalikStepsBeads;
 
   const allStepsInfo = [
+    { id: 13, label: 'Model', icon: '📐', thumbnail: '/model/1.jpg' },
     { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/oprawa.jpg' },
     { id: 2, label: 'Baza', icon: '🎨', thumbnail: '/miniatury/baza.jpg' },
     { id: 12, label: 'NAPIS', shortLabel: 'NAPIS', icon: '✨', thumbnail: '/miniatury/napis.png' },
-    { id: 3, label: 'Darmowy charms', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
+    { id: 3, label: 'CHARMS (ZAWIESZKI)', shortLabel: 'CHARMS (ZAWIESZKI)', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
     { id: 4, label: 'Dodatkowe charmsy. Stwórz wyjątkową kompozycję!', shortLabel: 'Dodatkowe charmsy', icon: '🪝', thumbnail: '/miniatury/dodatkowycharms.jpg' },
     { id: 5, label: 'Karabińczyki', shortLabel: 'KARABIŃCZYKI', icon: '✍️', thumbnail: '/miniatury/darmowykarabinczyk.jpg' },
-    { id: 7, label: 'Sznurek. Stwórz gotowy zestaw!', shortLabel: 'Sznurek', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
+    { id: 7, label: 'Sznurek i stopery', shortLabel: 'SZNUREK I STOPERY', icon: '📏', thumbnail: '/miniatury/sznurek.jpg' },
     { id: 8, label: 'Stopery. Idealne dopasowanie!', shortLabel: 'Stopery', icon: '🧵', thumbnail: '/miniatury/stopery.jpg' },
-    { id: 9, label: 'Dodaj pieska', shortLabel: 'GRAFIKA', icon: '🏷️', thumbnail: '/miniatury/naklejka.jpg' },
+    {
+      id: 9,
+      label: 'GRAFIKI I DODATKI',
+      shortLabel: 'GRAFIKI I DODATKI',
+      icon: '🏷️',
+      thumbnail: '/naklejki/1.jpg',
+    },
     { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
+    {
+      id: 14,
+      label: 'Koraliki',
+      shortLabel: 'KORALIKI',
+      icon: '📿',
+      thumbnail: '/model/3.jpg',
+    },
   ];
+  /** Kolejność treści kroków — adresówka biżuteryjna (contentStep id). */
+  const classicTagContentStepOrder = isBeadNecklaceModel
+    ? [13, 1, 9, 14, 7, 3, 5, 10, 11]
+    : isTagOnlyWithKarabinerModel
+      ? [13, 1, 9, 3, 10, 11]
+      : isStringWithoutKarabinerModel
+        ? [13, 1, 9, 7, 3, 5, 10, 11]
+        : [13, 1, 9, 5, 3, 7, 10, 11];
   const skippedStepIds = [
+    ...(isClassicTagConfigurator ? [] : [13]),
+    ...(isClassicTagConfigurator ? [2] : []),
+    ...(isClassicTagConfigurator || isGlowTagConfigurator ? [4] : []),
+    ...(isClassicTagConfigurator || isGlowTagConfigurator ? [8] : []),
     ...(isGlowTagConfigurator ? [1] : [12]),
     ...(skipsGraphicsStep ? [9] : []),
     ...(skipsStopersStep ? [8] : []),
+    ...(isClassicTagConfigurator && !isBeadNecklaceModel ? [14] : []),
   ];
-  const visibleClassicSteps = allStepsInfo.filter((step) => !skippedStepIds.includes(step.id));
+  const visibleClassicSteps = (
+    isClassicTagConfigurator
+      ? classicTagContentStepOrder.map((stepId) => allStepsInfo.find((step) => step.id === stepId)!)
+      : allStepsInfo
+  ).filter((step) => step && !skippedStepIds.includes(step.id));
   const classicStepsInfo = visibleClassicSteps.map((step, index) => {
     const normalizedStep = { ...step, id: index + 1 };
+    if (isClassicTagConfigurator && step.id === 1) {
+      return { ...normalizedStep, label: 'KSZTAŁT I KOLOR', shortLabel: 'KSZTAŁT I KOLOR' };
+    }
+    if (isClassicTagConfigurator && step.id === 9) {
+      return { ...normalizedStep, label: 'GRAFIKI I DODATKI', shortLabel: 'GRAFIKI I DODATKI' };
+    }
+    if ((isClassicTagConfigurator || isGlowTagConfigurator) && step.id === 3) {
+      return {
+        ...normalizedStep,
+        label: 'Dodaj charms (zawieszki)',
+        shortLabel: 'CHARMS (ZAWIESZKI)',
+      };
+    }
     if (isGlowTagConfigurator && step.id === 2) {
       return { ...normalizedStep, label: 'Kolor' };
+    }
+    if (isBeadNecklaceModel && step.id === 7) {
+      return {
+        ...normalizedStep,
+        label: 'Sznurek',
+        shortLabel: 'SZNUREK',
+      };
+    }
+    if ((isClassicTagConfigurator || isGlowTagConfigurator) && step.id === 7) {
+      return {
+        ...normalizedStep,
+        label: 'Sznurek i stopery',
+        shortLabel: 'SZNUREK I STOPERY',
+      };
+    }
+    if (isClassicTagConfigurator && step.id === 14) {
+      return { ...normalizedStep, label: 'Koraliki', shortLabel: 'KORALIKI' };
     }
     return normalizedStep;
   });
@@ -711,6 +878,11 @@ export default function Home() {
   const contentStep = isRogalikTagConfigurator
     ? currentStep
     : (visibleClassicSteps[currentStep - 1]?.id ?? currentStep);
+
+  useEffect(() => {
+    if (!isClassicTagConfigurator) return;
+    setCurrentStep((prev) => Math.min(prev, Math.max(1, totalSteps)));
+  }, [isClassicTagConfigurator, totalSteps, formData.tagModel]);
 
   const configuratorAnalytics = useConfiguratorAnalytics({
     enabled: activeTab === 'configurator' && isTagConfigurator,
@@ -723,16 +895,16 @@ export default function Home() {
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
   const openConfigurator = (slug: string = CLASSIC_TAG_PRODUCT.slug) => {
     const product = getCatalogProduct(slug) ?? CLASSIC_TAG_PRODUCT;
-    stopersChoiceTouchedRef.current = false;
     setFormData(formDataForProduct(product.slug));
     setCurrentStep(1);
     setShowAddedToCart(false);
     setShowRogalikErrors(false);
     setShowRogalikDodatkiErrors(false);
     setShowRingErrors(false);
+    setShowModelErrors(false);
     setShowBaseErrors(false);
     setShowGlowTextErrors(false);
-    setShowFreeCharmErrors(false);
+    setShowExtraCharmsErrors(false);
     setActiveProductSlug(product.slug);
     goToTab('configurator');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -743,6 +915,36 @@ export default function Home() {
     if (count === 3) return 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-14';
     return 'grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-14';
   };
+
+  const baseColorGridClass = 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-10';
+
+  /** Większy prostokąt z grafiką w kaflach (mniej paddingu karty, wyższy aspect). */
+  const configuratorTileCardPaddingClass = 'p-2 md:p-4';
+  const configuratorTileMediaClass =
+    'w-full aspect-[4/5] md:aspect-[3/4] bg-[#EFE8DC] mb-2 md:mb-3 overflow-hidden border border-[#D6C7AE] relative flex items-center justify-center';
+  const configuratorTileImageClass = 'w-full h-full object-cover';
+  /** Kwadrat 1:1 (padding-top), niezależnie od wysokości karty w siatce. */
+  const beadNecklaceTileMediaClass = 'relative w-full shrink-0 mb-2 md:mb-3 pt-[100%]';
+  const beadNecklaceTileMediaInnerClass =
+    'absolute inset-0 overflow-hidden border border-[#D6C7AE] bg-[#EFE8DC]';
+  /** Okrąg wycina jasne tło z pliku JPG — w rogach kwadratu tło jak w charms (#EFE8DC). */
+  const beadNecklaceTileMediaCircleClass =
+    'absolute inset-[6%] overflow-hidden rounded-full';
+  const configuratorArtworkTileMediaBaseClass =
+    'w-full aspect-[4/5] md:aspect-[2/3] bg-[#EFE8DC] overflow-hidden border border-[#D6C7AE] relative flex items-center justify-center';
+  const configuratorArtworkTileMediaClass = `${configuratorArtworkTileMediaBaseClass} mb-2 md:mb-3`;
+  /** Mniejszy odstęp pod grafiką — krótki tytuł (np. Pupil 29). */
+  const configuratorArtworkTileMediaCompactClass = `${configuratorArtworkTileMediaBaseClass} mb-1 md:mb-1.5`;
+
+  const charmsGridClass = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6';
+
+  const stickerGridClass = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6';
+
+  const stringCatalogGridClass = 'grid grid-cols-3 gap-3 md:gap-6';
+  const jewelryStringTilePaddingClass = 'p-2 md:p-3';
+  const glowStringTilePaddingClass = 'p-3 md:p-8';
+  const jewelryStringCheckClass =
+    'w-5 h-5 rounded-md border mt-1 flex items-center justify-center transition-all shrink-0';
 
   const karabinerGridClass = 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-10';
 
@@ -827,18 +1029,62 @@ export default function Home() {
   };
 
   const [showOrderErrors, setShowOrderErrors] = useState(false);
-  const [showStopperErrors, setShowStopperErrors] = useState(false);
   const [showStringErrors, setShowStringErrors] = useState(false);
   const [showRingErrors, setShowRingErrors] = useState(false);
+  const [showModelErrors, setShowModelErrors] = useState(false);
   const [showBaseErrors, setShowBaseErrors] = useState(false);
   const [showGlowTextErrors, setShowGlowTextErrors] = useState(false);
-  const [showFreeCharmErrors, setShowFreeCharmErrors] = useState(false);
   const [showExtraCharmsErrors, setShowExtraCharmsErrors] = useState(false);
   const [showExtraKarabinersErrors, setShowExtraKarabinersErrors] = useState(false);
   const [showFreeKarabinerErrors, setShowFreeKarabinerErrors] = useState(false);
   const [showStickerErrors, setShowStickerErrors] = useState(false);
+  const [showBeadNecklaceErrors, setShowBeadNecklaceErrors] = useState(false);
   const [showRogalikErrors, setShowRogalikErrors] = useState(false);
   const [showRogalikDodatkiErrors, setShowRogalikDodatkiErrors] = useState(false);
+
+  const renderClassicNeckCircumferenceSection = (sectionId: string) => (
+    <div className="space-y-2 scroll-mt-28" data-configurator-section={sectionId}>
+      <label className="block font-bold text-base text-[#161616]">
+        Wpisz obwód szyi Twojego pieska w centymetrach:
+      </label>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={formData.stringLength}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (!/^\d*$/.test(val)) return;
+          if (val === '') {
+            setFormData({ ...formData, stringLength: '' });
+            return;
+          }
+          if (val.length > 2) return;
+          const num = Number(val);
+          if (num > NECK_CIRCUMFERENCE_MAX) return;
+          if (val.length === 1 && num >= 1 && num <= 9) {
+            setFormData({ ...formData, stringLength: val });
+            return;
+          }
+          if (num >= NECK_CIRCUMFERENCE_MIN && num <= NECK_CIRCUMFERENCE_MAX) {
+            setFormData({ ...formData, stringLength: val });
+          }
+        }}
+        placeholder="wpisz obwód szyi (15–99 cm)"
+        className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
+      />
+      {showStringErrors && !isValidNeckCircumference(formData.stringLength) && (
+        <p className="text-sm text-red-500">
+          Podaj obwód szyi ({NECK_CIRCUMFERENCE_MIN}–{NECK_CIRCUMFERENCE_MAX} cm).
+        </p>
+      )}
+      {stringSizeText && (
+        <div className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] bg-[#F4EFE6] font-bold text-base text-[#161616]">
+          {stringSizeText}
+        </div>
+      )}
+    </div>
+  );
+
   const orderErrors = {
     petName: !formData.petName.trim(),
     phoneNumber: isRogalikTagConfigurator
@@ -904,14 +1150,29 @@ export default function Home() {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
       return;
     }
-    if (contentStep === 1) {
+    if (isClassicTagConfigurator && contentStep === 13) {
+      setShowModelErrors(true);
+      if (!formData.tagModel.trim()) {
+        scrollToConfiguratorSection('classic-model-choice');
+        return;
+      }
+    }
+    if (isClassicTagConfigurator && contentStep === 1) {
       setShowRingErrors(true);
+      setShowBaseErrors(true);
       if (!formData.ringColor.trim()) {
         scrollToConfiguratorSection('classic-ring-choice');
         return;
       }
+      const baseValid =
+        formData.baseOption.trim() !== '' &&
+        selectedBases.some((base) => base.id === formData.baseOption);
+      if (!baseValid) {
+        scrollToConfiguratorSection('classic-base-choice');
+        return;
+      }
     }
-    if (contentStep === 2) {
+    if (isGlowTagConfigurator && contentStep === 2) {
       setShowBaseErrors(true);
       const baseValid =
         formData.baseOption.trim() !== '' &&
@@ -921,29 +1182,31 @@ export default function Home() {
         return;
       }
     }
-    if (contentStep === 12) {
+    if (isGlowTagConfigurator && contentStep === 12) {
       setShowGlowTextErrors(true);
       if (!formData.glowTextColor.trim()) {
         scrollToConfiguratorSection('classic-glow-text-choice');
         return;
       }
     }
-    if (contentStep === 3) {
-      setShowFreeCharmErrors(true);
-      const freeCharm = charmsList.find((item) => item.id === formData.charmOption);
-      if (!formData.charmOption.trim() || charmUnavailable(formData.charmOption, freeCharm?.unavailable)) {
-        scrollToConfiguratorSection('classic-free-charm-choice');
-        return;
-      }
-    }
-    if (contentStep === 4) {
+    if ((isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 3) {
       setShowExtraCharmsErrors(true);
       if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) {
-        scrollToConfiguratorSection('extra-charms-choice');
+        scrollToConfiguratorSection('classic-charms-choice');
         return;
       }
+      if (formData.wantExtraCharms === 'tak') {
+        const unavailableCharm = formData.extraCharms.find((id) => {
+          const charm = charmsList.find((item) => item.id === id);
+          return charmUnavailable(id, charm?.unavailable);
+        });
+        if (unavailableCharm) {
+          scrollToConfiguratorSection('classic-charms-choice');
+          return;
+        }
+      }
     }
-    if (contentStep === 5) {
+    if (contentStep === 5 && !isTagOnlyWithKarabinerModel) {
       setShowFreeKarabinerErrors(true);
       if (isClassicTagConfigurator || isGlowTagConfigurator) {
         const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
@@ -951,7 +1214,12 @@ export default function Home() {
           0,
         );
         const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
-        if (firstRowQty < 1 || totalQty < 1) {
+        const karabinerStepInvalid = karabinersOptionalInConfigurator
+          ? false
+          : usesNecklaceStyleKarabinerStep
+            ? totalQty < 1
+            : firstRowQty < 1 || totalQty < 1;
+        if (karabinerStepInvalid) {
           scrollToConfiguratorSection('free-karabiner-choice');
           return;
         }
@@ -961,25 +1229,27 @@ export default function Home() {
         return;
       }
     }
-    if (contentStep === 7) {
+    if (contentStep === 14) {
       setShowStringErrors(true);
-      if (formData.wantString === 'tak' && !isValidNeckCircumference(formData.stringLength)) {
-        scrollToConfiguratorSection('classic-string-neck');
+      setShowBeadNecklaceErrors(true);
+      if (!isValidNeckCircumference(formData.stringLength)) {
+        scrollToConfiguratorSection('classic-bead-neck');
         return;
       }
-      if (formData.wantString === 'tak' && selectedStringsCount === 0) {
-        scrollToConfiguratorSection('classic-string-choice');
+      const count = formData.beadNecklaceColors.length;
+      if (count < 1 || count > MAX_BEAD_NECKLACE_COLOR_SELECTIONS) {
+        scrollToConfiguratorSection('classic-bead-color');
         return;
       }
     }
-    if (contentStep === 8) {
-      setShowStopperErrors(true);
-      if (formData.wantStopers === 'tak' && selectedStringsCount === 0) {
-        scrollToConfiguratorSection('classic-stopers-choice');
+    if (contentStep === 7 && !isTagOnlyWithKarabinerModel) {
+      setShowStringErrors(true);
+      if (!isBeadNecklaceModel && !isValidNeckCircumference(formData.stringLength)) {
+        scrollToConfiguratorSection('classic-string-neck');
         return;
       }
-      if (stopperSelectionRequired && !isStopperSelectionComplete) {
-        scrollToConfiguratorSection('classic-stopers-choice');
+      if (selectedStringsCount === 0) {
+        scrollToConfiguratorSection('classic-string-choice');
         return;
       }
     }
@@ -1100,26 +1370,21 @@ export default function Home() {
   const basePreviewImage = (base: ConfiguratorBaseOption) =>
     base.images?.[0] ?? base.image;
 
-  const oprawaLabel = (ringColor: string) => {
-    if (ringColor === 'złoty') return 'Złoty';
-    if (ringColor === 'srebrny') return 'Srebrny';
-    if (ringColor === 'kwiat') return 'Kwiat';
-    return ringColor;
-  };
+  const oprawaLabel = (ringColor: string) => oprawaDisplayAdjective(ringColor);
 
-  const mapCharmItem = (item: { id: string; label: string; image: string; unavailable?: boolean; hit?: boolean }) => ({
+  const mapCharmItem = (item: CharmCatalogItem) => ({
     id: item.id,
     title: item.label,
     image: item.image,
     unavailable: item.unavailable,
     hit: item.hit,
+    sizeLabel: item.sizeLabel,
   });
 
-  const charmBestsellersList = CHARM_BESTSELLERS.map(mapCharmItem);
-  const charmCatalogList = CHARM_CATALOG.map(mapCharmItem);
-  const charmSilverList = CHARM_SILVER_CATALOG.map(mapCharmItem);
-  const charmLargeList = CHARM_LARGE_CATALOG.map(mapCharmItem);
-  const charmsList = [...charmBestsellersList, ...charmCatalogList, ...charmSilverList, ...charmLargeList];
+  const charmsList =
+    isClassicTagConfigurator || isGlowTagConfigurator
+      ? configuratorCharmCatalogForRing(formData.ringColor).map(mapCharmItem)
+      : [];
 
   const charmUnavailable = (id: string, catalogUnavailable?: boolean) =>
     isWarehouseOutOfStock(warehouseStock, id, catalogUnavailable);
@@ -1134,32 +1399,45 @@ export default function Home() {
   }));
   const configuratorKarabinersList = karabinersForConfigurator(karabinerRingKey);
   const firstRowKarabinerIdSet = new Set(firstRowKarabinerIds(karabinerRingKey));
+  const applyClassicTagModelSelection = (modelId: string) => {
+    setFormData((prev) => {
+      const zeroKarabinerQuantities = Object.fromEntries(
+        Object.keys(prev.karabinerQuantities).map((id) => [id, 0]),
+      );
+      let nextKarabinerQuantities = prev.karabinerQuantities;
+      if (tagModelSkipsDefaultKarabinerSelection(modelId)) {
+        nextKarabinerQuantities = zeroKarabinerQuantities;
+      } else if (karabinerQuantitiesTotal(prev.karabinerQuantities) === 0) {
+        const firstKarabiner = karabinersForConfigurator(karabinerRingKey)[0];
+        nextKarabinerQuantities = firstKarabiner
+          ? { ...zeroKarabinerQuantities, [firstKarabiner.id]: 1 }
+          : zeroKarabinerQuantities;
+      }
+      return {
+        ...prev,
+        tagModel: modelId,
+        beadNecklaceColors:
+          modelId === BEAD_NECKLACE_TAG_MODEL_ID ? prev.beadNecklaceColors : [],
+        karabinerQuantities: nextKarabinerQuantities,
+        ...(modelId === TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID
+          ? {
+              premiumStrings: [],
+              classicStrings: [],
+              glowStrings: [],
+              wantStopers: 'nie' as const,
+              extraStopers: [],
+              stringLength: '',
+            }
+          : {}),
+      };
+    });
+  };
   const connectingRingKarabinerIds = new Set<string>(CONNECTING_RING_KARABINER_IDS);
   const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
     images: item.images,
   }));
-
-  const stopersList = [
-    { id: '1', title: 'Złote', image: '/stopery/1.jpg' },
-    { id: '2', title: 'Srebrne', image: '/stopery/2.jpg' },
-  ];
-
-  const stickersList = [
-    { id: '1', title: 'Pies 1', image: '/naklejki/1.jpg' },
-    { id: '2', title: 'Pies 2', image: '/naklejki/2.jpg' },
-    { id: '3', title: 'Pies 3', image: '/naklejki/3.jpg' },
-    { id: '4', title: 'Pies 4', image: '/naklejki/4.jpg' },
-    { id: '5', title: 'Pies 5', image: '/naklejki/5.jpg' },
-    { id: '6', title: 'Pies 6', image: '/naklejki/6.jpg' },
-    { id: '7', title: 'Pies 7', image: '/naklejki/7.jpg' },
-    { id: '8', title: 'Pies 8', image: '/naklejki/8.jpg' },
-    { id: '9', title: 'Pies 9', image: '/naklejki/9.jpg' },
-    { id: '10', title: 'Pies 10', image: '/naklejki/10.jpg' },
-    { id: '11', title: 'Pies 11', image: '/naklejki/11.jpg' },
-    { id: '12', title: 'Pies 12', image: '/naklejki/12.jpg' },
-  ];
 
   const classicStringsList = CLASSIC_STRING_CATALOG.map((item) => ({
     id: item.id,
@@ -1176,11 +1454,20 @@ export default function Home() {
   const findTitle = (list: { id: string; title: string }[], id: string, fallback: string) =>
     list.find((item) => item.id === id)?.title ?? fallback;
 
+  const karabinerSummaryLineItems = karabinerSummaryLines(
+    formData.karabinerQuantities,
+    karabinerRingKey,
+    (id) => findTitle(karabinersList, id, id),
+    beadNecklaceKarabinerPricing,
+  );
+
+  /** Podpięcie UI darmowego charma — wywołaj z kafelka, otwiera modal mocowania. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- wraca w kolejnym kroku produktu
   const selectFreeCharm = (charmId: string) => {
     const charm = charmsList.find((item) => item.id === charmId);
     if (charmUnavailable(charmId, charm?.unavailable)) return;
     setFormData((prev) => ({ ...prev, charmOption: charmId }));
-    setCharmMountingTarget({ type: 'free', charmId });
+    setFreeCharmMountingCharmId(charmId);
   };
 
   const selectExtraCharm = (charmId: string) => {
@@ -1209,73 +1496,60 @@ export default function Home() {
     });
   };
 
+  const toggleBeadNecklaceColor = (colorId: string) => {
+    setFormData((prev) => {
+      const selected = prev.beadNecklaceColors;
+      if (selected.includes(colorId)) {
+        return { ...prev, beadNecklaceColors: selected.filter((id) => id !== colorId) };
+      }
+      if (selected.length >= MAX_BEAD_NECKLACE_COLOR_SELECTIONS) return prev;
+      return { ...prev, beadNecklaceColors: [...selected, colorId] };
+    });
+  };
+
   const modalSelectedMounting = (): CharmMountingId => formData.charmMounting;
 
   const selectCharmMounting = (mounting: CharmMountingId) => {
-    if (!charmMountingTarget || charmMountingTarget.type !== 'free') return;
-
-    setFormData((prev) => ({ ...prev, charmMounting: mounting, charmOption: charmMountingTarget.charmId }));
-    setCharmMountingTarget(null);
+    if (!freeCharmMountingCharmId) return;
+    setFormData((prev) => ({
+      ...prev,
+      charmMounting: mounting,
+      charmOption: freeCharmMountingCharmId,
+    }));
+    setFreeCharmMountingCharmId(null);
   };
 
-  const extraCharmDisplayValue = (id: string) => {
-    const title = findTitle(charmsList, id, id);
-    const mounting = formData.extraCharmMountings[id] ?? 'oddzielne';
-    return `${title} (${charmMountingTileLabel(mounting)})`;
+  const extraCharmDisplayValue = (id: string) =>
+    charmSummaryLine(id, findTitle(charmsList, id, undefined), charmUnitPrices);
+
+  const premiumStringDisplayValue = (id: string) =>
+    stringSummaryLine(findTitle(premiumStringsList, id, id), premiumStringPrice);
+
+  const classicStringDisplayValue = (id: string) =>
+    stringSummaryLine(findTitle(classicStringsList, id, id), classicStringPrice);
+
+  const glowStringDisplayValue = (id: string) =>
+    stringSummaryLine(findTitle(glowStringsList, id, id), glowStringPrice);
+
+  type CharmCardItem = {
+    id: string;
+    title: string;
+    image: string;
+    unavailable?: boolean;
+    hit?: boolean;
+    sizeLabel?: string;
   };
 
-  const renderFreeCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
-    const isSelected = formData.charmOption === charm.id;
-    const isDisabled = charmUnavailable(charm.id, charm.unavailable);
-
-    return (
-      <div
-        key={charm.id}
-        data-uniform-font-cell
-        onClick={isDisabled ? undefined : () => selectFreeCharm(charm.id)}
-        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-          isDisabled
-            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
-            : isSelected
-              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
-              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
-        }`}
-      >
-        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-          {charm.hit && (
-            <span className="absolute top-3 -left-5 z-10 w-24 -rotate-45 bg-[#3A5A40] text-[#F4EFE6] text-[9px] md:text-[10px] uppercase tracking-[0.22em] font-bold text-center py-0.5 shadow-sm pointer-events-none">
-              HIT
-            </span>
-          )}
-          <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
-        </div>
-        <ConfiguratorTileTitle text={charm.title} />
-        {isDisabled && (
-          <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
-        )}
-        {isSelected && (
-          <ConfiguratorTileSubtitle text={charmMountingTileLabel(formData.charmMounting)} className="mt-1" />
-        )}
-        {!isDisabled && (
-          <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderExtraCharmCard = (charm: { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean }) => {
+  const renderExtraCharmCard = (charm: CharmCardItem) => {
     const isSelected = formData.extraCharms.includes(charm.id);
     const isDisabled = charmUnavailable(charm.id, charm.unavailable);
-    const mounting = formData.extraCharmMountings[charm.id] ?? 'oddzielne';
 
     return (
       <div
         key={charm.id}
         data-uniform-font-cell
         onClick={isDisabled ? undefined : () => selectExtraCharm(charm.id)}
-        className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+        className={`rounded-none ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-stretch text-center ${
           isDisabled
             ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
             : isSelected
@@ -1283,20 +1557,19 @@ export default function Home() {
               : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
         }`}
       >
-        <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
+        <div className={configuratorArtworkTileMediaClass}>
           {charm.hit && (
             <span className="absolute top-3 -left-5 z-10 w-24 -rotate-45 bg-[#3A5A40] text-[#F4EFE6] text-[9px] md:text-[10px] uppercase tracking-[0.22em] font-bold text-center py-0.5 shadow-sm pointer-events-none">
               HIT
             </span>
           )}
-          <img src={charm.image} alt={charm.title} className="w-full h-full object-cover" />
+          <ConfiguratorTileFillImage src={charm.image} alt={charm.title} />
         </div>
-        <ConfiguratorTileTitle text={charm.title} />
+        {charm.sizeLabel ? (
+          <ConfiguratorTileTitle text={charm.sizeLabel} reserveTwoLines={false} />
+        ) : null}
         {isDisabled && (
           <span className="mt-1 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
-        )}
-        {isSelected && (
-          <ConfiguratorTileSubtitle text={charmMountingTileLabel(mounting)} className="mt-1" />
         )}
         {!isDisabled && (
           <div
@@ -1305,7 +1578,7 @@ export default function Home() {
               if (isSelected) deselectExtraCharm(charm.id);
               else selectExtraCharm(charm.id);
             }}
-            className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all cursor-pointer ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
+            className={`w-5 h-5 rounded-md border mt-3 self-center flex items-center justify-center transition-all cursor-pointer ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
           >
             {isSelected && <span className="text-white text-xs font-bold">✓</span>}
           </div>
@@ -1314,20 +1587,73 @@ export default function Home() {
     );
   };
 
-  type CharmCardItem = { id: string; title: string; image: string; unavailable?: boolean; hit?: boolean };
+  const renderBeadNecklaceColorCard = (option: (typeof BEAD_NECKLACE_COLOR_OPTIONS)[number]) => {
+    const isSelected = formData.beadNecklaceColors.includes(option.id);
+    const atMax =
+      !isSelected && formData.beadNecklaceColors.length >= MAX_BEAD_NECKLACE_COLOR_SELECTIONS;
+
+    return (
+      <div
+        key={option.id}
+        data-uniform-font-cell
+        onClick={() => {
+          if (atMax) return;
+          toggleBeadNecklaceColor(option.id);
+        }}
+        className={`rounded-none h-full ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-stretch text-center ${
+          atMax
+            ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
+            : isSelected
+              ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+              : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+        }`}
+      >
+        <div className={beadNecklaceTileMediaClass}>
+          <div className={beadNecklaceTileMediaInnerClass}>
+            <div className={beadNecklaceTileMediaCircleClass}>
+              <ConfiguratorTileFillImage src={option.image} alt={option.label} />
+            </div>
+          </div>
+        </div>
+        <ConfiguratorTileTitle text={option.label} className="w-full min-h-[2.75rem] shrink-0" />
+        <div className="mt-auto shrink-0 self-center pt-2">
+          <div
+            onClick={(event) => {
+              event.stopPropagation();
+              if (atMax && !isSelected) return;
+              toggleBeadNecklaceColor(option.id);
+            }}
+            className={`grid size-5 place-items-center rounded-md border transition-all cursor-pointer ${
+              isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+            } ${atMax && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isSelected && (
+              <span className="text-xs font-bold leading-none text-white" aria-hidden>
+                ✓
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderCharmSection = (
     title: string,
     items: CharmCardItem[],
     renderCard: (charm: CharmCardItem) => React.ReactNode,
+    subtitle?: string,
   ) => (
-    <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
+    <section key={title} className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
-        <h3 className="font-bold text-lg text-[#161616]">{title}</h3>
+        <h3 className="font-serif font-bold text-lg text-[#161616]">{title}</h3>
+        {subtitle && (
+          <p className="mt-1 text-sm font-normal italic text-[#7A736C] leading-snug">{subtitle}</p>
+        )}
       </div>
       <div className="p-4 md:p-6">
-        <UniformTwoLineFontScope titleTexts={items.map((item) => item.title)}>
-          <div className={imageGridClass(items.length)} data-uniform-font-grid>
+        <UniformTwoLineFontScope titleTexts={items.map((item) => item.sizeLabel ?? '—')}>
+          <div className={charmsGridClass} data-uniform-font-grid>
             {items.map(renderCard)}
           </div>
         </UniformTwoLineFontScope>
@@ -1382,7 +1708,6 @@ export default function Home() {
     if (delta > 0 && connectingRingKarabinerIds.has(id)) {
       const current = formData.karabinerQuantities[id] ?? 0;
       if (current === 0) {
-        stopersChoiceTouchedRef.current = true;
         setShowGoldRingInfoModal(true);
       }
     }
@@ -1405,7 +1730,7 @@ export default function Home() {
       <div
         key={karabiner.id}
         data-uniform-font-cell
-        className={`rounded-none p-3 md:p-6 border transition-colors duration-300 flex flex-col items-center text-center ${
+        className={`rounded-none ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-center text-center ${
           isDisabled
             ? 'border-[#D6C7AE] bg-white'
             : isSelected
@@ -1414,7 +1739,7 @@ export default function Home() {
         }`}
       >
         <div
-          className={`w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] relative ${
+          className={`w-full aspect-square bg-[#EFE8DC] mb-2 md:mb-3 overflow-hidden border border-[#D6C7AE] relative ${
             isDisabled ? 'opacity-50' : ''
           }`}
         >
@@ -1463,6 +1788,68 @@ export default function Home() {
     const titleTexts = items.map((item) => item.label);
     const subtitleTexts = items.map((item) => `Materiał: ${item.material}`);
 
+    const headingCopy = usesNecklaceStyleKarabinerStep
+      ? 'W zestawie otrzymujesz mocowanie, dzięki któremu możesz przepiąć adresówkę i nosić ją na karabińczyku. Czy chcesz dodać karabińczyki?'
+      : 'Wybierz swoje karabińczyki:';
+
+    const karabinerErrorVisible =
+      showFreeKarabinerErrors &&
+      !karabinersOptionalInConfigurator &&
+      (usesNecklaceStyleKarabinerStep
+        ? karabinerQuantitiesTotal(formData.karabinerQuantities) < 1
+        : firstRowKarabinerIds(karabinerRingKey).reduce(
+            (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+            0,
+          ) < 1 || karabinerQuantitiesTotal(formData.karabinerQuantities) < 1);
+
+    const karabinerErrorCopy = usesNecklaceStyleKarabinerStep
+      ? 'Wybierz co najmniej jeden karabińczyk.'
+      : 'Dodaj co najmniej jeden karabińczyk z pierwszego wiersza (1 szt. gratis na zamówienie).';
+
+    const necklaceIntroBlock = usesNecklaceStyleKarabinerStep ? (
+      <div className="mt-1 md:mt-1.5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-1 sm:gap-x-1.5 -ml-1 sm:-ml-2">
+        <img
+          src="/karabinczyk/mocowanie.png"
+          alt="Mocowanie do karabińczyka"
+          className="block w-[3.25rem] sm:w-[3.75rem] md:w-16 h-auto object-contain"
+          decoding="async"
+        />
+        <div className="min-w-0 space-y-2">
+          <TwoLineFitText
+            text={headingCopy}
+            className="font-bold text-[#161616] block w-full"
+            maxFontPx={16}
+            minFontPx={13}
+          />
+          {karabinerErrorVisible && <p className="text-sm text-red-500">{karabinerErrorCopy}</p>}
+        </div>
+      </div>
+    ) : null;
+
+    const karabinerGrid = usesNecklaceStyleKarabinerStep ? (
+      <div className={karabinerGridClass} data-uniform-font-grid>
+        {items.map(renderKarabinerQuantityCard)}
+      </div>
+    ) : (
+      <>
+        <div className="space-y-2">
+          <p className="font-bold text-base text-[#161616]">{headingCopy}</p>
+          {karabinerErrorVisible && <p className="text-sm text-red-500">{karabinerErrorCopy}</p>}
+        </div>
+        <div className="rounded-xl border-2 border-[#3A5A40]/35 bg-[#E8F0EA]/80 p-4 md:p-6 space-y-3">
+          <p className="text-sm font-bold text-[#3A5A40] text-center">Pierwsza sztuka jest darmowa!</p>
+          <div className={karabinerGridClass} data-uniform-font-grid>
+            {firstRowItems.map(renderKarabinerQuantityCard)}
+          </div>
+        </div>
+        {otherItems.length > 0 && (
+          <div className={karabinerGridClass} data-uniform-font-grid>
+            {otherItems.map(renderKarabinerQuantityCard)}
+          </div>
+        )}
+      </>
+    );
+
     return (
       <UniformTwoLineFontScope
         titleTexts={titleTexts}
@@ -1471,36 +1858,12 @@ export default function Home() {
         titleMin={11}
         subtitleMax={14}
       >
-        <div className="space-y-8 scroll-mt-28" data-configurator-section="free-karabiner-choice">
-          <div className="space-y-2">
-            <p className="font-bold text-base text-[#161616]">
-              Wybierz swoje karabińczyki:
-            </p>
-            {showFreeKarabinerErrors &&
-              firstRowKarabinerIds(karabinerRingKey).reduce(
-                (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
-                0,
-              ) < 1 && (
-                <p className="text-sm text-red-500">
-                  Dodaj co najmniej jeden karabińczyk z pierwszego wiersza (1 szt. gratis na zamówienie).
-                </p>
-              )}
-          </div>
-
-          <div className="rounded-xl border-2 border-[#3A5A40]/35 bg-[#E8F0EA]/80 p-4 md:p-6 space-y-3">
-            <p className="text-sm font-bold text-[#3A5A40] text-center">
-              Pierwsza sztuka jest darmowa!
-            </p>
-            <div className={karabinerGridClass} data-uniform-font-grid>
-              {firstRowItems.map(renderKarabinerQuantityCard)}
-            </div>
-          </div>
-
-          {otherItems.length > 0 && (
-            <div className={karabinerGridClass} data-uniform-font-grid>
-              {otherItems.map(renderKarabinerQuantityCard)}
-            </div>
-          )}
+        <div
+          className={`scroll-mt-28 ${usesNecklaceStyleKarabinerStep ? 'space-y-3' : 'space-y-8'}`}
+          data-configurator-section="free-karabiner-choice"
+        >
+          {necklaceIntroBlock}
+          {karabinerGrid}
         </div>
       </UniformTwoLineFontScope>
     );
@@ -1508,12 +1871,13 @@ export default function Home() {
 
   const renderExtraCharmSections = () => (
     <div className="space-y-6">
-      {renderCharmSection('Charmsy główne', [...charmBestsellersList, ...charmCatalogList], renderExtraCharmCard)}
-      {renderCharmSection('Charmsy w srebrnym kolorze', charmSilverList, renderExtraCharmCard)}
-      {renderCharmSection(
-        'Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)',
-        charmLargeList,
-        renderExtraCharmCard,
+      {charmConfiguratorSectionsForRing(formData.ringColor).map((section) =>
+        renderCharmSection(
+          section.title,
+          section.items.map(mapCharmItem),
+          renderExtraCharmCard,
+          section.subtitle,
+        ),
       )}
     </div>
   );
@@ -1538,20 +1902,23 @@ export default function Home() {
             ? `${formData.stringLength} cm (${stringSizeText})`
             : `${formData.stringLength} cm`
           : null;
-      const options = rogalikConfiguratorOptions({
-        rogalikColor: formData.rogalikColor,
-        rogalikMounting: formData.rogalikMounting,
-        dogNeckDisplay,
-        rogalikCordColor: formData.rogalikCordColor,
-        rogalikBeads: formData.rogalikBeads,
-        rogalikCharms: formData.rogalikCharms,
-        karabinerOption: formData.karabinerOption,
-        extraKarabiners:
-          formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners : [],
-        karabinerQuantities: formData.karabinerQuantities,
-        petName: formData.petName,
-        phoneNumber: formData.phoneNumber,
-      });
+      const options = rogalikConfiguratorOptions(
+        {
+          rogalikColor: formData.rogalikColor,
+          rogalikMounting: formData.rogalikMounting,
+          dogNeckDisplay,
+          rogalikCordColor: formData.rogalikCordColor,
+          rogalikBeads: formData.rogalikBeads,
+          rogalikCharms: formData.rogalikCharms,
+          karabinerOption: formData.karabinerOption,
+          extraKarabiners:
+            formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners : [],
+          karabinerQuantities: formData.karabinerQuantities,
+          petName: formData.petName,
+          phoneNumber: formData.phoneNumber,
+        },
+        charmUnitPrices,
+      );
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         productSlug: activeProduct.slug,
@@ -1566,12 +1933,16 @@ export default function Home() {
 
     const bases = selectedBases;
     const options: { label: string; values: string[] }[] = [];
+    if (formData.tagModel.trim()) {
+      options.push({ label: 'Model', values: [tagModelLabel(formData.tagModel)] });
+    }
     if (!isGlowTagConfigurator) {
       options.push({ label: 'Oprawa', values: [oprawaLabel(formData.ringColor)] });
     }
-    options.push(
-      { label: 'Baza', values: [findTitle(bases, formData.baseOption, `Opcja nr ${formData.baseOption}`)] },
-    );
+    options.push({
+      label: isClassicTagConfigurator ? 'Kolor' : 'Baza',
+      values: [findTitle(bases, formData.baseOption, `Opcja nr ${formData.baseOption}`)],
+    });
     if (isGlowTagConfigurator) {
       const glowText = GLOW_TEXT_OPTIONS.find((option) => option.id === formData.glowTextColor);
       options.push({
@@ -1579,80 +1950,134 @@ export default function Home() {
         values: [glowText ? glowText.label : formData.glowTextColor],
       });
     }
-    options.push(
-      { label: 'Darmowy charms', values: [findTitle(charmsList, formData.charmOption, formData.charmOption)] },
-    );
-    options.push({
-      label: 'Mocowanie charms',
-      values: [CHARM_MOUNTING_OPTIONS.find((option) => option.id === formData.charmMounting)?.label ?? formData.charmMounting],
-    });
 
-    if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0) {
-      options.push({
-        label: 'Dodatkowe charms',
-        values: formData.extraCharms.map((id) => extraCharmDisplayValue(id)),
-      });
-    }
+    const stickerOptionBlock =
+      !skipsGraphicsStep && formData.wantSticker === 'tak' && formData.stickerOption
+        ? { label: 'Naklejka', values: [stickerLabel(formData.stickerOption)] }
+        : null;
+    const charmsOptionBlock =
+      formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0
+        ? {
+            label: 'Charms (zawieszki)',
+            values: formData.extraCharms.map((id) => extraCharmDisplayValue(id)),
+          }
+        : null;
+    const karabinersOptionBlock =
+      karabinerSummaryLineItems.length > 0
+        ? { label: 'Karabińczyki', values: karabinerSummaryLineItems }
+        : null;
+    const beadNecklaceOptionBlock =
+      formData.beadNecklaceColors.length > 0
+        ? { label: 'Koraliki', values: beadNecklaceColorLabels(formData.beadNecklaceColors) }
+        : null;
+    const neckCircumferenceOptionBlock = formData.stringLength
+      ? {
+          label: 'Obwód szyi',
+          values: [
+            stringSizeText
+              ? `${formData.stringLength} cm (${stringSizeText})`
+              : `${formData.stringLength} cm`,
+          ],
+        }
+      : null;
+    const premiumStringsBlock =
+      formData.premiumStrings.length > 0
+        ? {
+            label: 'Sznurek Premium',
+            values: formData.premiumStrings.map((id) => premiumStringDisplayValue(id)),
+          }
+        : null;
+    const classicStringsBlock =
+      formData.classicStrings.length > 0
+        ? {
+            label: 'Sznurek Klasyczny',
+            values: formData.classicStrings.map((id) => classicStringDisplayValue(id)),
+          }
+        : null;
+    const glowStringsBlock =
+      formData.glowStrings.length > 0
+        ? {
+            label: 'Sznurek Glow',
+            values: formData.glowStrings.map((id) => glowStringDisplayValue(id)),
+          }
+        : null;
+    const stopersOptionBlock =
+      formData.wantStopers === 'tak'
+        ? {
+            label: 'Stopery',
+            values: [
+              stopperSelectionLabel(
+                formData.extraStopers.length ? formData.extraStopers : [defaultStopperId],
+              ),
+            ],
+          }
+        : null;
+    const dialCodeOptionBlock =
+      formData.includePhoneCode === 'tak'
+        ? {
+            label: 'Numer kierunkowy na adresówce',
+            values: [`Tak (+${DIAL_CODE_PRICE} zł)`],
+          }
+        : null;
 
-    const karabinerSummaryEntries = Object.entries(formData.karabinerQuantities).filter(
-      ([, qty]) => qty > 0,
-    );
-    if (karabinerSummaryEntries.length > 0) {
-      options.push({
-        label: 'Karabińczyki',
-        values: karabinerSummaryEntries.map(
-          ([id, qty]) => `${findTitle(karabinersList, id, id)} ×${qty}`,
-        ),
+    if (isBeadNecklaceModel) {
+      appendBeadNecklaceOrderedOptions(options, {
+        ringColor: formData.ringColor,
+        sticker: stickerOptionBlock,
+        beadNecklace: beadNecklaceOptionBlock,
+        neckCircumference: neckCircumferenceOptionBlock,
+        stringsPremium: premiumStringsBlock,
+        stringsClassic: classicStringsBlock,
+        stringsGlow: glowStringsBlock,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        stopers: stopersOptionBlock,
+        dialCode: dialCodeOptionBlock,
       });
-    }
+    } else if (isTagOnlyWithKarabinerModel) {
+      appendBeadNecklaceOrderedOptions(options, {
+        ringColor: formData.ringColor,
+        sticker: stickerOptionBlock,
+        beadNecklace: null,
+        neckCircumference: null,
+        stringsPremium: null,
+        stringsClassic: null,
+        stringsGlow: null,
+        charms: charmsOptionBlock,
+        karabiners: null,
+        stopers: null,
+        dialCode: dialCodeOptionBlock,
+      });
+    } else if (isStringWithoutKarabinerModel) {
+      appendBeadNecklaceOrderedOptions(options, {
+        ringColor: formData.ringColor,
+        sticker: stickerOptionBlock,
+        beadNecklace: null,
+        neckCircumference: neckCircumferenceOptionBlock,
+        stringsPremium: premiumStringsBlock,
+        stringsClassic: classicStringsBlock,
+        stringsGlow: glowStringsBlock,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        stopers: stopersOptionBlock,
+        dialCode: dialCodeOptionBlock,
+      });
+    } else {
+      appendJewelryConfiguratorAddonOptions(options, {
+        configuratorId: activeProduct.configuratorId,
+        ringColor: formData.ringColor,
+        tagModel: formData.tagModel,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        sticker: stickerOptionBlock,
+      });
 
-    if (formData.wantString === 'tak' && formData.premiumStrings.length > 0) {
-      options.push({
-        label: 'Sznurek Premium',
-        values: formData.premiumStrings.map((id) => findTitle(premiumStringsList, id, id)),
-      });
-    }
-
-    if (formData.wantString === 'tak' && formData.classicStrings.length > 0) {
-      options.push({
-        label: 'Sznurek Klasyczny',
-        values: formData.classicStrings.map((id) => findTitle(classicStringsList, id, id)),
-      });
-    }
-
-    if (formData.wantString === 'tak' && formData.glowStrings.length > 0) {
-      options.push({
-        label: 'Sznurek Glow',
-        values: formData.glowStrings.map((id) => findTitle(glowStringsList, id, id)),
-      });
-    }
-
-    if (formData.wantString === 'tak' && formData.stringLength) {
-      options.push({
-        label: 'Obwód szyi',
-        values: [stringSizeText ? `${formData.stringLength} cm (${stringSizeText})` : `${formData.stringLength} cm`],
-      });
-    }
-
-    if (formData.wantStopers === 'tak' && formData.extraStopers.length > 0) {
-      options.push({
-        label: 'Stopery',
-        values: [stopperSelectionLabel(formData.extraStopers)],
-      });
-    }
-
-    if (!skipsGraphicsStep && formData.wantSticker === 'tak' && formData.stickerOption) {
-      options.push({
-        label: 'Naklejka',
-        values: [findTitle(stickersList, formData.stickerOption, `Pies ${formData.stickerOption}`)],
-      });
-    }
-
-    if (formData.includePhoneCode === 'tak') {
-      options.push({
-        label: 'Numer kierunkowy na adresówce',
-        values: [`Tak (+${DIAL_CODE_PRICE} zł)`],
-      });
+      if (premiumStringsBlock) options.push(premiumStringsBlock);
+      if (classicStringsBlock) options.push(classicStringsBlock);
+      if (glowStringsBlock) options.push(glowStringsBlock);
+      if (neckCircumferenceOptionBlock) options.push(neckCircumferenceOptionBlock);
+      if (stopersOptionBlock) options.push(stopersOptionBlock);
+      if (dialCodeOptionBlock) options.push(dialCodeOptionBlock);
     }
 
     options.push({ label: 'Imię pupila', values: [formData.petName] });
@@ -1693,13 +2118,12 @@ export default function Home() {
 
   const resetConfigurator = () => {
     setFormData(formDataForProduct(activeProductSlug));
-    stopersChoiceTouchedRef.current = false;
     setShowOrderErrors(false);
     setShowStringErrors(false);
     setShowRingErrors(false);
+    setShowModelErrors(false);
     setShowBaseErrors(false);
     setShowGlowTextErrors(false);
-    setShowFreeCharmErrors(false);
     setShowExtraCharmsErrors(false);
     setShowExtraKarabinersErrors(false);
     setShowStickerErrors(false);
@@ -1738,10 +2162,13 @@ export default function Home() {
     price: item.price,
     quantity: item.quantity,
     productSlug: item.productSlug,
-    baseUnitPrice: cartItemBaseUnitPrice({
-      productSlug: item.productSlug,
-      config: item.config,
-    }),
+    baseUnitPrice: cartItemBaseUnitPrice(
+      {
+        productSlug: item.productSlug,
+        config: item.config,
+      },
+      tagModelBasePrices,
+    ),
   }));
   const cartProductsValueBeforeDiscount = cartDiscountLines.reduce(
     (sum, line) => sum + line.price * line.quantity,
@@ -1900,14 +2327,17 @@ export default function Home() {
       fastDeliveryCost,
       total: checkoutTotal,
       items: cartItems.map((item) =>
-        cartItemToCreateOrderItem({
-          quantity: item.quantity,
-          price: item.price,
-          image: item.image,
-          productSlug: item.productSlug,
-          productName: item.productName,
-          config: item.config,
-        }),
+        cartItemToCreateOrderItem(
+          {
+            quantity: item.quantity,
+            price: item.price,
+            image: item.image,
+            productSlug: item.productSlug,
+            productName: item.productName,
+            config: item.config,
+          },
+          tagModelBasePrices,
+        ),
       ),
     });
     setIsPlacingOrder(false);
@@ -1945,7 +2375,7 @@ export default function Home() {
           ? prev.premiumStrings.filter((item) => item !== id)
           : [...prev.premiumStrings, id],
       };
-      return trimStopersToStringCount(next);
+      return next;
     });
   };
 
@@ -1958,7 +2388,7 @@ export default function Home() {
           ? prev.classicStrings.filter((item) => item !== id)
           : [...prev.classicStrings, id],
       };
-      return trimStopersToStringCount(next);
+      return next;
     });
   };
 
@@ -1971,122 +2401,467 @@ export default function Home() {
           ? prev.glowStrings.filter((item) => item !== id)
           : [...prev.glowStrings, id],
       };
-      return trimStopersToStringCount(next);
+      return next;
     });
   };
 
-  const addStopper = (id: string) => {
-    setFormData((prev) => {
-      if (prev.extraStopers.length >= countSelectedStrings(prev)) return prev;
-      return { ...prev, extraStopers: [...prev.extraStopers, id] };
-    });
+  const usesStepOrderedAddonSummary =
+    isBeadNecklaceModel || isStringWithoutKarabinerModel || isTagOnlyWithKarabinerModel;
+  const configuratorAddonSummaryOrder = isTagOnlyWithKarabinerModel
+    ? tagOnlyWithKarabinerPaidAddonOrder(formData.ringColor)
+    : beadNecklacePaidAddonOrder(formData.ringColor);
+
+  const showConfiguratorSummaryPrices =
+    !isClassicTagConfigurator || formData.tagModel.trim() !== '';
+
+  const reachedConfiguratorContentStep = (contentStepId: number) => {
+    if (isRogalikTagConfigurator) return true;
+    if (!isTagConfigurator) return true;
+    const index = visibleClassicSteps.findIndex((step) => step.id === contentStepId);
+    if (index < 0) return false;
+    return currentStep > index;
   };
 
-  const removeStopper = (id: string) => {
-    setFormData((prev) => {
-      const index = prev.extraStopers.lastIndexOf(id);
-      if (index === -1) return prev;
-      return {
-        ...prev,
-        extraStopers: prev.extraStopers.filter((_, itemIndex) => itemIndex !== index),
-      };
-    });
-  };
+  const summaryAddonKindVisible = (kind: ConfiguratorSummaryAddonKind) =>
+    reachedConfiguratorContentStep(
+      configuratorAddonKindContentStepId(kind, { tagModel: formData.tagModel }),
+    );
+
+  const configuratorSummaryDisplayTotal = (() => {
+    if (isRogalikTagConfigurator || !showConfiguratorSummaryPrices) return totalPrice;
+    let sum = basePrice;
+    if (summaryAddonKindVisible('sticker') && !skipsGraphicsStep) sum += stickerCost;
+    if (summaryAddonKindVisible('beadNecklace')) sum += beadNecklacePrice;
+    if (summaryAddonKindVisible('charms')) sum += extraCharmsCost;
+    if (!skipsStringKarabinerAddonCharges) {
+      if (summaryAddonKindVisible('karabiners')) sum += extraKarabinersCost;
+      if (summaryAddonKindVisible('stopers')) sum += extraStopersCost;
+      if (summaryAddonKindVisible('stringsPremium')) sum += premiumStringsCost;
+      if (summaryAddonKindVisible('stringsClassic')) sum += classicStringsCost;
+      if (summaryAddonKindVisible('stringsGlow')) sum += glowStringsCost;
+    }
+    if (summaryAddonKindVisible('dialCode')) sum += dialCodeCost;
+    return sum;
+  })();
 
   const summaryLines = (
     <>
       <div className="space-y-3 text-sm text-[#7A736C]">
         <div className="flex justify-between items-start gap-4">
           <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
-          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{basePrice} zł</span>
+          {showConfiguratorSummaryPrices && (
+            <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">
+              {summaryCatalogBasePrice} zł
+            </span>
+          )}
         </div>
 
-        <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-          <span className="min-w-0 pl-3">Darmowy charms x1</span>
-        </div>
-        {usesKarabinerQuantityStep && karabinerQuantitiesTotal(formData.karabinerQuantities) > 0 && (
+        {showConfiguratorSummaryPrices && (
+          <>
+        {isClassicTagConfigurator && formData.tagModel.trim() && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Model</span>
+            <span className="shrink-0 text-right max-w-[55%]">{tagModelLabel(formData.tagModel)}</span>
+          </div>
+        )}
+
+        {isClassicTagConfigurator && formData.ringColor.trim() && formData.ringColor !== 'glow' && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Oprawa</span>
+            <span className="shrink-0 text-right max-w-[55%] text-[#161616]">
+              {oprawaDisplayAdjective(formData.ringColor)}
+            </span>
+          </div>
+        )}
+
+        {showConfiguratorSummaryPrices && isClassicTagConfigurator && formData.ringColor === 'kwiat' && (
+          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+            <span className="min-w-0 pl-3">Oprawa kwiat</span>
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+              +{OPRAWA_KWIAT_SURCHARGE_PLN} zł
+            </span>
+          </div>
+        )}
+
+        {isClassicTagConfigurator && formData.baseOption.trim() && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Kolor</span>
+            <span className="shrink-0 text-right max-w-[55%]">
+              {findTitle(selectedBases, formData.baseOption, formData.baseOption)}
+            </span>
+          </div>
+        )}
+
+        {usesStepOrderedAddonSummary
+          ? configuratorAddonSummaryOrder.map((kind) => {
+              if (!summaryAddonKindVisible(kind)) return null;
+              if (kind === 'sticker') {
+                if (
+                  skipsGraphicsStep ||
+                  formData.wantSticker !== 'tak' ||
+                  !formData.stickerOption
+                ) {
+                  return null;
+                }
+                return (
+                  <div
+                    key="addon-sticker"
+                    className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]"
+                  >
+                    <span className="min-w-0 pl-3">Naklejka ({stickerLabel(formData.stickerOption)})</span>
+                    <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
+                  </div>
+                );
+              }
+              if (kind === 'beadNecklace') {
+                if (!isBeadNecklaceModel || formData.beadNecklaceColors.length === 0 || beadNecklacePrice <= 0) {
+                  return null;
+                }
+                return (
+                  <div key="addon-bead-necklace">
+                    <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                      <span className="min-w-0 pl-3">
+                        Koraliki
+                        {stringSizeText ? ` (${stringSizeText})` : ''}
+                        {formData.beadNecklaceColors.length > 1
+                          ? ` ×${formData.beadNecklaceColors.length}`
+                          : ''}
+                      </span>
+                      <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                        +{beadNecklacePrice} zł
+                      </span>
+                    </div>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {beadNecklaceColorLabels(formData.beadNecklaceColors).map((label) => (
+                        <li key={label}>{label}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'neckCircumference') {
+                if (!formData.stringLength.trim()) return null;
+                return (
+                  <div
+                    key="addon-neck-circumference"
+                    className="flex justify-between items-start gap-4 text-xs text-[#7E746C]"
+                  >
+                    <span className="min-w-0 pl-3">Obwód szyi</span>
+                    <span className="shrink-0 text-right max-w-[55%]">
+                      {stringSizeText
+                        ? `${formData.stringLength} cm (${stringSizeText})`
+                        : `${formData.stringLength} cm`}
+                    </span>
+                  </div>
+                );
+              }
+              if (kind === 'stringsPremium' && formData.premiumStrings.length > 0) {
+                return (
+                  <div key="addon-premium-strings">
+                    <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                      <span className="min-w-0 pl-3">Sznurek Premium x{formData.premiumStrings.length}</span>
+                      <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                        {premiumStringPrice
+                          ? `+${formData.premiumStrings.length * premiumStringPrice} zł (${premiumStringPrice} zł/szt)`
+                          : 'cena wg rozmiaru'}
+                      </span>
+                    </div>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {formData.premiumStrings.map((id) => (
+                        <li key={id}>{premiumStringDisplayValue(id)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'stringsClassic' && formData.classicStrings.length > 0) {
+                return (
+                  <div key="addon-classic-strings">
+                    <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                      <span className="min-w-0 pl-3">Sznurek Klasyczny x{formData.classicStrings.length}</span>
+                      <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                        {classicStringPrice
+                          ? `+${formData.classicStrings.length * classicStringPrice} zł (${classicStringPrice} zł/szt)`
+                          : 'cena wg rozmiaru'}
+                      </span>
+                    </div>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {formData.classicStrings.map((id) => (
+                        <li key={id}>{classicStringDisplayValue(id)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'stringsGlow' && formData.glowStrings.length > 0) {
+                return (
+                  <div key="addon-glow-strings">
+                    <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                      <span className="min-w-0 pl-3">Sznurek Glow x{formData.glowStrings.length}</span>
+                      <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                        {glowStringPrice
+                          ? `+${formData.glowStrings.length * glowStringPrice} zł (${glowStringPrice} zł/szt)`
+                          : 'cena wg rozmiaru'}
+                      </span>
+                    </div>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {formData.glowStrings.map((id) => (
+                        <li key={id}>{glowStringDisplayValue(id)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'charms') {
+                if (formData.wantExtraCharms !== 'tak' || formData.extraCharms.length === 0) return null;
+                return (
+                  <div key="addon-charms">
+                    <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                      <span className="min-w-0 pl-3">
+                        Charms (zawieszki) x{formData.extraCharms.length}
+                      </span>
+                      <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                        +{charmsTotalPln(formData.extraCharms, charmUnitPrices)} zł
+                      </span>
+                    </div>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {formData.extraCharms.map((id) => (
+                        <li key={id}>{extraCharmDisplayValue(id)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'karabiners') {
+                if (
+                  !usesKarabinerQuantityStep ||
+                  karabinerQuantitiesTotal(formData.karabinerQuantities) <= 0
+                ) {
+                  return null;
+                }
+                return (
+                  <div key="addon-karabiners">
+                    <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                      <span className="min-w-0 pl-3">
+                        Karabińczyki x{karabinerQuantitiesTotal(formData.karabinerQuantities)}
+                      </span>
+                      {extraKarabinersCost > 0 && (
+                        <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                          +{extraKarabinersCost} zł
+                        </span>
+                      )}
+                    </div>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {karabinerSummaryLineItems.map((line, index) => (
+                        <li key={`karabiner-summary-${index}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'stopers') {
+                if (formData.wantStopers !== 'tak') return null;
+                return (
+                  <div
+                    key="addon-stopers"
+                    className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]"
+                  >
+                    <span className="min-w-0 pl-3">
+                      Stopery (
+                      {stopperSelectionLabel(
+                        formData.extraStopers.length ? formData.extraStopers : [defaultStopperId],
+                      )}
+                      )
+                    </span>
+                    <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{STOPPER_PRICE} zł</span>
+                  </div>
+                );
+              }
+              if (kind === 'dialCode') {
+                if (formData.includePhoneCode !== 'tak') return null;
+                return (
+                  <div
+                    key="addon-dial-code"
+                    className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]"
+                  >
+                    <span className="min-w-0 pl-3">Numer kierunkowy na adresówce</span>
+                    <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{DIAL_CODE_PRICE} zł</span>
+                  </div>
+                );
+              }
+              return null;
+            })
+          : null}
+
+        {!usesStepOrderedAddonSummary &&
+          jewelryConfiguratorAddonOrder({
+            configuratorId: activeProduct.configuratorId,
+            ringColor: formData.ringColor,
+            tagModel: formData.tagModel,
+          }).map((kind) => {
+          if (!summaryAddonKindVisible(kind)) return null;
+          if (kind === 'sticker') {
+            if (
+              skipsGraphicsStep ||
+              formData.wantSticker !== 'tak' ||
+              !formData.stickerOption
+            ) {
+              return null;
+            }
+            return (
+              <div
+                key="addon-sticker"
+                className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]"
+              >
+                <span className="min-w-0 pl-3">Naklejka ({stickerLabel(formData.stickerOption)})</span>
+                <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
+              </div>
+            );
+          }
+          if (kind === 'karabiners') {
+            if (
+              !usesKarabinerQuantityStep ||
+              karabinerQuantitiesTotal(formData.karabinerQuantities) <= 0
+            ) {
+              return null;
+            }
+            return (
+              <div key="addon-karabiners">
+                <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                  <span className="min-w-0 pl-3">
+                    Karabińczyki x{karabinerQuantitiesTotal(formData.karabinerQuantities)}
+                  </span>
+                  {extraKarabinersCost > 0 && (
+                    <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                      +{extraKarabinersCost} zł
+                    </span>
+                  )}
+                </div>
+                <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                  {karabinerSummaryLineItems.map((line, index) => (
+                    <li key={`karabiner-summary-${index}`}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          if (formData.wantExtraCharms !== 'tak' || formData.extraCharms.length === 0) return null;
+          return (
+            <div key="addon-charms">
+              <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+                <span className="min-w-0 pl-3">
+                  Charms (zawieszki) x{formData.extraCharms.length}
+                </span>
+                <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                  +{charmsTotalPln(formData.extraCharms, charmUnitPrices)} zł
+                </span>
+              </div>
+              <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                {formData.extraCharms.map((id) => (
+                  <li key={id}>{extraCharmDisplayValue(id)}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+
+        {!usesStepOrderedAddonSummary &&
+          summaryAddonKindVisible('stringsPremium') &&
+          formData.premiumStrings.length > 0 && (
+          <div key="addon-premium-strings">
+            <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+              <span className="min-w-0 pl-3">Sznurek Premium x{formData.premiumStrings.length}</span>
+              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                {premiumStringPrice
+                  ? `+${formData.premiumStrings.length * premiumStringPrice} zł (${premiumStringPrice} zł/szt)`
+                  : 'cena wg rozmiaru'}
+              </span>
+            </div>
+            <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+              {formData.premiumStrings.map((id) => (
+                <li key={id}>{premiumStringDisplayValue(id)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!usesStepOrderedAddonSummary &&
+          summaryAddonKindVisible('stringsClassic') &&
+          formData.classicStrings.length > 0 && (
+          <div key="addon-classic-strings">
+            <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+              <span className="min-w-0 pl-3">Sznurek Klasyczny x{formData.classicStrings.length}</span>
+              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                {classicStringPrice
+                  ? `+${formData.classicStrings.length * classicStringPrice} zł (${classicStringPrice} zł/szt)`
+                  : 'cena wg rozmiaru'}
+              </span>
+            </div>
+            <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+              {formData.classicStrings.map((id) => (
+                <li key={id}>{classicStringDisplayValue(id)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!usesStepOrderedAddonSummary &&
+          summaryAddonKindVisible('stringsGlow') &&
+          formData.glowStrings.length > 0 && (
+          <div key="addon-glow-strings">
+            <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+              <span className="min-w-0 pl-3">Sznurek Glow x{formData.glowStrings.length}</span>
+              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                {glowStringPrice
+                  ? `+${formData.glowStrings.length * glowStringPrice} zł (${glowStringPrice} zł/szt)`
+                  : 'cena wg rozmiaru'}
+              </span>
+            </div>
+            <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+              {formData.glowStrings.map((id) => (
+                <li key={id}>{glowStringDisplayValue(id)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!usesStepOrderedAddonSummary &&
+          summaryAddonKindVisible('stopers') &&
+          formData.wantStopers === 'tak' && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">
-              Karabińczyki x{karabinerQuantitiesTotal(formData.karabinerQuantities)}
-              {karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey) > 0
-                ? ` (płatne: ${karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey)})`
-                : ' (1 szt. gratis)'}
+              Stopery (
+              {stopperSelectionLabel(
+                formData.extraStopers.length ? formData.extraStopers : [defaultStopperId],
+              )}
+              )
             </span>
-            {extraKarabinersCost > 0 && (
-              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{extraKarabinersCost} zł</span>
-            )}
+            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{STOPPER_PRICE} zł</span>
           </div>
         )}
 
-        {formData.wantExtraCharms === 'tak' && formData.extraCharms.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Dodatkowe charms x{formData.extraCharms.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraCharms.length * EXTRA_CHARM_PRICE} zł ({EXTRA_CHARM_PRICE} zł/szt)</span>
-          </div>
-        )}
-
-
-        {formData.wantString === 'tak' && formData.premiumStrings.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Sznurek Premium x{formData.premiumStrings.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-              {premiumStringPrice
-                ? `+${formData.premiumStrings.length * premiumStringPrice} zł (${premiumStringPrice} zł/szt)`
-                : 'cena wg rozmiaru'}
-            </span>
-          </div>
-        )}
-
-        {formData.wantString === 'tak' && formData.classicStrings.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Sznurek Klasyczny x{formData.classicStrings.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-              {classicStringPrice
-                ? `+${formData.classicStrings.length * classicStringPrice} zł (${classicStringPrice} zł/szt)`
-                : 'cena wg rozmiaru'}
-            </span>
-          </div>
-        )}
-
-        {formData.wantString === 'tak' && formData.glowStrings.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Sznurek Glow x{formData.glowStrings.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-              {glowStringPrice
-                ? `+${formData.glowStrings.length * glowStringPrice} zł (${glowStringPrice} zł/szt)`
-                : 'cena wg rozmiaru'}
-            </span>
-          </div>
-        )}
-
-        {formData.wantStopers === 'tak' && formData.extraStopers.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Stopery ({stopperSelectionLabel(formData.extraStopers)})</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{formData.extraStopers.length * 5} zł ({formData.extraStopers.length}×5 zł)</span>
-          </div>
-        )}
-
-        {formData.wantSticker === 'tak' && formData.stickerOption && !skipsGraphicsStep && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Naklejka (Pies {formData.stickerOption})</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
-          </div>
-        )}
-
-        {formData.includePhoneCode === 'tak' && (
+        {!usesStepOrderedAddonSummary &&
+          summaryAddonKindVisible('dialCode') &&
+          formData.includePhoneCode === 'tak' && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Numer kierunkowy na adresówce</span>
             <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{DIAL_CODE_PRICE} zł</span>
           </div>
         )}
+          </>
+        )}
       </div>
 
+      {showConfiguratorSummaryPrices && (
       <div className="border-t border-[#D6C7AE] pt-4">
         <div className="flex justify-between items-baseline gap-4">
           <span className="text-base font-serif font-bold text-[#161616]">Cena całkowita:</span>
-          <span className="text-2xl font-bold text-[#161616] shrink-0 text-right tabular-nums">{totalPrice} zł</span>
+          <span className="text-2xl font-bold text-[#161616] shrink-0 text-right tabular-nums">
+            {configuratorSummaryDisplayTotal} zł
+          </span>
         </div>
       </div>
+      )}
     </>
   );
 
@@ -2128,12 +2903,21 @@ export default function Home() {
           </div>
         )}
         {rogalikUsesBeadMounting && formData.rogalikCharms.length > 0 && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Charmsy ×{formData.rogalikCharms.length}</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-              +{formData.rogalikCharms.length * EXTRA_CHARM_PRICE} zł ({EXTRA_CHARM_PRICE} zł/szt)
-            </span>
-          </div>
+          <>
+            <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
+              <span className="min-w-0 pl-3">Charmsy ×{formData.rogalikCharms.length}</span>
+              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                +{charmsTotalPln(formData.rogalikCharms, charmUnitPrices)} zł
+              </span>
+            </div>
+            <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+              {formData.rogalikCharms.map((id) => (
+                <li key={id}>
+                  {charmSummaryLine(id, rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id), charmUnitPrices)}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
         {rogalikMountingUsesKarabinczyk(formData.rogalikMounting) && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -2190,7 +2974,73 @@ export default function Home() {
         glowTextColor: item.config.glowTextColor,
       }),
       includeDialCode: item.config.includePhoneCode === 'tak',
+      charmUnitPrices,
     });
+
+  const classicCartPriceLines = (item: CartItem) =>
+    classicCartPriceBreakdown(
+      {
+        productSlug: item.productSlug,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.image,
+        productName: item.productName,
+        config: item.config,
+      },
+      { charmPrices: charmUnitPrices, tagModelBasePrices },
+    );
+
+  const classicCartShowsPriceBreakdown = (item: CartItem) =>
+    classicTagShowsItemPriceBreakdown(item.config.tagModel, item.config.ringColor);
+
+  const renderClassicCartSummaryMeta = (item: CartItem) => {
+    const configOptionLabels = new Set([
+      'Model',
+      'Koraliki',
+      'Oprawa',
+      'Kolor',
+      'Napis',
+      'Charms (zawieszki)',
+      'Sznurek Premium',
+      'Sznurek Klasyczny',
+      'Sznurek Glow',
+      'Karabińczyki',
+      'Naklejka',
+    ]);
+    const listStyleOptionLabels = new Set([
+      'Koraliki',
+      'Charms (zawieszki)',
+      'Karabińczyki',
+      'Sznurek Premium',
+      'Sznurek Klasyczny',
+      'Sznurek Glow',
+    ]);
+    const configOptions = item.options.filter((option) => configOptionLabels.has(option.label));
+    const rowClass = 'flex justify-between items-start gap-2';
+    const valueClass = 'shrink-0 text-right max-w-[55%] text-[#161616]';
+    if (configOptions.length === 0) return null;
+    return (
+      <div className="text-xs text-[#7A736C] mt-1 space-y-0.5">
+        {configOptions.map((option) =>
+          listStyleOptionLabels.has(option.label) ? (
+            <div key={`${item.id}-${option.label}`} className="pt-0.5">
+              <p>{option.label}:</p>
+              <ul className="mt-0.5 space-y-0.5 pl-3 list-disc list-inside text-[#161616] font-medium">
+                {option.values.map((value, index) => (
+                  <li key={`${item.id}-${option.label}-${index}`}>{value}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div key={`${item.id}-${option.label}`} className={rowClass}>
+              <span>{option.label}</span>
+              <span className={valueClass}>{option.values.join(', ')}</span>
+            </div>
+          ),
+        )}
+      </div>
+    );
+  };
 
   const renderRogalikCartPriceBreakdown = (lines: RogalikPriceLine[], quantity: number) => (
     <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
@@ -2227,6 +3077,11 @@ export default function Home() {
     if (!active) return;
     const left = active.offsetLeft - container.clientWidth / 2 + active.offsetWidth / 2;
     container.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }, [currentStep, activeTab, isTagConfigurator]);
+
+  useEffect(() => {
+    if (activeTab !== 'configurator' || !isTagConfigurator) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep, activeTab, isTagConfigurator]);
 
   useEffect(() => {
@@ -2271,6 +3126,31 @@ export default function Home() {
       cancelled = true;
     };
   }, [activeTab, placedOrder]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getTagModelStartPrices(), getTagModelBasePrices()]).then(
+      ([startResult, baseResult]) => {
+        if (cancelled) return;
+        if (startResult.ok) setTagModelStartPrices(startResult.prices);
+        if (baseResult.ok) setTagModelBasePrices(baseResult.prices);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getCharmUnitPrices().then((result) => {
+      if (cancelled || !result.ok) return;
+      setCharmUnitPrices(result.prices);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!expressShippingOffered && checkoutData.fastDelivery) {
@@ -2388,7 +3268,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      {charmMountingTarget?.type === 'free' && (
+      {freeCharmMountingCharmId !== null && (
         <div className="fixed inset-0 z-[80] bg-[#161616]/40 flex items-center justify-center p-4">
           <div
             role="dialog"
@@ -2429,6 +3309,15 @@ export default function Home() {
             <p className="text-xs text-[#7A736C] font-light leading-relaxed pt-1 border-t border-[#D6C7AE]">
               *Informacja: Wybrany sposób mocowania traktujemy jako preferencję klienta. Zastrzegamy sobie prawo do zmiany techniki montażu ze względów estetycznych lub praktycznych, aby zapewnić najwyższą jakość i trwałość wyrobu.
             </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setFreeCharmMountingCharmId(null)}
+                className="px-5 py-2.5 rounded-none border border-[#D6C7AE] bg-white text-sm text-[#161616] hover:border-[#C4A574] transition-colors"
+              >
+                Anuluj
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2590,17 +3479,7 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <div
-                className={
-                  currentStep < totalSteps
-                    ? compactStepsBar
-                      ? 'lg:invisible lg:pointer-events-none'
-                      : 'lg:hidden'
-                    : undefined
-                }
-              >
-                {renderNextButton()}
-              </div>
+              {currentStep < totalSteps ? renderNextButton() : null}
             </div>
           </div>
         )}
@@ -2757,8 +3636,18 @@ export default function Home() {
                               {formatPrice(item.price * item.quantity)}
                             </span>
                           </div>
-                          {isRogalikCartItem(item) &&
-                            renderRogalikCartPriceBreakdown(rogalikCartPriceLines(item), item.quantity)}
+                          {renderClassicCartSummaryMeta(item)}
+                          {isRogalikCartItem(item)
+                            ? renderRogalikCartPriceBreakdown(
+                                rogalikCartPriceLines(item),
+                                item.quantity,
+                              )
+                            : classicCartShowsPriceBreakdown(item)
+                              ? renderRogalikCartPriceBreakdown(
+                                  classicCartPriceLines(item),
+                                  item.quantity,
+                                )
+                              : null}
                         </div>
                       );
                     })}
@@ -3140,15 +4029,27 @@ export default function Home() {
                           <div className="w-14 h-14 rounded-lg overflow-hidden bg-white shrink-0 border border-[#D6C7AE]">
                             <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
                           </div>
-                          <p className="flex-1 min-w-0 font-bold text-[#161616]">
-                            {productLineTitle(item.productName, petName)}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-[#161616]">
+                              {productLineTitle(item.productName, petName)}
+                            </p>
+                            {renderClassicCartSummaryMeta(item)}
+                          </div>
                           <span className="font-bold text-[#161616] whitespace-nowrap">
                             {formatPrice(item.price * item.quantity)}
                           </span>
                         </div>
-                        {isRogalikCartItem(item) &&
-                          renderRogalikCartPriceBreakdown(rogalikCartPriceLines(item), item.quantity)}
+                        {isRogalikCartItem(item)
+                          ? renderRogalikCartPriceBreakdown(
+                              rogalikCartPriceLines(item),
+                              item.quantity,
+                            )
+                          : classicCartShowsPriceBreakdown(item)
+                            ? renderRogalikCartPriceBreakdown(
+                                classicCartPriceLines(item),
+                                item.quantity,
+                              )
+                            : null}
                       </div>
                     );
                   })}
@@ -3289,13 +4190,23 @@ export default function Home() {
               {/* Kolumna główna (formularz/opcje) */}
               <div className="flex-grow min-w-0">
                 <div className="bg-[#F9F5ED] p-4 md:px-10 md:pt-5 md:pb-10 border border-[#D6C7AE] min-h-0 md:min-h-[450px] flex flex-col">
-                  <div className="space-y-4 md:space-y-5">
+                  <div
+                    className={
+                      usesNecklaceStyleKarabinerStep && contentStep === 5
+                        ? 'space-y-1 md:space-y-1.5'
+                        : 'space-y-2 md:space-y-3'
+                    }
+                  >
                     <span className="text-[#C4A574] font-light uppercase tracking-[0.22em] md:tracking-[0.28em] text-[11px]">Krok {currentStep} z {totalSteps} · {activeProduct.name}</span>
                     <h2 className="text-2xl md:text-4xl font-serif font-light text-[#161616]">
                       {stepsInfo[currentStep - 1].label}
                     </h2>
                     
-                    <div className="pt-4">
+                    <div
+                      className={
+                        usesNecklaceStyleKarabinerStep && contentStep === 5 ? 'pt-0.5 md:pt-1' : 'pt-1 md:pt-2'
+                      }
+                    >
                       {isRogalikTagConfigurator && rogalikFlowStep === 'kolor' && (
                         <RogalikConfiguratorStep
                           formData={formData}
@@ -3355,11 +4266,67 @@ export default function Home() {
 
                       {isRogalikTagConfigurator && rogalikFlowStep === 'karabinier' && renderClassicKarabinerStep()}
 
-                      {!isRogalikTagConfigurator && contentStep === 1 && (
-                        <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-ring-choice">
-                          <p className="font-bold text-base text-[#161616]">Wybierz kolor oprawy, który najlepiej podkreśli styl Twojego pupila:</p>
+                      {isClassicTagConfigurator && contentStep === 13 && (
+                        <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-model-choice">
+                          {showModelErrors && !formData.tagModel.trim() && (
+                            <p className="text-sm text-red-500">Wybierz model.</p>
+                          )}
+                          <div className="grid grid-cols-2 gap-4 md:gap-8">
+                            {TAG_MODEL_OPTIONS.map((item) => (
+                              <div
+                                key={item.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => applyClassicTagModelSelection(item.id)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    applyClassicTagModelSelection(item.id);
+                                  }
+                                }}
+                                className={`cursor-pointer rounded-none p-3 md:p-6 border transition-colors duration-300 flex flex-col items-stretch ${
+                                  formData.tagModel === item.id
+                                    ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                    : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                }`}
+                              >
+                                <div className="relative w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] flex items-center justify-center">
+                                  <img src={item.image} alt={item.label} className="w-full h-full object-cover" />
+                                  <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[#9AAD92] px-4 py-1.5 font-serif text-sm md:text-base text-white whitespace-nowrap shadow-sm">
+                                    {tagModelStartPriceLabel(tagModelStartPrices[item.id])}
+                                  </span>
+                                </div>
+                                <p className="text-center text-xs md:text-sm font-medium text-[#161616] leading-snug px-1">
+                                  {item.label}
+                                </p>
+                                <div
+                                  className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${
+                                    formData.tagModel === item.id
+                                      ? 'border-[#3A5A40] bg-[#3A5A40]'
+                                      : 'border-zinc-300'
+                                  }`}
+                                >
+                                  {formData.tagModel === item.id && (
+                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-center text-xs md:text-sm text-[#7A736C] leading-relaxed max-w-2xl mx-auto px-2">
+                            Zdjęcia przedstawiają przykładowy wygląd adresówek i sposób umieszczenie informacji - nie
+                            odnoszą się do konkretnych modeli. Na adresówce można umieścić imię pupila oraz numer
+                            telefonu właściciela.
+                          </p>
+                        </div>
+                      )}
+
+                      {isClassicTagConfigurator && contentStep === 1 && (
+                        <div className="space-y-8 scroll-mt-28" data-configurator-section="classic-ring-choice">
+                          <div className="space-y-4">
+                          <p className="font-bold text-base text-[#161616]">Wybierz rodzaj oprawy, który najlepiej podkreśli styl Twojego pupila:</p>
                           {showRingErrors && !formData.ringColor.trim() && (
-                            <p className="text-sm text-red-500">Wybierz kolor oprawy.</p>
+                            <p className="text-sm text-red-500">Wybierz rodzaj oprawy.</p>
                           )}
                           <UniformTwoLineFontScope titleTexts={ringsList.map((item) => item.title)}>
                           <div className={imageGridClass(ringsList.length)} data-uniform-font-grid>
@@ -3376,14 +4343,22 @@ export default function Home() {
                                       nextQuantities[karabinerId] = qty;
                                     }
                                   }
-                                  if (karabinerQuantitiesTotal(nextQuantities) === 0 && nextKarabiners[0]) {
+                                  if (
+                                    karabinerQuantitiesTotal(nextQuantities) === 0 &&
+                                    nextKarabiners[0] &&
+                                    !tagModelSkipsDefaultKarabinerSelection(formData.tagModel)
+                                  ) {
                                     nextQuantities[nextKarabiners[0].id] = 1;
                                   }
                                   const legacy = orderKarabinersFromQuantities(nextQuantities, item.id);
+                                  const allowedCharmIds = new Set(
+                                    configuratorCharmCatalogForRing(item.id).map((charm) => charm.id),
+                                  );
                                   setFormData({
                                     ...formData,
                                     ringColor: item.id,
                                     baseOption: basesForRing(item.id)[0]?.id ?? '1',
+                                    extraCharms: formData.extraCharms.filter((id) => allowedCharmIds.has(id)),
                                     karabinerQuantities: nextQuantities,
                                     karabinerOption: legacy.baseCarabiner === '-' ? '' : legacy.baseCarabiner,
                                     wantExtraKarabiners: legacy.extraCarabiner.length > 0 ? 'tak' : 'nie',
@@ -3391,15 +4366,15 @@ export default function Home() {
                                     ...(item.id === 'kwiat' ? { wantSticker: 'nie', stickerOption: '' } : {}),
                                   });
                                 }}
-                                className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-stretch ${
+                                className={`cursor-pointer rounded-none ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-stretch ${
                                   formData.ringColor === item.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                  <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                <div className={configuratorTileMediaClass}>
+                                  <img src={item.image} alt={item.title} className={configuratorTileImageClass} />
                                 </div>
-                                <ConfiguratorTileTitle text={item.title} />
-                                <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
+                                <ConfiguratorTileTitle text={item.title} reserveTwoLines={false} />
+                                <ul className="mt-0.5 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
                                   {item.details.map((detail) => (
                                     <li key={detail.label} className="whitespace-nowrap">
                                       <span className="text-[#161616]">{detail.label}:</span>{' '}
@@ -3414,35 +4389,95 @@ export default function Home() {
                             ))}
                           </div>
                           </UniformTwoLineFontScope>
+                          </div>
+
+                          {isClassicTagConfigurator && (
+                            <div
+                              className="space-y-4 pt-6 border-t border-[#D6C7AE] scroll-mt-28"
+                              data-configurator-section="classic-base-choice"
+                            >
+                              <p className="font-bold text-base text-[#161616]">Kolor</p>
+                              {showBaseErrors &&
+                                (!formData.baseOption.trim() ||
+                                  !selectedBases.some((base) => base.id === formData.baseOption)) && (
+                                  <p className="text-sm text-red-500">Wybierz kolor bazy.</p>
+                                )}
+                              {!formData.ringColor.trim() && (
+                                <p className="text-sm text-[#7A736C]">Najpierw wybierz rodzaj oprawy powyżej.</p>
+                              )}
+                              {formData.ringColor.trim() && (
+                                <UniformTwoLineFontScope titleTexts={selectedBases.map((base) => base.title)}>
+                                  <div className={baseColorGridClass} data-uniform-font-grid>
+                                    {selectedBases.map((base) => (
+                                      <div
+                                        key={base.id}
+                                        data-uniform-font-cell
+                                        onClick={() => setFormData({ ...formData, baseOption: base.id })}
+                                        className={`cursor-pointer rounded-none ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col ${
+                                          base.details ? 'items-stretch' : 'items-center text-center'
+                                        } ${
+                                          formData.baseOption === base.id
+                                            ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                            : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                        }`}
+                                      >
+                                        <div className={configuratorTileMediaClass}>
+                                          {base.images && base.images.length > 1 ? (
+                                            <ImageGallery items={base.images} alt={base.title} stopPropagation />
+                                          ) : (
+                                            <img
+                                              src={basePreviewImage(base)}
+                                              alt={base.title}
+                                              className={configuratorTileImageClass}
+                                            />
+                                          )}
+                                        </div>
+                                        <ConfiguratorTileTitle text={base.title} reserveTwoLines={false} />
+                                        {base.details && (
+                                          <ul className="mt-0.5 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
+                                            {base.details.map((detail, detailIndex) => (
+                                              <li key={`${base.id}-${detailIndex}`} className="whitespace-nowrap">
+                                                {detail.label ? (
+                                                  <>
+                                                    <span className="text-[#161616]">{detail.label}:</span>{' '}
+                                                    {detail.value}
+                                                  </>
+                                                ) : (
+                                                  <span className="text-[#161616]">{detail.value}</span>
+                                                )}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        )}
+                                        <div
+                                          className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${
+                                            formData.baseOption === base.id
+                                              ? 'border-[#3A5A40] bg-[#3A5A40]'
+                                              : 'border-zinc-300'
+                                          }`}
+                                        >
+                                          {formData.baseOption === base.id && (
+                                            <div className="w-2 h-2 rounded-full bg-white" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </UniformTwoLineFontScope>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {!isRogalikTagConfigurator && contentStep === 2 && (
+                      {isGlowTagConfigurator && contentStep === 2 && (
                         <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-base-choice">
-                          <p className="font-bold text-base text-[#161616]">
-                            {isGlowTagConfigurator ? (
-                              'Wybierz kolor adresówki'
-                            ) : (
-                              <>
-                                Wybierz bazę (dla oprawy:{' '}
-                                <span className="uppercase text-[#C4A574]">
-                                  {formData.ringColor ? oprawaLabel(formData.ringColor) : '—'}
-                                </span>
-                                ):
-                              </>
-                            )}
-                          </p>
+                          <p className="font-bold text-base text-[#161616]">Wybierz kolor adresówki</p>
                           {showBaseErrors &&
                             (!formData.baseOption.trim() ||
                               !selectedBases.some((base) => base.id === formData.baseOption)) && (
-                              <p className="text-sm text-red-500">
-                                {isGlowTagConfigurator ? 'Wybierz kolor adresówki.' : 'Wybierz bazę.'}
-                              </p>
+                              <p className="text-sm text-red-500">Wybierz kolor adresówki.</p>
                             )}
-                          {!isGlowTagConfigurator && !formData.ringColor.trim() && (
-                            <p className="text-sm text-[#7A736C]">Najpierw wybierz oprawę w poprzednim kroku.</p>
-                          )}
-                          {(isGlowTagConfigurator || formData.ringColor.trim()) && (
                           <UniformTwoLineFontScope titleTexts={selectedBases.map((base) => base.title)}>
                           <div className={imageGridClass(selectedBases.length)} data-uniform-font-grid>
                             {selectedBases.map((base) => (
@@ -3463,9 +4498,9 @@ export default function Home() {
                                     <img src={basePreviewImage(base)} alt={base.title} className="w-full h-full object-cover" />
                                   )}
                                 </div>
-                                <ConfiguratorTileTitle text={base.title} />
+                                <ConfiguratorTileTitle text={base.title} reserveTwoLines={false} />
                                 {base.details && (
-                                  <ul className="mt-1 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
+                                  <ul className="mt-0.5 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
                                     {base.details.map((detail, detailIndex) => (
                                       <li key={`${base.id}-${detailIndex}`} className="whitespace-nowrap">
                                         {detail.label ? (
@@ -3487,11 +4522,10 @@ export default function Home() {
                             ))}
                           </div>
                           </UniformTwoLineFontScope>
-                          )}
                         </div>
                       )}
 
-                      {!isRogalikTagConfigurator && contentStep === 12 && (
+                      {isGlowTagConfigurator && contentStep === 12 && (
                         <div className="space-y-4 scroll-mt-28" data-configurator-section="classic-glow-text-choice">
                           <p className="font-bold text-base text-[#161616]">Wybierz kolor napisu</p>
                           {showGlowTextErrors && !formData.glowTextColor.trim() && (
@@ -3552,44 +4586,11 @@ export default function Home() {
                         </div>
                       )}
 
-                      {!isRogalikTagConfigurator && contentStep === 3 && (
-                        <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-free-charm-choice">
-                          <div className="space-y-2">
-                            <p className="font-bold text-base text-[#161616]">Wybierz swój pierwszy, darmowy charms:</p>
-                            {isGlowTagConfigurator && (
-                              <p className="text-base font-normal text-[#161616]">
-                                Rekomendujemy wybór małych charmsów, aby nie zasłaniały powierzchni adresówki i nie ograniczały efektu świecenia w ciemności.
-                              </p>
-                            )}
-                          </div>
-                          {showFreeCharmErrors && !formData.charmOption.trim() && (
-                            <p className="text-sm text-red-500">Wybierz darmowy charms.</p>
-                          )}
-                          {showFreeCharmErrors &&
-                            formData.charmOption.trim() &&
-                            charmUnavailable(
-                              formData.charmOption,
-                              charmsList.find((item) => item.id === formData.charmOption)?.unavailable,
-                            ) && (
-                              <p className="text-sm text-red-500">
-                                Wybrany charms jest chwilowo niedostępny — wybierz inny.
-                              </p>
-                            )}
-
-                          {renderCharmSection('Charmsy główne', [...charmBestsellersList, ...charmCatalogList], renderFreeCharmCard)}
-                          {renderCharmSection('Charmsy w srebrnym kolorze', charmSilverList, renderFreeCharmCard)}
-                          {renderCharmSection(
-                            'Duże charmsy (w przypadku wyboru tego modelu napis zostanie umieszczony w dolnej części adresówki)',
-                            charmLargeList,
-                            renderFreeCharmCard,
-                          )}
-                        </div>
-                      )}
-
-                      {!isRogalikTagConfigurator && contentStep === 4 && (
-                        <div className="space-y-6">
-                          <div className="space-y-6 scroll-mt-28" data-configurator-section="extra-charms-choice">
-                          <p className="font-bold text-base text-[#161616]">Dodaj kolejne zawieszki, aby adresówka była jeszcze bardziej stylowa i przyciągała wzrok na spacerach</p>
+                      {(isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 3 && (
+                        <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-charms-choice">
+                          <p className="font-bold text-base text-[#161616]">
+                            Czy chcesz dodać charms (zawieszki)?
+                          </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
                               { id: 'tak', label: 'Tak' },
@@ -3597,125 +4598,189 @@ export default function Home() {
                             ].map((option) => (
                               <div
                                 key={option.id}
-                                onClick={() => setFormData({
-                                  ...formData, 
-                                  wantExtraCharms: option.id,
-                                  extraCharms: option.id === 'nie' ? [] : formData.extraCharms,
-                                  extraCharmMountings: option.id === 'nie' ? {} : formData.extraCharmMountings,
-                                })}
+                                onClick={() =>
+                                  setFormData({
+                                    ...formData,
+                                    wantExtraCharms: option.id,
+                                    extraCharms: option.id === 'nie' ? [] : formData.extraCharms,
+                                    extraCharmMountings:
+                                      option.id === 'nie' ? {} : formData.extraCharmMountings,
+                                  })
+                                }
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantExtraCharms === option.id
+                                    ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                    : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
                                 <ConfiguratorChoiceLabel text={option.label} />
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantExtraCharms === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.wantExtraCharms === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                                <div
+                                  className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                                    formData.wantExtraCharms === option.id
+                                      ? 'border-[#3A5A40] bg-[#3A5A40]'
+                                      : 'border-zinc-300'
+                                  }`}
+                                >
+                                  {formData.wantExtraCharms === option.id && (
+                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                  )}
                                 </div>
                               </div>
                             ))}
                           </div>
-                          {showExtraCharmsErrors && formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0 && (
-                            <p className="text-sm text-red-500">Wybierz co najmniej jeden dodatkowy charms.</p>
-                          )}
-                          </div>
 
                           {formData.wantExtraCharms === 'tak' && (
                             <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
-                              <div className="space-y-2">
-                                <p className="font-bold text-base text-[#161616]">Wybierz dodatkowe charms (możesz zaznaczyć wiele):</p>
-                                {isGlowTagConfigurator && (
-                                  <p className="text-base font-normal text-[#161616]">
-                                    Rekomendujemy wybór małych charmsów, aby nie zasłaniały powierzchni adresówki i nie ograniczały efektu świecenia w ciemności.
+                              {isGlowTagConfigurator && (
+                                <p className="text-base font-normal text-[#161616]">
+                                  Rekomendujemy wybór małych charmsów, aby nie zasłaniały powierzchni adresówki i
+                                  nie ograniczały efektu świecenia w ciemności.
+                                </p>
+                              )}
+                              {showExtraCharmsErrors && formData.extraCharms.length === 0 && (
+                                <p className="text-sm text-red-500">Wybierz co najmniej jeden charms.</p>
+                              )}
+                              {showExtraCharmsErrors &&
+                                formData.extraCharms.some((id) => {
+                                  const charm = charmsList.find((item) => item.id === id);
+                                  return charmUnavailable(id, charm?.unavailable);
+                                }) && (
+                                  <p className="text-sm text-red-500">
+                                    Jeden z wybranych charmsów jest chwilowo niedostępny — wybierz inny.
                                   </p>
                                 )}
-                              </div>
                               {renderExtraCharmSections()}
                             </div>
                           )}
                         </div>
                       )}
 
-                      {!isRogalikTagConfigurator && contentStep === 5 && usesKarabinerQuantityStep && renderClassicKarabinerStep()}
+                      {(isClassicTagConfigurator || isGlowTagConfigurator) &&
+                        contentStep === 5 &&
+                        usesKarabinerQuantityStep &&
+                        renderClassicKarabinerStep()}
 
-                      {/* KROK 7: Sznurek */}
-                      {!isRogalikTagConfigurator && contentStep === 7 && (
+                      {isClassicTagConfigurator && contentStep === 14 && (
                         <div className="space-y-6">
-                          <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-string-choice">
-                          <p className="font-bold text-base text-[#161616]">Dodaj dedykowany, lekki i trwały sznurek na szyję, aby adresówka była zawsze na swoim miejscu (nawet bez obroży):</p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[
-                              { id: 'tak', label: 'Tak' },
-                              { id: 'nie', label: 'Nie' },
-                            ].map((option) => (
-                              <div
-                                key={option.id}
-                                onClick={() => setFormData(trimStopersToStringCount({
-                                  ...formData,
-                                  wantString: option.id,
-                                  wantStopers: option.id === 'nie' ? 'nie' : formData.wantStopers,
-                                  stringLength: option.id === 'nie' ? '' : formData.stringLength,
-                                  premiumStrings: option.id === 'nie' ? [] : formData.premiumStrings,
-                                  classicStrings: option.id === 'nie' ? [] : formData.classicStrings,
-                                  glowStrings: option.id === 'nie' ? [] : formData.glowStrings,
-                                  extraStopers: option.id === 'nie' ? [] : formData.extraStopers,
-                                }))}
-                                className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantString === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                }`}
-                              >
-                                <ConfiguratorChoiceLabel text={option.label} />
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantString === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.wantString === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {showStringErrors && formData.wantString === 'tak' && selectedStringsCount === 0 && (
-                            <p className="text-sm text-red-500">Wybierz co najmniej jeden sznurek.</p>
-                          )}
-                          </div>
+                          {renderClassicNeckCircumferenceSection('classic-bead-neck')}
 
-                          {formData.wantString === 'tak' && (
-                            <div className="space-y-6 pt-6 border-t border-[#D6C7AE]">
-                              <div className="space-y-2 scroll-mt-28" data-configurator-section="classic-string-neck">
-                                <label className="block font-bold text-base text-[#161616]">Wpisz obwód szyi Twojego pieska w centymetrach:</label>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={formData.stringLength}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (!/^\d*$/.test(val)) return;
-                                    if (val === '') {
-                                      setFormData({ ...formData, stringLength: '' });
-                                      return;
-                                    }
-                                    if (val.length > 2) return;
-                                    const num = Number(val);
-                                    if (num > NECK_CIRCUMFERENCE_MAX) return;
-                                    if (val.length === 1 && num >= 1 && num <= 9) {
-                                      setFormData({ ...formData, stringLength: val });
-                                      return;
-                                    }
-                                    if (num >= NECK_CIRCUMFERENCE_MIN && num <= NECK_CIRCUMFERENCE_MAX) {
-                                      setFormData({ ...formData, stringLength: val });
-                                    }
-                                  }}
-                                  placeholder="wpisz obwód szyi (15–99 cm)"
-                                  className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] focus:outline-none focus:border-[#161616] bg-white"
-                                />
-                                {showStringErrors && !isValidNeckCircumference(formData.stringLength) && (
-                                  <p className="text-sm text-red-500">
-                                    Podaj obwód szyi ({NECK_CIRCUMFERENCE_MIN}–{NECK_CIRCUMFERENCE_MAX} cm).
-                                  </p>
+                          <div
+                            className="space-y-4 pt-6 border-t border-[#D6C7AE] scroll-mt-28"
+                            data-configurator-section="classic-bead-color"
+                          >
+                            <p className="font-bold text-base text-[#161616]">
+                              Wybierz 1 kolor dla jednolitej zawieszki lub 2 kolory, jeśli wolisz miks!
+                            </p>
+                            {showBeadNecklaceErrors &&
+                              (formData.beadNecklaceColors.length < 1 ||
+                                formData.beadNecklaceColors.length >
+                                  MAX_BEAD_NECKLACE_COLOR_SELECTIONS) && (
+                              <p className="text-sm text-red-500">
+                                Wybierz 1 lub 2 kolory koralików.
+                              </p>
+                            )}
+                            <UniformTwoLineFontScope
+                              titleTexts={BEAD_NECKLACE_COLOR_OPTIONS.map((option) => option.label)}
+                            >
+                              <div className={`${baseColorGridClass} items-stretch`} data-uniform-font-grid>
+                                {BEAD_NECKLACE_COLOR_OPTIONS.map((option) =>
+                                  renderBeadNecklaceColorCard(option),
                                 )}
-                                {stringSizeText && (
-                                  <div className="w-full md:w-1/2 p-3 rounded-xl border border-[#D6C7AE] bg-[#F4EFE6] font-bold text-base text-[#161616]">
-                                    {stringSizeText}
+                              </div>
+                            </UniformTwoLineFontScope>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* KROK 7: Sznurek / Sznurek i stopery */}
+                      {(isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 7 && (
+                        <div className="space-y-6">
+                          {!isBeadNecklaceModel &&
+                            renderClassicNeckCircumferenceSection('classic-string-neck')}
+
+                          {!isBeadNecklaceModel && !skipsStopersStep && (
+                            <div
+                              className="space-y-6 pt-6 border-t border-[#D6C7AE] scroll-mt-28"
+                              data-configurator-section="classic-stopers-choice"
+                            >
+                              <p className="font-bold text-base text-[#161616]">
+                                Czy chcesz dodać stopery – stylowe wykończenie sznurka, które stabilizuje jego ułożenie
+                                i zapobiega skręcaniu?
+                              </p>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {[
+                                  { id: 'tak', label: 'Tak' },
+                                  { id: 'nie', label: 'Nie' },
+                                ].map((option) => (
+                                  <div
+                                    key={option.id}
+                                    onClick={() => {
+                                      setFormData({
+                                        ...formData,
+                                        wantStopers: option.id,
+                                        extraStopers:
+                                          option.id === 'nie' ? [] : [defaultStopperId],
+                                      });
+                                    }}
+                                    className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
+                                      formData.wantStopers === option.id
+                                        ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                        : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                    }`}
+                                  >
+                                    <ConfiguratorChoiceLabel text={option.label} />
+                                    <div
+                                      className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                                        formData.wantStopers === option.id
+                                          ? 'border-[#3A5A40] bg-[#3A5A40]'
+                                          : 'border-zinc-300'
+                                      }`}
+                                    >
+                                      {formData.wantStopers === option.id && (
+                                        <div className="w-2 h-2 rounded-full bg-white" />
+                                      )}
+                                    </div>
                                   </div>
-                                )}
+                                ))}
                               </div>
 
+                              {formData.wantStopers === 'tak' && (
+                                <div className="space-y-4 pt-2">
+                                  <div className="mx-auto w-full max-w-[168px] sm:max-w-[192px]">
+                                    <div className="overflow-hidden rounded-lg border border-[#D6C7AE] bg-white shadow-md ring-1 ring-black/[0.04]">
+                                      <div
+                                        className={`${configuratorArtworkTileMediaBaseClass} border-0 !aspect-square`}
+                                      >
+                                        <ConfiguratorTileFillImage
+                                          src={stopperFinishPreviewSrc}
+                                          alt={
+                                            karabinerRingKey === 'srebrny'
+                                              ? 'Podgląd srebrnych stoperów'
+                                              : 'Podgląd złotych stoperów'
+                                          }
+                                        />
+                                      </div>
+                                      <div className="px-2.5 py-2 border-t border-[#D6C7AE] bg-[#F4EFE6] text-center space-y-0.5">
+                                        <p className="text-xs text-[#161616]">2 sztuki</p>
+                                        <p className="text-[11px] leading-snug text-[#7A736C]">materiał: stal nierdzewna</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div
+                            className={`space-y-6 scroll-mt-28 ${!isBeadNecklaceModel ? 'pt-6 border-t border-[#D6C7AE]' : ''}`}
+                            data-configurator-section="classic-string-choice"
+                          >
+                            {showStringErrors && selectedStringsCount === 0 && (
+                              <p className="text-sm text-red-500">Wybierz co najmniej jeden sznurek.</p>
+                            )}
+
+                            <div className="space-y-6">
                               {isGlowTagConfigurator && (
                                 <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
                                   <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
@@ -3734,7 +4799,7 @@ export default function Home() {
                                             key={item.id}
                                             data-uniform-font-cell
                                             onClick={() => toggleGlowString(item.id)}
-                                            className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                            className={`cursor-pointer rounded-none ${glowStringTilePaddingClass} border transition-colors duration-300 flex flex-col items-center text-center ${
                                               isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                             }`}
                                           >
@@ -3758,12 +4823,19 @@ export default function Home() {
                                 <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                   <h3 className="font-bold text-lg text-[#161616]">
                                     Dodaj sznurek Premium (możesz wybrać wiele)
-                                    {premiumStringPrice ? ` — ${premiumStringPrice} zł/szt` : ''}
+                                    {premiumStringPrice ? ` — od ${premiumStringPrice} zł/szt` : ''}
                                   </h3>
                                 </div>
                                 <div className="p-4 md:p-6">
                                   <UniformTwoLineFontScope titleTexts={premiumStringsList.map((item) => item.title)}>
-                                  <div className={imageGridClass(premiumStringsList.length)} data-uniform-font-grid>
+                                  <div
+                                    className={
+                                      isClassicTagConfigurator
+                                        ? stringCatalogGridClass
+                                        : imageGridClass(premiumStringsList.length)
+                                    }
+                                    data-uniform-font-grid
+                                  >
                                     {premiumStringsList.map((item) => {
                                       const isSelected = formData.premiumStrings.includes(item.id);
                                       return (
@@ -3771,15 +4843,38 @@ export default function Home() {
                                           key={item.id}
                                           data-uniform-font-cell
                                           onClick={() => togglePremiumString(item.id)}
-                                          className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                          className={`cursor-pointer rounded-none ${
+                                            isClassicTagConfigurator
+                                              ? jewelryStringTilePaddingClass
+                                              : glowStringTilePaddingClass
+                                          } border transition-colors duration-300 flex flex-col items-center text-center ${
                                             isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                           }`}
                                         >
-                                          <div className="w-full mb-3 md:mb-5">
-                                            <ImageGallery items={item.images} alt={item.title} stopPropagation />
-                                          </div>
-                                          <ConfiguratorTileTitle text={item.title} />
-                                          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                          {isClassicTagConfigurator ? (
+                                            <div className={configuratorTileMediaClass}>
+                                              <img
+                                                src={item.images[0]}
+                                                alt={item.title}
+                                                className={configuratorTileImageClass}
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="w-full mb-3 md:mb-5">
+                                              <ImageGallery items={item.images} alt={item.title} stopPropagation />
+                                            </div>
+                                          )}
+                                          <ConfiguratorTileTitle
+                                            text={item.title}
+                                            reserveTwoLines={!isClassicTagConfigurator}
+                                          />
+                                          <div
+                                            className={`${
+                                              isClassicTagConfigurator
+                                                ? jewelryStringCheckClass
+                                                : 'w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all'
+                                            } ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
+                                          >
                                             {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                           </div>
                                         </div>
@@ -3794,12 +4889,19 @@ export default function Home() {
                                 <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
                                   <h3 className="font-bold text-lg text-[#161616]">
                                     Dodaj sznurek Klasyczny (możesz wybrać wiele)
-                                    {classicStringPrice ? ` — ${classicStringPrice} zł/szt` : ''}
+                                    {classicStringPrice ? ` — od ${classicStringPrice} zł/szt` : ''}
                                   </h3>
                                 </div>
                                 <div className="p-4 md:p-6">
                                   <UniformTwoLineFontScope titleTexts={classicStringsList.map((item) => item.title)}>
-                                  <div className={imageGridClass(classicStringsList.length)} data-uniform-font-grid>
+                                  <div
+                                    className={
+                                      isClassicTagConfigurator
+                                        ? stringCatalogGridClass
+                                        : imageGridClass(classicStringsList.length)
+                                    }
+                                    data-uniform-font-grid
+                                  >
                                     {classicStringsList.map((item) => {
                                       const isSelected = formData.classicStrings.includes(item.id);
                                       return (
@@ -3807,15 +4909,38 @@ export default function Home() {
                                           key={item.id}
                                           data-uniform-font-cell
                                           onClick={() => toggleClassicString(item.id)}
-                                          className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                          className={`cursor-pointer rounded-none ${
+                                            isClassicTagConfigurator
+                                              ? jewelryStringTilePaddingClass
+                                              : glowStringTilePaddingClass
+                                          } border transition-colors duration-300 flex flex-col items-center text-center ${
                                             isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                           }`}
                                         >
-                                          <div className="w-full mb-3 md:mb-5">
-                                            <ImageGallery items={item.images} alt={item.title} stopPropagation />
-                                          </div>
-                                          <ConfiguratorTileTitle text={item.title} />
-                                          <div className={`w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                          {isClassicTagConfigurator ? (
+                                            <div className={configuratorTileMediaClass}>
+                                              <img
+                                                src={item.images[0]}
+                                                alt={item.title}
+                                                className={configuratorTileImageClass}
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="w-full mb-3 md:mb-5">
+                                              <ImageGallery items={item.images} alt={item.title} stopPropagation />
+                                            </div>
+                                          )}
+                                          <ConfiguratorTileTitle
+                                            text={item.title}
+                                            reserveTwoLines={!isClassicTagConfigurator}
+                                          />
+                                          <div
+                                            className={`${
+                                              isClassicTagConfigurator
+                                                ? jewelryStringCheckClass
+                                                : 'w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all'
+                                            } ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
+                                          >
                                             {isSelected && <span className="text-white text-xs font-bold">✓</span>}
                                           </div>
                                         </div>
@@ -3826,136 +4951,11 @@ export default function Home() {
                                 </div>
                               </section>
                             </div>
-                          )}
+                          </div>
                         </div>
                       )}
 
-                      {!isRogalikTagConfigurator && contentStep === 8 && (
-                        <div className="space-y-6">
-                          <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-stopers-choice">
-                          <p className="font-bold text-base text-[#161616]">Dodaj stopery, aby precyzyjnie regulować długość sznurka i zapewnić psu maksymalny komfort:</p>
-
-                          <div className="rounded-none border border-[#D6C7AE] bg-[#F4EFE6] p-4 space-y-1">
-                            <p className="font-bold text-base text-[#161616]">
-                              Sznurki do kompletu: {selectedStringsCount}
-                            </p>
-                            {stringSelectionSummaryParts.length > 0 ? (
-                              <p className="text-sm text-[#7A736C]">{stringSelectionSummaryParts.join(' · ')}</p>
-                            ) : (
-                              <p className="text-sm text-[#7A736C]">Brak dobranych sznurków — wróć do poprzedniego kroku, aby je dodać.</p>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[
-                              { id: 'tak', label: 'Tak' },
-                              { id: 'nie', label: 'Nie' },
-                            ].map((option) => (
-                              <div
-                                key={option.id}
-                                onClick={() => {
-                                  if (option.id === 'tak' && selectedStringsCount === 0) return;
-                                  stopersChoiceTouchedRef.current = true;
-                                  setFormData({
-                                    ...formData,
-                                    wantStopers: option.id,
-                                    extraStopers: option.id === 'nie' ? [] : formData.extraStopers,
-                                  });
-                                }}
-                                className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                }`}
-                              >
-                                <ConfiguratorChoiceLabel text={option.label} />
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantStopers === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.wantStopers === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {formData.wantStopers === 'tak' && selectedStringsCount === 0 && (
-                            <p className="text-sm text-red-500">
-                              Najpierw dodaj sznurek w poprzednim kroku.
-                            </p>
-                          )}
-                          {showStopperErrors && stopperSelectionRequired && !isStopperSelectionComplete && (
-                            <p className="text-sm text-red-500">
-                              Wybierz stopery do wszystkich sznurków ({formData.extraStopers.length} / {selectedStringsCount}).
-                            </p>
-                          )}
-                          </div>
-
-                          {formData.wantStopers === 'tak' && selectedStringsCount > 0 && (
-                            <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
-                              <p className="font-bold text-base text-[#161616]">Wybierz stopery (możesz powtórzyć ten sam wariant):</p>
-                              <UniformTwoLineFontScope titleTexts={stopersList.map((stoper) => stoper.title)}>
-                              <div className={imageGridClass(stopersList.length)} data-uniform-font-grid>
-                                {stopersList.map((stoper) => {
-                                  const count = formData.extraStopers.filter((id) => id === stoper.id).length;
-                                  const isSelected = count > 0;
-                                  const canAdd = formData.extraStopers.length < selectedStringsCount;
-                                  const stepperButtonClass =
-                                    'w-8 h-8 border flex items-center justify-center text-lg font-light transition-colors duration-300 disabled:opacity-30 disabled:cursor-not-allowed';
-
-                                  return (
-                                    <div
-                                      key={stoper.id}
-                                      data-uniform-font-cell
-                                      className={`rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                        isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white'
-                                      }`}
-                                    >
-                                      <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                        <img src={stoper.image} alt={stoper.title} className="w-full h-full object-cover" />
-                                      </div>
-                                      <ConfiguratorTileTitle text={stoper.title} />
-                                      {isSelected ? (
-                                        <div className="mt-3 flex items-center gap-3">
-                                          <button
-                                            type="button"
-                                            onClick={() => removeStopper(stoper.id)}
-                                            className={`${stepperButtonClass} border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6]`}
-                                            aria-label={`Usuń ${stoper.title}`}
-                                          >
-                                            −
-                                          </button>
-                                          <span className="min-w-[1.25rem] text-base font-medium text-[#161616] tabular-nums">{count}</span>
-                                          <button
-                                            type="button"
-                                            onClick={() => addStopper(stoper.id)}
-                                            disabled={!canAdd}
-                                            className={`${stepperButtonClass} border-[#3A5A40] text-[#3A5A40] hover:bg-[#3A5A40] hover:text-[#F4EFE6]`}
-                                            aria-label={`Dodaj ${stoper.title}`}
-                                          >
-                                            +
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => addStopper(stoper.id)}
-                                          disabled={!canAdd}
-                                          className={`${stepperButtonClass} mt-3 border-[#D6C7AE] text-[#161616] hover:border-[#3A5A40] hover:text-[#3A5A40]`}
-                                          aria-label={`Dodaj ${stoper.title}`}
-                                        >
-                                          +
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              </UniformTwoLineFontScope>
-                              <p className={`text-sm ${showStopperErrors && !isStopperSelectionComplete ? 'text-red-500' : 'text-[#7A736C]'}`}>
-                                Wybrano stopery: {formData.extraStopers.length} / {selectedStringsCount}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {!isRogalikTagConfigurator && contentStep === 9 && (
+                      {(isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 9 && (
                         <div className="space-y-6">
                           <div className="space-y-6 scroll-mt-28" data-configurator-section="sticker-choice">
                           <p className="font-bold text-base text-[#161616]">Wybierz ulubioną grafikę pieska i stwórz wyjątkową adresówkę dla swojego pupila.</p>
@@ -3989,35 +4989,32 @@ export default function Home() {
 
                           {formData.wantSticker === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
-                              <p className="font-bold text-base text-[#161616]">Wybierz naklejkę:</p>
-                              <UniformTwoLineFontScope titleTexts={stickersList.map((sticker) => sticker.title)}>
-                              <div className={imageGridClass(stickersList.length)} data-uniform-font-grid>
-                                {stickersList.map((sticker) => (
+                              <p className="font-bold text-base text-[#161616]">Wybierz grafikę:</p>
+                              <div className={stickerGridClass}>
+                                {STICKER_CATALOG.map((sticker) => (
                                   <div
                                     key={sticker.id}
-                                    data-uniform-font-cell
                                     onClick={() => setFormData({ ...formData, stickerOption: sticker.id })}
-                                    className={`cursor-pointer rounded-none p-3 md:p-8 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                    className={`cursor-pointer rounded-none p-3 md:p-4 border transition-colors duration-300 flex flex-col items-center text-center ${
                                       formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                     }`}
                                   >
-                                    <div className="w-full aspect-square md:aspect-[4/5] bg-[#EFE8DC] mb-3 md:mb-5 overflow-hidden border border-[#D6C7AE] flex items-center justify-center relative">
-                                      <img src={sticker.image} alt={sticker.title} className="w-full h-full object-cover" />
+                                    <div className={configuratorArtworkTileMediaCompactClass}>
+                                      <ConfiguratorTileFillImage src={sticker.image} alt={sticker.label} />
                                     </div>
-                                    <ConfiguratorTileTitle text={sticker.title} />
-                                    <div className={`w-5 h-5 rounded-full border mt-3 flex items-center justify-center transition-all ${formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
+                                    <div className={`w-5 h-5 rounded-full border mt-2 flex items-center justify-center transition-all ${formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                                       {formData.stickerOption === sticker.id && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                   </div>
                                 ))}
                               </div>
-                              </UniformTwoLineFontScope>
                             </div>
                           )}
                         </div>
                       )}
 
-                      {((isRogalikTagConfigurator && rogalikFlowStep === 'podsumowanie') || contentStep === 11) && (
+                      {((isRogalikTagConfigurator && rogalikFlowStep === 'podsumowanie') ||
+                        ((isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 11)) && (
                         <div className="space-y-6">
                           {activeConfiguratorSummary}
                           <p className="text-xs text-[#7A736C] font-light leading-relaxed">
@@ -4037,10 +5034,11 @@ export default function Home() {
                         </div>
                       )}
 
-                      {((isRogalikTagConfigurator && rogalikFlowStep === 'dane') || contentStep === 10) && (
+                      {((isRogalikTagConfigurator && rogalikFlowStep === 'dane') ||
+                        ((isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 10)) && (
                         <div className="space-y-5">
                           <div className="space-y-2 scroll-mt-28" data-configurator-section="order-pet-name">
-                            <label className="block font-bold text-base text-[#161616]">Imię Twojego psa</label>
+                            <label className="block font-bold text-base text-[#161616]">Imię Twojego pupila</label>
                             <input
                               type="text"
                               value={formData.petName}
@@ -4125,7 +5123,10 @@ export default function Home() {
                               <select
                                 value={formData.phoneCode}
                                 onChange={(e) => updateFormField('phoneCode', e.target.value)}
-                                className="w-full sm:w-44 p-3 rounded-xl border border-[#D6C7AE] bg-white text-base md:text-sm focus:outline-none focus:border-[#161616]"
+                                className="w-full sm:w-44 appearance-none p-3 pl-3 pr-10 rounded-xl border border-[#D6C7AE] bg-white bg-no-repeat bg-[length:12px] bg-[right_12px_center] text-base md:text-sm focus:outline-none focus:border-[#161616]"
+                                style={{
+                                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='none' stroke='%236E635B' stroke-width='2'%3E%3Cpath d='M5 7l5 6 5-6'/%3E%3C/svg%3E")`,
+                                }}
                               >
                                 {COUNTRY_DIAL_CODES.map((item) => (
                                   <option key={item.iso2} value={item.code}>{item.label}</option>
@@ -4160,16 +5161,14 @@ export default function Home() {
                           {!isRogalikTagConfigurator && (
                           <div
                             onClick={() => updateFormField('includePhoneCode', formData.includePhoneCode === 'tak' ? 'nie' : 'tak')}
-                                className={`cursor-pointer rounded-none p-4 border transition-colors duration-300 flex items-center justify-between ${
+                                className={`cursor-pointer rounded-none py-2.5 px-4 border transition-colors duration-300 flex items-center gap-3 ${
                               formData.includePhoneCode === 'tak' ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                             }`}
                           >
-                            <div className="pr-4 flex-1 min-w-0">
-                              <ConfiguratorTileTitle
-                                text="Umieść numer kierunkowy na adresówce"
-                                className="text-left"
-                              />
-                              <ConfiguratorTileSubtitle text={`+${DIAL_CODE_PRICE} zł`} className="mt-1 text-left" />
+                            <div className="flex-1 min-w-0 leading-tight">
+                              <p className="font-medium text-base text-[#161616]">
+                                Umieść numer kierunkowy na adresówce (+{DIAL_CODE_PRICE} zł)
+                              </p>
                             </div>
                             <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${formData.includePhoneCode === 'tak' ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
                               {formData.includePhoneCode === 'tak' && <span className="text-white text-xs font-bold">✓</span>}
@@ -4195,36 +5194,33 @@ export default function Home() {
                   </h3>
                   {activeConfiguratorSummary}
                 </div>
-                {!qualifiesForFreeShipping(totalPrice) && (
+                {showConfiguratorSummaryPrices && !qualifiesForFreeShipping(configuratorSummaryDisplayTotal) && (
                   <div className="mt-3 space-y-2">
                     <div
                       className="h-2.5 w-full bg-[#EBE4D6] border border-[#D6C7AE] overflow-hidden"
                       role="progressbar"
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-valuenow={Math.round(freeShippingProgressPercent(totalPrice))}
-                      aria-label={`Postęp do darmowej wysyłki: ${Math.round(freeShippingRemainingPercent(totalPrice))}% do ukończenia`}
+                      aria-valuenow={Math.round(freeShippingProgressPercent(configuratorSummaryDisplayTotal))}
+                      aria-label={`Postęp do darmowej wysyłki: ${Math.round(freeShippingRemainingPercent(configuratorSummaryDisplayTotal))}% do ukończenia`}
                     >
                       <div
                         className="h-full bg-[#3A5A40] transition-[width] duration-300 ease-out"
-                        style={{ width: `${freeShippingProgressPercent(totalPrice)}%` }}
+                        style={{ width: `${freeShippingProgressPercent(configuratorSummaryDisplayTotal)}%` }}
                       />
                     </div>
                     <p className="text-sm text-[#7A736C] leading-relaxed text-center lg:text-left">
                       Do darmowej wysyłki brakuje{' '}
                       <span className="font-medium text-[#161616] tabular-nums">
-                        {formatPrice(amountUntilFreeShipping(totalPrice))}
+                        {formatPrice(amountUntilFreeShipping(configuratorSummaryDisplayTotal))}
                       </span>
                       <span className="text-[#9A9288]">
                         {' '}
-                        ({Math.round(freeShippingRemainingPercent(totalPrice))}%)
+                        ({Math.round(freeShippingRemainingPercent(configuratorSummaryDisplayTotal))}%)
                       </span>
                     </p>
                   </div>
                 )}
-                <div className="hidden lg:flex justify-center mt-4">
-                  {renderNextButton()}
-                </div>
               </div>
               )}
 

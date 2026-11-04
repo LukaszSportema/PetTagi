@@ -13,7 +13,10 @@ import type {
 export type { OrderDiscountDetails }
 
 const linesFromOrderItems = (
-  items: Pick<OrderItemRecord, "unitPrice" | "quantity" | "productSlug" | "ringColor">[],
+  items: Pick<
+    OrderItemRecord,
+    "unitPrice" | "quantity" | "productSlug" | "ringColor" | "tagModel"
+  >[],
 ) =>
   items.map((item) => ({
     price: item.unitPrice,
@@ -31,7 +34,10 @@ const linesFromCreateItems = (items: CreateOrderItemInput[]) =>
   }))
 
 export const orderDiscountDetailsFromItems = (
-  items: Pick<OrderItemRecord, "unitPrice" | "quantity" | "productSlug" | "ringColor">[],
+  items: Pick<
+    OrderItemRecord,
+    "unitPrice" | "quantity" | "productSlug" | "ringColor" | "tagModel"
+  >[],
   code: string,
   label: string,
   percent: number,
@@ -72,6 +78,9 @@ export const orderDiscountDetailsFromCreateItems = (
 
 /** Weryfikacja: productsValue po rabacie zgadza się z pozycjami. */
 export const orderProductsValueAfterDiscount = (
-  items: Pick<OrderItemRecord, "unitPrice" | "quantity" | "productSlug" | "ringColor">[],
+  items: Pick<
+    OrderItemRecord,
+    "unitPrice" | "quantity" | "productSlug" | "ringColor" | "tagModel"
+  >[],
   percent: number,
 ) => discountedProductsValue(linesFromOrderItems(items), percent)

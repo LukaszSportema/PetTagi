@@ -1,0 +1,430 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getCharmUnitPrices,
+  getTagModelBasePrices,
+  getTagModelStartPrices,
+  setCharmUnitPrices,
+  setTagModelBasePrices,
+  setTagModelStartPrices,
+} from './actions/settings';
+import { TAG_MODEL_OPTIONS } from '@/lib/catalog-options';
+import {
+  CHARM_PRICE_ADMIN_ROWS,
+  CHARM_PRICE_ADMIN_SECTIONS,
+  buildDefaultCharmUnitPrices,
+  parseCharmUnitPricesDraft,
+  type CharmUnitPrices,
+} from '@/lib/charm-unit-pricing';
+import {
+  DEFAULT_TAG_MODEL_BASE_PRICES,
+  DEFAULT_TAG_MODEL_START_PRICES,
+  type TagModelId,
+  type TagModelBasePrices,
+  type TagModelStartPrices,
+} from '@/lib/tag-model-pricing';
+
+const parseTagModelPriceDraft = (
+  draft: Record<TagModelId, string>,
+): TagModelStartPrices | null => {
+  const parsed: Partial<TagModelStartPrices> = {};
+  for (const option of TAG_MODEL_OPTIONS) {
+    const raw = draft[option.id].trim().replace(',', '.');
+    if (raw === '') return null;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) return null;
+    parsed[option.id] = Math.round(value * 100) / 100;
+  }
+  return parsed as TagModelStartPrices;
+};
+
+const charmDraftFromPrices = (prices: CharmUnitPrices): Record<string, string> => {
+  const draft: Record<string, string> = {};
+  for (const row of CHARM_PRICE_ADMIN_ROWS) {
+    draft[row.id] = String(prices[row.id] ?? buildDefaultCharmUnitPrices()[row.id] ?? '');
+  }
+  return draft;
+};
+
+const priceListTabs = [
+  { id: 'tag-models' as const, label: 'Modele adresówek' },
+  { id: 'charms' as const, label: 'Charms' },
+];
+
+const CHARM_PRICE_DRAFT_STORAGE_KEY = 'pettagi-admin-charm-unit-prices-draft';
+
+const readStoredCharmDraft = (): Record<string, string> | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(CHARM_PRICE_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as Record<string, string>;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredCharmDraft = (draft: Record<string, string>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(CHARM_PRICE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // ignore quota / private mode
+  }
+};
+
+const clearStoredCharmDraft = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(CHARM_PRICE_DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+};
+
+export function PriceListsPanel() {
+  const [activeTab, setActiveTab] = useState<(typeof priceListTabs)[number]['id']>('tag-models');
+  const [tagDraft, setTagDraft] = useState<Record<TagModelId, string>>(() => {
+    const initial: Partial<Record<TagModelId, string>> = {};
+    for (const id of Object.keys(DEFAULT_TAG_MODEL_START_PRICES) as TagModelId[]) {
+      initial[id] = String(DEFAULT_TAG_MODEL_START_PRICES[id]);
+    }
+    return initial as Record<TagModelId, string>;
+  });
+  const [tagBaseDraft, setTagBaseDraft] = useState<Record<TagModelId, string>>(() => {
+    const initial: Partial<Record<TagModelId, string>> = {};
+    for (const id of Object.keys(DEFAULT_TAG_MODEL_BASE_PRICES) as TagModelId[]) {
+      initial[id] = String(DEFAULT_TAG_MODEL_BASE_PRICES[id]);
+    }
+    return initial as Record<TagModelId, string>;
+  });
+  const [charmDraft, setCharmDraft] = useState<Record<string, string>>(() =>
+    charmDraftFromPrices(buildDefaultCharmUnitPrices()),
+  );
+
+  const [isLoadingTags, setIsLoadingTags] = useState(true);
+  const [isLoadingCharms, setIsLoadingCharms] = useState(true);
+  const [isSavingTags, setIsSavingTags] = useState(false);
+  const [isSavingCharms, setIsSavingCharms] = useState(false);
+  const [tagError, setTagError] = useState('');
+  const [charmError, setCharmError] = useState('');
+  const [tagSavedMessage, setTagSavedMessage] = useState('');
+  const [charmSavedMessage, setCharmSavedMessage] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getTagModelStartPrices(), getTagModelBasePrices()]).then(
+      ([startResult, baseResult]) => {
+        if (cancelled) return;
+        setIsLoadingTags(false);
+        if (!startResult.ok) {
+          setTagError(startResult.message);
+        } else {
+          const next: Partial<Record<TagModelId, string>> = {};
+          for (const option of TAG_MODEL_OPTIONS) {
+            next[option.id] = String(startResult.prices[option.id]);
+          }
+          setTagDraft(next as Record<TagModelId, string>);
+        }
+        if (!baseResult.ok) {
+          setTagError((prev) => prev || baseResult.message);
+        } else {
+          const nextBase: Partial<Record<TagModelId, string>> = {};
+          for (const option of TAG_MODEL_OPTIONS) {
+            nextBase[option.id] = String(baseResult.prices[option.id]);
+          }
+          setTagBaseDraft(nextBase as Record<TagModelId, string>);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getCharmUnitPrices().then((result) => {
+      if (cancelled) return;
+      setIsLoadingCharms(false);
+      if (result.ok) {
+        setCharmDraft(charmDraftFromPrices(result.prices));
+        return;
+      }
+      const stored = readStoredCharmDraft();
+      if (stored) {
+        setCharmDraft((current) => ({ ...current, ...stored }));
+        setCharmError(`${result.message} Przywrócono niezapisany szkic z tej przeglądarki.`);
+        return;
+      }
+      setCharmError(result.message);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isLoadingCharms) return;
+    writeStoredCharmDraft(charmDraft);
+  }, [charmDraft, isLoadingCharms]);
+
+  const charmRowsBySection = useMemo(() => {
+    const map = new Map<(typeof CHARM_PRICE_ADMIN_SECTIONS)[number], typeof CHARM_PRICE_ADMIN_ROWS>();
+    for (const section of CHARM_PRICE_ADMIN_SECTIONS) {
+      map.set(
+        section,
+        CHARM_PRICE_ADMIN_ROWS.filter((row) => row.section === section),
+      );
+    }
+    return map;
+  }, []);
+
+  const handleSaveTags = async () => {
+    setTagSavedMessage('');
+    const startPrices = parseTagModelPriceDraft(tagDraft);
+    const basePrices = parseTagModelPriceDraft(tagBaseDraft) as TagModelBasePrices | null;
+    if (!startPrices || !basePrices) {
+      setTagError('Podaj poprawne ceny (liczba ≥ 0) dla wszystkich modeli w obu sekcjach.');
+      return;
+    }
+    setTagError('');
+    setIsSavingTags(true);
+    const [startResult, baseResult] = await Promise.all([
+      setTagModelStartPrices(startPrices),
+      setTagModelBasePrices(basePrices),
+    ]);
+    setIsSavingTags(false);
+    if (!startResult.ok) {
+      setTagError(startResult.message);
+      return;
+    }
+    if (!baseResult.ok) {
+      setTagError(baseResult.message);
+      return;
+    }
+    const next: Partial<Record<TagModelId, string>> = {};
+    const nextBase: Partial<Record<TagModelId, string>> = {};
+    for (const option of TAG_MODEL_OPTIONS) {
+      next[option.id] = String(startResult.prices[option.id]);
+      nextBase[option.id] = String(baseResult.prices[option.id]);
+    }
+    setTagDraft(next as Record<TagModelId, string>);
+    setTagBaseDraft(nextBase as Record<TagModelId, string>);
+    setTagSavedMessage('Zapisano cennik modeli.');
+  };
+
+  const handleSaveCharms = async () => {
+    setCharmSavedMessage('');
+    const prices = parseCharmUnitPricesDraft(charmDraft);
+    if (!prices) {
+      setCharmError('Podaj poprawne ceny (liczba ≥ 0) dla wszystkich charmsów.');
+      return;
+    }
+    setCharmError('');
+    setIsSavingCharms(true);
+    const result = await setCharmUnitPrices(prices);
+    setIsSavingCharms(false);
+    if (!result.ok) {
+      setCharmError(result.message);
+      return;
+    }
+    setCharmDraft(charmDraftFromPrices(result.prices));
+    clearStoredCharmDraft();
+    setCharmSavedMessage('Zapisano ceny charmsów.');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl md:text-4xl font-serif font-light text-[#161616]">Cenniki</h2>
+        <p className="mt-2 text-sm text-[#7A736C] max-w-2xl">
+          Ceny widoczne w konfiguratorze i podsumowaniach zamówień.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-b border-[#D6C7AE]">
+        {priceListTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors -mb-px ${
+              activeTab === tab.id
+                ? 'text-[#161616] font-bold border-b-2 border-[#161616]'
+                : 'text-[#7A736C] hover:text-[#161616]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'tag-models' ? (
+        <section className="space-y-8">
+          <div className="space-y-4">
+            <p className="text-sm text-[#7A736C] max-w-2xl">
+              Ceny startowe na kaflach kroku <strong className="font-medium text-[#161616]">Model</strong>{' '}
+              (format „od X zł”).
+            </p>
+
+            {isLoadingTags ? (
+              <p className="text-sm text-[#7A736C]">Ładowanie…</p>
+            ) : (
+              <div className="border border-[#D6C7AE] bg-white divide-y divide-[#EBE4D6]">
+                {TAG_MODEL_OPTIONS.map((option) => (
+                  <label
+                    key={option.id}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 px-4 py-4 md:px-6"
+                  >
+                    <span className="text-sm text-[#161616] sm:flex-1">{option.label}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs uppercase tracking-wider text-[#9A9288]">od</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="decimal"
+                        disabled={isSavingTags}
+                        value={tagDraft[option.id]}
+                        onChange={(event) => {
+                          setTagDraft((current) => ({ ...current, [option.id]: event.target.value }));
+                          setTagSavedMessage('');
+                        }}
+                        className="w-24 rounded-none border border-[#D6C7AE] bg-[#F9F5ED] px-3 py-2 text-sm text-[#161616] tabular-nums focus:outline-none focus:border-[#C4A574] disabled:opacity-60"
+                      />
+                      <span className="text-sm text-[#7A736C]">zł</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm text-[#7A736C] max-w-2xl">
+              <strong className="font-medium text-[#161616]">Cena bazowa</strong> konfiguracji po wyborze
+              modelu — punkt wyjścia w podsumowaniu, koszyku i zamówieniu (bez dopłat za dodatki). Może być
+              inna niż cena „od” na kaflu.
+            </p>
+
+            {isLoadingTags ? null : (
+              <div className="border border-[#D6C7AE] bg-white divide-y divide-[#EBE4D6]">
+                {TAG_MODEL_OPTIONS.map((option) => (
+                  <label
+                    key={`base-${option.id}`}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 px-4 py-4 md:px-6"
+                  >
+                    <span className="text-sm text-[#161616] sm:flex-1">{option.label}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="decimal"
+                        disabled={isSavingTags}
+                        value={tagBaseDraft[option.id]}
+                        onChange={(event) => {
+                          setTagBaseDraft((current) => ({
+                            ...current,
+                            [option.id]: event.target.value,
+                          }));
+                          setTagSavedMessage('');
+                        }}
+                        className="w-24 rounded-none border border-[#D6C7AE] bg-[#F9F5ED] px-3 py-2 text-sm text-[#161616] tabular-nums focus:outline-none focus:border-[#C4A574] disabled:opacity-60"
+                      />
+                      <span className="text-sm text-[#7A736C]">zł</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {tagError ? <p className="text-sm text-red-500">{tagError}</p> : null}
+          {tagSavedMessage ? <p className="text-sm text-[#3A5A40]">{tagSavedMessage}</p> : null}
+
+          <div>
+            <button
+              type="button"
+              disabled={isLoadingTags || isSavingTags}
+              onClick={() => void handleSaveTags()}
+              className="px-6 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors disabled:opacity-60"
+            >
+              {isSavingTags ? 'Zapisywanie…' : 'Zapisz cennik modeli'}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-4">
+          <p className="text-sm text-[#7A736C] max-w-2xl">
+            Cena za sztukę w konfiguratorze (adresówka biżuteryjna, glow i rogalik). Sekcje odpowiadają
+            układowi w konfiguratorze.
+          </p>
+
+          {isLoadingCharms ? (
+            <p className="text-sm text-[#7A736C]">Ładowanie…</p>
+          ) : (
+            <div className="border border-[#D6C7AE] bg-white divide-y divide-[#EBE4D6]">
+              {CHARM_PRICE_ADMIN_SECTIONS.map((section) => {
+                const rows = charmRowsBySection.get(section) ?? [];
+                if (rows.length === 0) return null;
+                return (
+                  <div key={section}>
+                    <div className="px-4 py-3 md:px-6 bg-[#F9F5ED] border-b border-[#EBE4D6]">
+                      <p className="text-xs uppercase tracking-[0.18em] text-[#9A9288]">{section}</p>
+                    </div>
+                    {rows.map((row) => (
+                      <label
+                        key={row.id}
+                        className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 px-4 py-3 md:px-6 border-b border-[#EBE4D6] last:border-b-0"
+                      >
+                        <span className="text-sm text-[#161616] sm:flex-1">{row.label}</span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            inputMode="decimal"
+                            disabled={isSavingCharms}
+                            value={charmDraft[row.id] ?? ''}
+                            onChange={(event) => {
+                              setCharmDraft((current) => ({
+                                ...current,
+                                [row.id]: event.target.value,
+                              }));
+                              setCharmSavedMessage('');
+                            }}
+                            className="w-24 rounded-none border border-[#D6C7AE] bg-[#F9F5ED] px-3 py-2 text-sm text-[#161616] tabular-nums focus:outline-none focus:border-[#C4A574] disabled:opacity-60"
+                          />
+                          <span className="text-sm text-[#7A736C]">zł / szt.</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {charmError ? <p className="text-sm text-red-500">{charmError}</p> : null}
+          {charmSavedMessage ? <p className="text-sm text-[#3A5A40]">{charmSavedMessage}</p> : null}
+
+          <div>
+            <button
+              type="button"
+              disabled={isLoadingCharms || isSavingCharms}
+              onClick={() => void handleSaveCharms()}
+              className="px-6 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors disabled:opacity-60"
+            >
+              {isSavingCharms ? 'Zapisywanie…' : 'Zapisz ceny charmsów'}
+            </button>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
-import { CLASSIC_TAG_PRODUCT, productLineTitle, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
-import { BASE_OPTIONS, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel } from "@/lib/catalog-options"
+import { CLASSIC_TAG_PRODUCT, getCatalogProduct, productLineTitle, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
+import { charmSummaryLine } from "@/lib/charm-pricing"
+import { BASE_OPTIONS, beadNecklaceColorLabels, BEAD_NECKLACE_TAG_MODEL_ID, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, oprawaDisplayAdjective, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel, stickerLabel, tagModelKarabinersAllUnitsPaid, tagModelLabel, isStringWithoutKarabinerTagModel, isTagOnlyWithKarabinerTagModel } from "@/lib/catalog-options"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 import {
   ROGALIK_BEADS_OPTIONS,
@@ -14,10 +15,61 @@ import {
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
 import { formatPolishMobile, normalizePolishPhone } from "@/lib/phone"
 import { rogalikPriceBreakdown, type RogalikPriceLine } from "@/lib/rogalik-pricing"
+import {
+  classicTagPriceBreakdown,
+  type ClassicTagPricingContext,
+} from "@/lib/classic-tag-pricing"
+import {
+  appendBeadNecklaceOrderedOptions,
+  appendJewelryConfiguratorAddonOptions,
+  isBeadNecklaceTagModel,
+} from "@/lib/configurator-options-order"
+import {
+  inferGlowTextColorFromKarabiners,
+  karabinerCatalogRingKey,
+  karabinerQuantitiesFromOrder,
+  karabinerSummaryLines,
+} from "@/lib/karabiner-pricing"
+import {
+  classicStringUnitPrice,
+  glowStringUnitPrice,
+  premiumStringUnitPrice,
+  stringSizeFromNeckCm,
+  stringSummaryLine,
+} from "@/lib/pricing"
 import type { DeliveryType, OrderItemRecord, OrderStatus } from "@/lib/types/order"
 
 export const formatPrice = (value: number) =>
   `${value.toFixed(2).replace(".", ",")} zł`
+
+export const cartItemModelDisplay = (tagModel: string | null | undefined) => {
+  const id = tagModel?.trim()
+  return id ? tagModelLabel(id) : null
+}
+
+export type CartItemClassicConfigSummary = {
+  model: string | null
+  /** Rodzaj oprawy (złota, srebrna, kwiat) — wyświetlany po prawej obok etykiety „Oprawa”. */
+  oprawaRodzaj: string | null
+  kolor: string | null
+}
+
+/** Model, oprawa i kolor bazy — koszyk / checkout (adresówka biżuteryjna). */
+export const cartItemClassicConfigSummary = (
+  productSlug: string,
+  config: { tagModel?: string | null; ringColor?: string; baseOption?: string },
+): CartItemClassicConfigSummary | null => {
+  if (getCatalogProduct(productSlug)?.configuratorId !== "classic-tag") return null
+
+  const ring = config.ringColor?.trim() ?? ""
+  const baseId = config.baseOption?.trim() ?? ""
+
+  return {
+    model: cartItemModelDisplay(config.tagModel),
+    oprawaRodzaj: ring && ring !== "glow" ? oprawaDisplayAdjective(ring) : null,
+    kolor: baseId ? optionLabel(BASE_OPTIONS, baseId) : null,
+  }
+}
 
 export const orderPetNamesLabel = (names: string[]) => {
   const unique: string[] = []
@@ -150,6 +202,8 @@ export type OrderOption = { label: string; values: string[] }
 export type OrderItemOptionsSource = Pick<
   OrderItemRecord,
   | "productSlug"
+  | "tagModel"
+  | "beadNecklaceColors"
   | "ringColor"
   | "baseColor"
   | "baseCharms"
@@ -173,7 +227,10 @@ export type OrderItemOptionsSource = Pick<
   | "rogalikCharms"
 >
 
-export const rogalikOrderItemPriceLines = (item: OrderItemOptionsSource): RogalikPriceLine[] =>
+export const rogalikOrderItemPriceLines = (
+  item: OrderItemOptionsSource,
+  charmPrices?: import("@/lib/charm-unit-pricing").CharmUnitPrices,
+): RogalikPriceLine[] =>
   rogalikPriceBreakdown({
     rogalikMounting: item.rogalikMounting ?? "",
     dogNeck: item.dogNeck,
@@ -182,7 +239,34 @@ export const rogalikOrderItemPriceLines = (item: OrderItemOptionsSource): Rogali
     rogalikCharms: item.rogalikCharms,
     extraKarabiners: item.extraCarabiner,
     includeDialCode: item.dialCodeInfo,
+    charmUnitPrices: charmPrices,
   })
+
+export const classicOrderItemPriceLines = (
+  item: OrderItemOptionsSource,
+  ctx: ClassicTagPricingContext = {},
+): RogalikPriceLine[] => {
+  if (isRogalikOrderItem(item)) return []
+  return classicTagPriceBreakdown(
+    {
+      productSlug: item.productSlug,
+      tagModel: item.tagModel,
+      ringColor: item.ringColor ?? "złoty",
+      baseCarabiner: item.baseCarabiner,
+      extraCharms: item.extraCharms ?? [],
+      extraCarabiner: item.extraCarabiner ?? [],
+      stringPremium: item.stringPremium ?? [],
+      stringClassic: item.stringClassic ?? [],
+      stringGlow: item.stringGlow ?? [],
+      dogNeck: item.dogNeck,
+      stoppers: item.stoppers,
+      sticker: item.sticker,
+      dialCodeInfo: item.dialCodeInfo,
+      beadNecklaceColors: item.beadNecklaceColors,
+    },
+    ctx,
+  )
+}
 
 const formatTagPhoneNumber = (numberOnTag: string, includeDialCode = false) => {
   const trimmed = numberOnTag.trim()
@@ -215,7 +299,10 @@ export type RogalikConfiguratorOptionsInput = {
 }
 
 /** Lista opcji rogalika — koszyk, admin, maile (ten sam układ). */
-export const rogalikConfiguratorOptions = (input: RogalikConfiguratorOptionsInput): OrderOption[] => {
+export const rogalikConfiguratorOptions = (
+  input: RogalikConfiguratorOptionsInput,
+  charmPrices?: import("@/lib/charm-unit-pricing").CharmUnitPrices,
+): OrderOption[] => {
   const options: OrderOption[] = []
   const mounting = input.rogalikMounting ?? ""
   const usesBeads = rogalikMountingUsesBeads(mounting)
@@ -251,7 +338,9 @@ export const rogalikConfiguratorOptions = (input: RogalikConfiguratorOptionsInpu
     if (charms.length > 0) {
       options.push({
         label: "Charmsy",
-        values: charms.map((id) => rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id)),
+        values: charms.map((id) =>
+          charmSummaryLine(id, rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id), charmPrices),
+        ),
       })
     }
   } else if (rogalikMountingUsesKarabinczyk(mounting)) {
@@ -287,7 +376,10 @@ export const rogalikConfiguratorOptions = (input: RogalikConfiguratorOptionsInpu
   return options
 }
 
-const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
+const rogalikOrderItemOptions = (
+  item: OrderItemOptionsSource,
+  charmPrices?: import("@/lib/charm-unit-pricing").CharmUnitPrices,
+): OrderOption[] =>
   rogalikConfiguratorOptions({
     rogalikColor: item.baseColor,
     rogalikMounting: item.rogalikMounting ?? "",
@@ -300,77 +392,238 @@ const rogalikOrderItemOptions = (item: OrderItemOptionsSource): OrderOption[] =>
     petName: item.dogName,
     phoneNumber: item.numberOnTag,
     includeDialCode: item.dialCodeInfo,
-  })
+  },
+  charmPrices,
+  )
 
-export const orderItemOptions = (item: OrderItemOptionsSource): OrderOption[] => {
+export const orderItemOptions = (
+  item: OrderItemOptionsSource,
+  charmPrices?: import("@/lib/charm-unit-pricing").CharmUnitPrices,
+): OrderOption[] => {
   if (isRogalikOrderItem(item)) {
-    return rogalikOrderItemOptions(item)
+    return rogalikOrderItemOptions(item, charmPrices)
   }
 
   const options: OrderOption[] = []
 
+  if (item.tagModel) {
+    options.push({
+      label: "Model",
+      values: [tagModelLabel(item.tagModel)],
+    })
+  }
+
   if (item.ringColor && item.ringColor !== "glow") {
     options.push({
       label: "Oprawa",
-      values: [ringColorLabel(item.ringColor)],
+      values: [oprawaDisplayAdjective(item.ringColor)],
     })
   }
 
-  options.push({ label: "Baza", values: [optionLabel(BASE_OPTIONS, item.baseColor)] })
-  options.push({ label: "Darmowy charms", values: [optionLabel(CHARM_LABEL_OPTIONS, item.baseCharms)] })
-
-  if (item.charmMounting) {
+  if (item.baseColor?.trim()) {
     options.push({
-      label: "Mocowanie charms",
-      values: [charmMountingLabel(item.charmMounting)],
+      label: item.ringColor === "glow" ? "Baza" : "Kolor",
+      values: [optionLabel(BASE_OPTIONS, item.baseColor)],
     })
   }
 
-  if (item.extraCharms.length > 0) {
-    options.push({ label: "Dodatkowe charms", values: item.extraCharms.map((id) => optionLabel(CHARM_LABEL_OPTIONS, id)) })
+  const product = getCatalogProduct(item.productSlug)
+  const configuratorId = product?.configuratorId
+  const beadNecklace = isBeadNecklaceTagModel(item.tagModel)
+  const stringWithoutKarabiner = isStringWithoutKarabinerTagModel(item.tagModel)
+  const tagOnlyWithKarabiner = isTagOnlyWithKarabinerTagModel(item.tagModel)
+  const usesUnifiedKarabiners =
+    configuratorId === "classic-tag" || configuratorId === "glow-tag"
+
+  const charmIds: string[] = []
+  const legacyFreeCharm =
+    item.baseCharms.trim() !== "" && item.baseCharms !== "-" && item.baseCharms !== "—"
+  if (legacyFreeCharm) {
+    charmIds.push(item.baseCharms)
+  }
+  for (const id of item.extraCharms) {
+    if (!charmIds.includes(id)) charmIds.push(id)
   }
 
-  options.push({ label: "Darmowy karabińczyk", values: [optionTitle(item.baseCarabiner)] })
+  const charmsBlock: OrderOption | null =
+    charmIds.length > 0
+      ? {
+          label: "Charms (zawieszki)",
+          values: charmIds.map((id) => charmSummaryLine(id, undefined, charmPrices)),
+        }
+      : null
 
-  if (item.extraCarabiner.length > 0) {
-    options.push({ label: "Dodatkowe karabińczyki", values: item.extraCarabiner.map(optionTitle) })
-  }
+  const legacyCharmMountingBlock: OrderOption | null =
+    legacyFreeCharm && item.charmMounting
+      ? {
+          label: "Mocowanie charms",
+          values: [charmMountingLabel(item.charmMounting)],
+        }
+      : null
 
-  if (item.stringPremium.length > 0) {
-    options.push({
-      label: "Sznurek Premium",
-      values: item.stringPremium.map((id) => optionLabel(PREMIUM_STRING_OPTIONS, id)),
+  let karabinersBlock: OrderOption | null = null
+  const legacyKarabiners: OrderOption[] = []
+  if (usesUnifiedKarabiners) {
+    const quantities = karabinerQuantitiesFromOrder(
+      item.baseCarabiner ?? "-",
+      item.extraCarabiner,
+    )
+    const entries = Object.entries(quantities).filter(([, qty]) => qty > 0)
+    if (entries.length > 0) {
+      const glowTextColor =
+        configuratorId === "glow-tag"
+          ? inferGlowTextColorFromKarabiners(item.baseCarabiner ?? "-", item.extraCarabiner)
+          : ""
+      const karabinerRing = karabinerCatalogRingKey({
+        configuratorId,
+        ringColor: item.ringColor ?? "",
+        glowTextColor,
+      })
+      karabinersBlock = {
+        label: "Karabińczyki",
+        values: karabinerSummaryLines(quantities, karabinerRing, optionTitle, {
+          allUnitsPaid: tagModelKarabinersAllUnitsPaid(item.tagModel),
+        }),
+      }
+    }
+  } else {
+    legacyKarabiners.push({
+      label: "Darmowy karabińczyk",
+      values: [optionTitle(item.baseCarabiner)],
     })
+    if (item.extraCarabiner.length > 0) {
+      legacyKarabiners.push({
+        label: "Dodatkowe karabińczyki",
+        values: item.extraCarabiner.map(optionTitle),
+      })
+    }
   }
 
-  if (item.stringClassic.length > 0) {
-    options.push({
-      label: "Sznurek Klasyczny",
-      values: item.stringClassic.map((id) => optionLabel(CLASSIC_STRING_OPTIONS, id)),
+  const stickerBlock: OrderOption | null = item.sticker
+    ? { label: "Naklejka", values: [stickerLabel(item.sticker)] }
+    : null
+
+  const stringSize = stringSizeFromNeckCm(item.dogNeck)
+  const premiumUnitPrice = premiumStringUnitPrice(stringSize)
+  const classicUnitPrice = classicStringUnitPrice(stringSize)
+  const glowUnitPrice = glowStringUnitPrice(stringSize)
+
+  const stringsPremiumBlock: OrderOption | null =
+    item.stringPremium.length > 0
+      ? {
+          label: "Sznurek Premium",
+          values: item.stringPremium.map((id) =>
+            stringSummaryLine(optionLabel(PREMIUM_STRING_OPTIONS, id), premiumUnitPrice),
+          ),
+        }
+      : null
+
+  const stringsClassicBlock: OrderOption | null =
+    item.stringClassic.length > 0
+      ? {
+          label: "Sznurek Klasyczny",
+          values: item.stringClassic.map((id) =>
+            stringSummaryLine(optionLabel(CLASSIC_STRING_OPTIONS, id), classicUnitPrice),
+          ),
+        }
+      : null
+
+  const stringsGlowBlock: OrderOption | null =
+    item.stringGlow.length > 0
+      ? {
+          label: "Sznurek Glow",
+          values: item.stringGlow.map((id) =>
+            stringSummaryLine(optionLabel(GLOW_STRING_OPTIONS, id), glowUnitPrice),
+          ),
+        }
+      : null
+
+  const beadNecklaceBlock: OrderOption | null = item.beadNecklaceColors?.length
+    ? {
+        label: "Koraliki",
+        values: beadNecklaceColorLabels(item.beadNecklaceColors),
+      }
+    : null
+
+  const neckCircumferenceBlock: OrderOption | null = item.dogNeck
+    ? { label: "Obwód szyi", values: [item.dogNeck] }
+    : null
+
+  const stopersBlock: OrderOption | null = item.stoppers
+    ? {
+        label: "Stopery",
+        values: [
+          stopperIdsFromStored(item.stoppers).length > 0
+            ? stopperSelectionLabel(stopperIdsFromStored(item.stoppers))
+            : item.stoppers,
+        ],
+      }
+    : null
+
+  const dialCodeBlock: OrderOption | null = item.dialCodeInfo
+    ? { label: "Numer kierunkowy na adresówce", values: ["Tak"] }
+    : null
+
+  if (beadNecklace) {
+    appendBeadNecklaceOrderedOptions(options, {
+      ringColor: item.ringColor ?? "",
+      sticker: stickerBlock,
+      beadNecklace: beadNecklaceBlock,
+      neckCircumference: neckCircumferenceBlock,
+      stringsPremium: stringsPremiumBlock,
+      stringsClassic: stringsClassicBlock,
+      stringsGlow: stringsGlowBlock,
+      charms: charmsBlock,
+      karabiners: karabinersBlock,
+      stopers: stopersBlock,
+      dialCode: dialCodeBlock,
     })
-  }
-
-  if (item.stringGlow.length > 0) {
-    options.push({
-      label: "Sznurek Glow",
-      values: item.stringGlow.map((id) => optionLabel(GLOW_STRING_OPTIONS, id)),
+  } else if (stringWithoutKarabiner) {
+    appendBeadNecklaceOrderedOptions(options, {
+      ringColor: item.ringColor ?? "",
+      sticker: stickerBlock,
+      beadNecklace: null,
+      neckCircumference: neckCircumferenceBlock,
+      stringsPremium: stringsPremiumBlock,
+      stringsClassic: stringsClassicBlock,
+      stringsGlow: stringsGlowBlock,
+      charms: charmsBlock,
+      karabiners: karabinersBlock,
+      stopers: stopersBlock,
+      dialCode: dialCodeBlock,
     })
-  }
-
-  if (item.dogNeck) {
-    options.push({ label: "Obwód szyi", values: [item.dogNeck] })
-  }
-
-  if (item.stoppers) {
-    const stopperIds = stopperIdsFromStored(item.stoppers)
-    options.push({
-      label: "Stopery",
-      values: [stopperIds.length > 0 ? stopperSelectionLabel(stopperIds) : item.stoppers],
+  } else if (tagOnlyWithKarabiner) {
+    appendBeadNecklaceOrderedOptions(options, {
+      ringColor: item.ringColor ?? "",
+      sticker: stickerBlock,
+      beadNecklace: null,
+      neckCircumference: null,
+      stringsPremium: null,
+      stringsClassic: null,
+      stringsGlow: null,
+      charms: charmsBlock,
+      karabiners: null,
+      stopers: null,
+      dialCode: dialCodeBlock,
     })
-  }
+  } else {
+    appendJewelryConfiguratorAddonOptions(options, {
+      configuratorId,
+      ringColor: item.ringColor ?? "",
+      tagModel: item.tagModel,
+      charms: charmsBlock,
+      karabiners: karabinersBlock,
+      sticker: stickerBlock,
+      legacyKarabiners,
+      legacyCharmMounting: legacyCharmMountingBlock,
+    })
 
-  if (item.sticker) {
-    options.push({ label: "Naklejka", values: [`Pies ${item.sticker}`] })
+    if (stringsPremiumBlock) options.push(stringsPremiumBlock)
+    if (stringsClassicBlock) options.push(stringsClassicBlock)
+    if (stringsGlowBlock) options.push(stringsGlowBlock)
+
+    if (neckCircumferenceBlock) options.push(neckCircumferenceBlock)
+    if (stopersBlock) options.push(stopersBlock)
   }
 
   options.push({ label: "Imię pupila", values: [item.dogName] })

@@ -8,6 +8,8 @@ export type CreateOrderItemInput = {
   imageUrl: string
   productSlug: string
   productName: string
+  /** Id modelu z kroku konfiguratora (adresówka biżuteryjna). */
+  tagModel: string | null
   ringColor: string
   baseColor: string
   baseCharms: string
@@ -29,6 +31,8 @@ export type CreateOrderItemInput = {
   rogalikCordColor: string | null
   rogalikBeads: string | null
   rogalikCharms: string[]
+  /** Kolory koralików (naszyjnik z koralikami). */
+  beadNecklaceColors: string[]
   /** Cena bazowa adresówki (walidacja rabatu). */
   baseUnitPrice: number
 }
@@ -111,6 +115,8 @@ export type OrderItemRecord = {
   imageUrl: string | null
   productSlug: string
   productName: string
+  /** Id modelu z kroku konfiguratora (adresówka biżuteryjna). */
+  tagModel: string | null
   ringColor: string
   baseColor: string
   baseCharms: string
@@ -132,6 +138,7 @@ export type OrderItemRecord = {
   rogalikCordColor: string | null
   rogalikBeads: string | null
   rogalikCharms: string[]
+  beadNecklaceColors: string[]
 }
 
 export type OrderDetail = OrderRecord & {

@@ -2,13 +2,19 @@
 
 import { sendOrderPaidEmail, sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
-import { getExpressShippingEnabled, getPaymentRecipient } from "@/app/actions/settings"
+import { getExpressShippingEnabled, getPaymentRecipient, getCharmUnitPrices, getTagModelBasePrices } from "@/app/actions/settings"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
 import { CLASSIC_TAG_PRODUCT, normalizeProductName, normalizeProductSlug } from "@/lib/catalog"
 import { validateDiscountCodeForCheckout } from "@/app/actions/discount-codes"
 import { discountedProductsValue, roundMoney } from "@/lib/cart-item-pricing"
+import {
+  expectedOrderItemBaseUnitPrice,
+  expectedOrderItemUnitPrice,
+} from "@/lib/expected-order-item-price"
+import { buildDefaultCharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { DEFAULT_TAG_MODEL_BASE_PRICES } from "@/lib/tag-model-pricing"
 import { orderDiscountDetailsFromCreateItems, orderDiscountDetailsFromItems } from "@/lib/order-discount-summary"
 import type { OrderDiscountDetails } from "@/lib/types/order"
 import { DISCOUNT_PERCENTS, type DiscountPercent } from "@/lib/discount-codes"
@@ -107,6 +113,33 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     discountLabel = discountCheck.label
   }
 
+  const [charmPricesResult, tagModelBasePricesResult] = await Promise.all([
+    getCharmUnitPrices(),
+    getTagModelBasePrices(),
+  ])
+  const orderPricing = {
+    charmPrices: charmPricesResult.ok
+      ? charmPricesResult.prices
+      : buildDefaultCharmUnitPrices(),
+    tagModelBasePrices: tagModelBasePricesResult.ok
+      ? tagModelBasePricesResult.prices
+      : DEFAULT_TAG_MODEL_BASE_PRICES,
+  }
+
+  for (const item of input.items) {
+    const expectedUnit = expectedOrderItemUnitPrice(item, orderPricing)
+    const expectedBase = expectedOrderItemBaseUnitPrice(item, orderPricing)
+    if (roundMoney(item.unitPrice) !== roundMoney(expectedUnit)) {
+      return { ok: false, message: "Nieprawidłowa cena produktu. Odśwież stronę i spróbuj ponownie." }
+    }
+    if (roundMoney(item.baseUnitPrice) !== roundMoney(expectedBase)) {
+      return {
+        ok: false,
+        message: "Nieprawidłowa cena bazowa produktu. Odśwież stronę i spróbuj ponownie.",
+      }
+    }
+  }
+
   const discountDetails: OrderDiscountDetails | null = discountCodeForOrder
     ? orderDiscountDetailsFromCreateItems(
         input.items,
@@ -186,6 +219,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     image_url: item.imageUrl,
     product_slug: item.productSlug,
     product_name: item.productName,
+    tag_model: item.tagModel,
     ring_color: item.ringColor,
     base_color: item.baseColor,
     base_charms: item.baseCharms,
@@ -207,6 +241,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     rogalik_cord_color: item.rogalikCordColor,
     rogalik_beads: item.rogalikBeads,
     rogalik_charms: item.rogalikCharms,
+    bead_necklace_colors: item.beadNecklaceColors,
   }))
 
   const { data, error } = await supabase.rpc("place_order", {
@@ -298,6 +333,7 @@ type OrderItemRow = {
   image_url: string | null
   product_slug?: string | null
   product_name?: string | null
+  tag_model?: string | null
   ring_color: string
   base_color: string
   base_charms: string
@@ -319,6 +355,7 @@ type OrderItemRow = {
   rogalik_cord_color?: string | null
   rogalik_beads?: string | null
   rogalik_charms?: unknown
+  bead_necklace_colors?: unknown
 }
 
 const toMoney = (value: unknown) => {
@@ -390,6 +427,7 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   imageUrl: row.image_url,
   productSlug: normalizeProductSlug(row.product_slug || CLASSIC_TAG_PRODUCT.slug),
   productName: normalizeProductName(row.product_name || CLASSIC_TAG_PRODUCT.name),
+  tagModel: row.tag_model?.trim() || null,
   ringColor: row.ring_color,
   baseColor: row.base_color,
   baseCharms: row.base_charms,
@@ -411,6 +449,7 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   rogalikCordColor: row.rogalik_cord_color ?? null,
   rogalikBeads: row.rogalik_beads ?? null,
   rogalikCharms: toStringArray(row.rogalik_charms),
+  beadNecklaceColors: toStringArray(row.bead_necklace_colors),
 })
 
 const missingAdminSqlMessage =

@@ -1,7 +1,9 @@
+import { charmsTotalPln } from "@/lib/charm-pricing"
+import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
 import { ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import {
-  EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
+  DIAL_CODE_PRICE,
   type PricedOrderItem,
 } from "@/lib/pricing"
 import {
@@ -18,14 +20,19 @@ import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 export const isRogalikRevenueItem = (item: Pick<PricedOrderItem, "ringColor" | "productSlug">) =>
   item.ringColor === ROGALIK_ORDER_RING_COLOR || item.productSlug === ROGALIK_TAG_PRODUCT.slug
 
-export const rogalikItemRevenueParts = (item: PricedOrderItem) => {
+export const rogalikItemRevenueParts = (
+  item: PricedOrderItem,
+  charmPrices?: CharmUnitPrices,
+) => {
   const qty = item.quantity > 0 ? item.quantity : 1
   const usesBeads = rogalikMountingUsesBeads(item.rogalikMounting ?? "")
   const size = rogalikStringSizeFromNeckCm(item.dogNeck)
   const cordPrice =
     usesBeads && item.rogalikCordColor ? rogalikCordUnitPrice(size) ?? 0 : 0
   const beadsPrice = usesBeads && item.rogalikBeads ? rogalikBeadsUnitPrice(size) ?? 0 : 0
-  const charmCount = usesBeads ? (item.rogalikCharms?.length ?? 0) : 0
+  const charmsRevenue = usesBeads
+    ? charmsTotalPln(item.rogalikCharms ?? [], charmPrices)
+    : 0
   const includedKarabiner = !usesBeads && rogalikMountingUsesKarabinczyk(item.rogalikMounting ?? "")
   const extraKarabinerCount = usesBeads ? 0 : item.extraCarabiner.length
   const karabinersRevenue =
@@ -34,12 +41,12 @@ export const rogalikItemRevenueParts = (item: PricedOrderItem) => {
 
   return {
     base: ROGALIK_BASE_PRICE * qty,
-    charms: charmCount * EXTRA_CHARM_PRICE * qty,
+    charms: charmsRevenue * qty,
     karabiners: karabinersRevenue * qty,
     strings: (cordPrice + beadsPrice) * qty,
     stoppers: 0,
     stickers: 0,
-    dialCode: 0,
+    dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
 }
 

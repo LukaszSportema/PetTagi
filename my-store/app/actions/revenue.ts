@@ -1,6 +1,9 @@
 "use server"
 
 import { buildQuantityRows, buildRevenueRows, type RevenueOrder, type RevenueRow } from "@/lib/revenue"
+import { buildDefaultCharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { DEFAULT_TAG_MODEL_BASE_PRICES } from "@/lib/tag-model-pricing"
+import { getCharmUnitPrices, getTagModelBasePrices } from "@/app/actions/settings"
 import {
   DEFAULT_PAYMENT_RECIPIENT,
   parsePaymentRecipientId,
@@ -12,6 +15,7 @@ import { createClient } from "@/lib/supabase/server"
 type RevenueItemRow = {
   quantity: number | string
   product_slug?: string | null
+  tag_model?: string | null
   ring_color?: string | null
   base_carabiner?: string | null
   extra_charms: unknown
@@ -79,6 +83,7 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
   items: (row.items ?? []).map((item) => ({
     quantity: Number(item.quantity) || 1,
     productSlug: item.product_slug ?? undefined,
+    tagModel: item.tag_model?.trim() || null,
     ringColor: item.ring_color ?? undefined,
     baseCarabiner: item.base_carabiner ?? undefined,
     extraCharms: toStringArray(item.extra_charms),
@@ -135,13 +140,27 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
       ? (JSON.parse(data) as RevenueOrderRow[])
       : []
   const orders = rows.map(mapOrder)
+
+  const [charmPricesResult, tagModelBasePricesResult] = await Promise.all([
+    getCharmUnitPrices(),
+    getTagModelBasePrices(),
+  ])
+  const revenuePricing = {
+    charmPrices: charmPricesResult.ok
+      ? charmPricesResult.prices
+      : buildDefaultCharmUnitPrices(),
+    tagModelBasePrices: tagModelBasePricesResult.ok
+      ? tagModelBasePricesResult.prices
+      : DEFAULT_TAG_MODEL_BASE_PRICES,
+  }
+
   const byRecipient = Object.fromEntries(
     REVENUE_RECIPIENTS.map((recipient) => {
       const filtered = orders.filter((order) => order.paymentRecipient === recipient)
       return [
         recipient,
         {
-          rows: buildRevenueRows(filtered),
+          rows: buildRevenueRows(filtered, revenuePricing),
           quantityRows: buildQuantityRows(filtered),
         },
       ]

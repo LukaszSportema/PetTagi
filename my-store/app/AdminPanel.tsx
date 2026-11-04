@@ -17,9 +17,11 @@ import { getRevenueReport, type RevenueReportSlice } from './actions/revenue';
 import {
   getExpressShippingEnabled,
   getPaymentRecipient,
+  getCharmUnitPrices,
   setExpressShippingEnabled,
   setPaymentRecipient,
 } from './actions/settings';
+import { buildDefaultCharmUnitPrices, type CharmUnitPrices } from '@/lib/charm-unit-pricing';
 import { generateShippingLabel } from './actions/shipping';
 import {
   canSetOrderStatusToPending,
@@ -56,11 +58,13 @@ import { monthLabel, warsawYmd } from '@/lib/report-periods';
 import type { RevenueRow } from '@/lib/revenue';
 import { AdminDatePicker } from './components/AdminDatePicker';
 import { DiscountCodesPanel } from './DiscountCodesPanel';
+import { PriceListsPanel } from './PriceListsPanel';
 import { WarehousePanel } from './WarehousePanel';
 
 const adminTabs = [
   { id: 'orders', label: 'Zamówienia' },
   { id: 'discount-codes', label: 'Kody rabatowe' },
+  { id: 'price-lists', label: 'Cenniki' },
   { id: 'warehouse', label: 'Magazyn' },
   { id: 'revenue', label: 'Przychody' },
   { id: 'analytics', label: 'Analityka' },
@@ -596,6 +600,7 @@ export default function AdminPanel() {
       )}
 
       {activeAdminTab === 'discount-codes' && <DiscountCodesPanel />}
+      {activeAdminTab === 'price-lists' && <PriceListsPanel />}
       {activeAdminTab === 'warehouse' && <WarehousePanel />}
 
       {activeAdminTab === 'revenue' && (
@@ -1649,6 +1654,15 @@ function OrderDetailView({
   const [phoneDraft, setPhoneDraft] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [charmUnitPrices, setCharmUnitPrices] = useState<CharmUnitPrices>(() =>
+    buildDefaultCharmUnitPrices(),
+  );
+
+  useEffect(() => {
+    void getCharmUnitPrices().then((result) => {
+      if (result.ok) setCharmUnitPrices(result.prices);
+    });
+  }, []);
 
   useEffect(() => {
     setInpostCode(detail?.inpostCode ?? '');
@@ -1736,7 +1750,7 @@ function OrderDetailView({
 
               <div className="space-y-4">
                 {detail.items.map((item) => {
-                  const options = orderItemOptions(item);
+                  const options = orderItemOptions(item, charmUnitPrices);
                   return (
                     <div key={item.id} className="bg-white/70 rounded-2xl p-4">
                       <div className="flex gap-3 items-start">
@@ -1772,7 +1786,7 @@ function OrderDetailView({
                       </div>
                       {isRogalikOrderItem(item) && (
                         <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
-                          {rogalikOrderItemPriceLines(item).map((line) => (
+                          {rogalikOrderItemPriceLines(item, charmUnitPrices).map((line) => (
                             <li
                               key={`${item.id}-price-${line.label}`}
                               className="flex justify-between gap-2 text-xs text-[#7A736C]"

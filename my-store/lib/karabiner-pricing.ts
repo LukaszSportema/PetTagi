@@ -7,6 +7,18 @@ import { roundMoney } from "@/lib/cart-item-pricing"
 /** Klucz zestawu karabińczyków (złote vs srebrne + wspólne kolorowe). */
 export type KarabinerCatalogRingKey = "złoty" | "srebrny"
 
+/** Glow: brak zapisanego koloru napisu — wnioskuj po wybranych karabińczykach srebrnych. */
+export const inferGlowTextColorFromKarabiners = (
+  baseCarabiner: string,
+  extraCarabiner: readonly string[],
+): string => {
+  const silverIds = new Set(karabinersForRingColor("srebrny").map((item) => item.id))
+  for (const id of [baseCarabiner, ...extraCarabiner]) {
+    if (id && id !== "-" && silverIds.has(id)) return "srebrny"
+  }
+  return "złoty"
+}
+
 export const karabinerCatalogRingKey = (input: {
   configuratorId?: string | null
   ringColor: string
@@ -68,11 +80,33 @@ const hasFirstRowSelection = (
 ) =>
   firstRowKarabinerIds(ringColor).some((id) => (quantities[id] ?? 0) > 0)
 
+export type KarabinerPricingOptions = {
+  /** Wszystkie sztuki płatne — bez gratisu z pierwszego wiersza (naszyjnik z koralikami). */
+  allUnitsPaid?: boolean
+}
+
+const chargeAllUnitsPaid = (
+  quantities: Record<string, number>,
+  ringColor: string,
+): number => {
+  let total = 0
+  for (const item of karabinersForRingColor(ringColor)) {
+    const qty = Math.max(0, quantities[item.id] ?? 0)
+    if (qty <= 0) continue
+    total += qty * karabinerUnitPricePln(item.id)
+  }
+  return roundMoney(total)
+}
+
 /** Jedna sztuka z pierwszego wiersza gratis na całe zamówienie (kolejność wg katalogu). */
 export const karabinerChargePln = (
   quantities: Record<string, number>,
   ringColor: string,
+  options?: KarabinerPricingOptions,
 ): number => {
+  if (options?.allUnitsPaid) {
+    return chargeAllUnitsPaid(quantities, ringColor)
+  }
   const firstRow = new Set(firstRowKarabinerIds(ringColor))
   let freeGrantsLeft = hasFirstRowSelection(quantities, ringColor) ? 1 : 0
   let total = 0
@@ -98,6 +132,73 @@ export const karabinerPaidUnitsTotal = (
   const total = karabinerQuantitiesTotal(quantities)
   const freeUnits = hasFirstRowSelection(quantities, ringColor) ? 1 : 0
   return Math.max(0, total - freeUnits)
+}
+
+const formatKarabinerSummaryEntry = (
+  name: string,
+  unitPln: number | null,
+  count: number,
+): string => {
+  if (unitPln === null) {
+    return count === 1 ? `${name} (gratis)` : `${name} (gratis) ×${count}`
+  }
+  return count === 1
+    ? `${name} (+${unitPln} zł)`
+    : `${name} ×${count} (+${unitPln} zł/szt)`
+}
+
+/** Wiersze podsumowania — każda sztuka osobno, np. „Klasyczny 20g (gratis)” / „Serce 25g ×3 (+6 zł/szt)”. */
+export const karabinerSummaryLines = (
+  quantities: Record<string, number>,
+  ringColor: string,
+  labelFor: (id: string) => string,
+  options?: KarabinerPricingOptions,
+): string[] => {
+  if (options?.allUnitsPaid) {
+    const buckets: { name: string; unitPln: number; count: number }[] = []
+    for (const item of karabinersForRingColor(ringColor)) {
+      const qty = Math.max(0, quantities[item.id] ?? 0)
+      if (qty <= 0) continue
+      const name = labelFor(item.id).trim() || item.label
+      const unit = karabinerUnitPricePln(item.id)
+      buckets.push({ name, unitPln: unit, count: qty })
+    }
+    return buckets.map((entry) =>
+      formatKarabinerSummaryEntry(entry.name, entry.unitPln, entry.count),
+    )
+  }
+
+  const firstRow = new Set(firstRowKarabinerIds(ringColor))
+  let freeGrantsLeft = hasFirstRowSelection(quantities, ringColor) ? 1 : 0
+  const buckets: { name: string; unitPln: number | null; count: number }[] = []
+
+  const addUnit = (name: string, unitPln: number | null) => {
+    const last = buckets[buckets.length - 1]
+    if (last && last.name === name && last.unitPln === unitPln) {
+      last.count += 1
+      return
+    }
+    buckets.push({ name, unitPln, count: 1 })
+  }
+
+  for (const item of karabinersForRingColor(ringColor)) {
+    const qty = Math.max(0, quantities[item.id] ?? 0)
+    if (qty <= 0) continue
+    const name = labelFor(item.id).trim() || item.label
+    const unit = karabinerUnitPricePln(item.id)
+    for (let i = 0; i < qty; i++) {
+      if (firstRow.has(item.id) && freeGrantsLeft > 0) {
+        addUnit(name, null)
+        freeGrantsLeft -= 1
+      } else {
+        addUnit(name, unit)
+      }
+    }
+  }
+
+  return buckets.map((entry) =>
+    formatKarabinerSummaryEntry(entry.name, entry.unitPln, entry.count),
+  )
 }
 
 /** Rozkład na base + extra (magazyn, zamówienie) — każda sztuka fizycznie w base lub extra. */
@@ -143,10 +244,12 @@ export const karabinerRevenueFromOrder = (
   baseCarabiner: string,
   extraCarabiner: string[],
   ringColor: string,
+  options?: KarabinerPricingOptions,
 ) =>
   karabinerChargePln(
     karabinerQuantitiesFromOrder(baseCarabiner, extraCarabiner),
     ringColor,
+    options,
   )
 
 export type KarabinerDisplayItem = KarabinerOption & {

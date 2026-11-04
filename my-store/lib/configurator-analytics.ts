@@ -1,4 +1,6 @@
+import { CLASSIC_TAG_PRODUCT, LEGACY_CLASSIC_TAG_SLUG } from "@/lib/catalog"
 import type { CharmMountingId } from "@/lib/catalog-options"
+import { tagModelLabel, stickerLabel } from "@/lib/catalog-options"
 
 export type ConfiguratorStepMeta = {
   key: string
@@ -7,16 +9,17 @@ export type ConfiguratorStepMeta = {
 }
 
 export const CONFIGURATOR_STEP_CATALOG: ConfiguratorStepMeta[] = [
+  { key: "13", label: "Model", order: 0 },
   { key: "1", label: "Oprawa", order: 1 },
   { key: "2", label: "Baza", order: 2 },
   { key: "12", label: "NAPIS", order: 3 },
-  { key: "3", label: "Darmowy charms", order: 4 },
+  { key: "3", label: "CHARMS (ZAWIESZKI)", order: 4 },
   { key: "4", label: "Dodatkowe charmsy", order: 5 },
   { key: "5", label: "Karabińczyki", order: 6 },
   { key: "6", label: "Dodatkowe karabińczyki (legacy)", order: 7 },
   { key: "7", label: "Sznurek", order: 8 },
   { key: "8", label: "Stopery", order: 9 },
-  { key: "9", label: "GRAFIKA", order: 10 },
+  { key: "9", label: "GRAFIKI I DODATKI", order: 10 },
   { key: "10", label: "Dane na adresówce", order: 11 },
   { key: "11", label: "Podsumowanie zamówienia", order: 12 },
 ]
@@ -27,13 +30,13 @@ export type ConfiguratorChoiceInput = {
 }
 
 export type ConfiguratorFormSnapshot = {
+  tagModel: string
   ringColor: string
   glowTextColor: string
   baseOption: string
-  charmOption: string
   charmMounting: CharmMountingId
-  wantExtraCharms: string
   extraCharms: string[]
+  wantExtraCharms: string
   karabinerOption: string
   wantExtraKarabiners: string
   extraKarabiners: string[]
@@ -53,14 +56,47 @@ export type ConfiguratorFormSnapshot = {
 }
 
 export const stepLabelForProduct = (stepKey: string, productSlug: string) => {
+  if (isClassicJewelrySlug(productSlug) && stepKey === "1") return "KSZTAŁT I KOLOR"
+  if (isClassicJewelrySlug(productSlug) && stepKey === "9") return "GRAFIKI I DODATKI"
+  if ((isClassicJewelrySlug(productSlug) || productSlug.includes("glow")) && stepKey === "3") {
+    return "CHARMS (ZAWIESZKI)"
+  }
+  if ((isClassicJewelrySlug(productSlug) || productSlug.includes("glow")) && stepKey === "7") {
+    return "SZNUREK I STOPERY"
+  }
   if (productSlug.includes("glow") && stepKey === "2") return "Kolor"
   return CONFIGURATOR_STEP_CATALOG.find((step) => step.key === stepKey)?.label ?? `Krok ${stepKey}`
 }
 
+const isClassicJewelrySlug = (productSlug: string) =>
+  productSlug === CLASSIC_TAG_PRODUCT.slug || productSlug === LEGACY_CLASSIC_TAG_SLUG
+
+const CLASSIC_JEWELRY_STEP_KEY_ORDER = [
+  "13",
+  "1",
+  "9",
+  "5",
+  "3",
+  "7",
+  "10",
+  "11",
+] as const
+
 export const visibleStepKeys = (productSlug: string, ringColor: string) => {
   const isGlow = productSlug.includes("glow")
   const skipsGraphics = isGlow || ringColor === "kwiat"
+
+  if (isClassicJewelrySlug(productSlug)) {
+    return CLASSIC_JEWELRY_STEP_KEY_ORDER.filter((key) => {
+      if (skipsGraphics && key === "9") return false
+      return true
+    })
+  }
+
   return CONFIGURATOR_STEP_CATALOG.filter((step) => {
+    if (step.key === "13") return isClassicJewelrySlug(productSlug)
+    if (step.key === "2" && isClassicJewelrySlug(productSlug)) return false
+    if ((isClassicJewelrySlug(productSlug) || isGlow) && step.key === "4") return false
     if (isGlow && step.key === "1") return false
     if (!isGlow && step.key === "12") return false
     if (skipsGraphics && step.key === "9") return false
@@ -73,8 +109,22 @@ export const extractStepChoices = (
   form: ConfiguratorFormSnapshot,
 ): ConfiguratorChoiceInput[] => {
   switch (stepKey) {
+    case "13":
+      return [
+        {
+          choiceKey: "model",
+          choiceValue: form.tagModel ? tagModelLabel(form.tagModel) : "—",
+        },
+      ]
     case "1":
-      return [{ choiceKey: "oprawa", choiceValue: form.ringColor || "—" }]
+      return [
+        { choiceKey: "oprawa", choiceValue: form.ringColor || "—" },
+        ...(form.ringColor &&
+        form.ringColor !== "glow" &&
+        form.baseOption
+          ? [{ choiceKey: "baza", choiceValue: form.baseOption }]
+          : []),
+      ]
     case "2":
       return [
         { choiceKey: "baza", choiceValue: form.baseOption || "—" },
@@ -86,19 +136,16 @@ export const extractStepChoices = (
       return [{ choiceKey: "napis", choiceValue: form.glowTextColor || "—" }]
     case "3":
       return [
-        { choiceKey: "charms", choiceValue: form.charmOption || "—" },
-        { choiceKey: "mocowanie", choiceValue: form.charmMounting || "—" },
-      ]
-    case "4":
-      return [
-        { choiceKey: "dodatkowe_charmsy", choiceValue: form.wantExtraCharms },
-        ...(form.extraCharms.length
-          ? form.extraCharms.map((item, index) => ({
+        { choiceKey: "charms", choiceValue: form.wantExtraCharms },
+        ...(form.wantExtraCharms === "tak" && form.extraCharms.length
+          ? form.extraCharms.map((id, index) => ({
               choiceKey: `charms_${index + 1}`,
-              choiceValue: item,
+              choiceValue: id,
             }))
           : []),
       ]
+    case "4":
+      return []
     case "5":
       if (form.karabinerQuantities && Object.keys(form.karabinerQuantities).length > 0) {
         return Object.entries(form.karabinerQuantities)
@@ -133,18 +180,17 @@ export const extractStepChoices = (
         ...(form.glowStrings.length
           ? [{ choiceKey: "sznurek_glow", choiceValue: form.glowStrings.join(", ") }]
           : []),
-      ]
-    case "8":
-      return [
         { choiceKey: "stopery", choiceValue: form.wantStopers },
         ...(form.extraStopers.length
           ? [{ choiceKey: "stopery_wybor", choiceValue: form.extraStopers.join(", ") }]
           : []),
       ]
+    case "8":
+      return []
     case "9":
       return [
         { choiceKey: "naklejka", choiceValue: form.wantSticker },
-        { choiceKey: "grafika", choiceValue: form.stickerOption || "—" },
+        { choiceKey: "grafika", choiceValue: form.stickerOption ? stickerLabel(form.stickerOption) : "—" },
       ]
     case "10":
       return [

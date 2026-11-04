@@ -1,10 +1,14 @@
 import { cartItemBaseUnitPrice } from "@/lib/cart-item-pricing"
+import type { TagModelBasePrices } from "@/lib/tag-model-pricing"
 import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { rogalikMountingUsesBeads, rogalikStringSizeFromNeckCm } from "@/lib/rogalik-options"
 import {
   karabinerCatalogRingKey,
+  firstRowKarabinerIds,
+  karabinerQuantitiesTotal,
   orderKarabinersFromQuantities,
 } from "@/lib/karabiner-pricing"
+import { TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID } from "@/lib/catalog-options"
 import { stringSizeLabel } from "@/lib/pricing"
 import type { CreateOrderItemInput } from "@/lib/types/order"
 
@@ -20,12 +24,13 @@ export type CartItemForOrder = {
   productSlug: string
   productName: string
   config: {
+    tagModel?: string
+    beadNecklaceColors?: string[]
     ringColor: string
     glowTextColor?: string
     baseOption: string
-    charmOption: string
-    wantExtraCharms: string
     extraCharms: string[]
+    wantExtraCharms: string
     karabinerOption: string
     wantExtraKarabiners: string
     extraKarabiners: string[]
@@ -69,7 +74,10 @@ export const isRogalikCartItem = (item: Pick<CartItemForOrder, "productSlug">) =
   return product?.configuratorId === "rogalik-tag" || item.productSlug === ROGALIK_TAG_PRODUCT.slug
 }
 
-export const mapRogalikCartItemToOrderItem = (item: CartItemForOrder): CreateOrderItemInput => {
+export const mapRogalikCartItemToOrderItem = (
+  item: CartItemForOrder,
+  tagModelBasePrices?: TagModelBasePrices,
+): CreateOrderItemInput => {
   const config = item.config
   const usesBeads = rogalikMountingUsesBeads(config.rogalikMounting)
   const stringSize = rogalikStringSizeFromNeckCm(config.stringLength)
@@ -84,10 +92,11 @@ export const mapRogalikCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
   return {
     quantity: item.quantity,
     unitPrice: item.price,
-    baseUnitPrice: cartItemBaseUnitPrice(item),
+    baseUnitPrice: cartItemBaseUnitPrice(item, tagModelBasePrices),
     imageUrl: item.image,
     productSlug: item.productSlug,
     productName: item.productName,
+    tagModel: null,
     ringColor: ROGALIK_ORDER_RING_COLOR,
     baseColor: config.rogalikColor,
     baseCharms: PLACEHOLDER,
@@ -135,10 +144,14 @@ export const mapRogalikCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
     rogalikCordColor: usesBeads ? config.rogalikCordColor || null : null,
     rogalikBeads: usesBeads ? config.rogalikBeads || null : null,
     rogalikCharms: usesBeads ? config.rogalikCharms : [],
+    beadNecklaceColors: [],
   }
 }
 
-export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrderItemInput => {
+export const mapClassicCartItemToOrderItem = (
+  item: CartItemForOrder,
+  tagModelBasePrices?: TagModelBasePrices,
+): CreateOrderItemInput => {
   const config = item.config
   const product = getCatalogProduct(item.productSlug)
   const skipsSticker = product?.configuratorId === "glow-tag" || config.ringColor === "kwiat"
@@ -161,27 +174,44 @@ export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
           config.wantExtraKarabiners === "tak" ? config.extraKarabiners : [],
       }
 
+  const tagOnlyWithKarabiner = config.tagModel?.trim() === TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID
+  let resolvedKarabiners = karabiners
+  if (tagOnlyWithKarabiner) {
+    const qtyFromConfig = config.karabinerQuantities
+      ? karabinerQuantitiesTotal(config.karabinerQuantities)
+      : 0
+    const hasStoredKarabiner =
+      (resolvedKarabiners.baseCarabiner?.trim() &&
+        resolvedKarabiners.baseCarabiner !== "-") ||
+      resolvedKarabiners.extraCarabiner.length > 0
+    if (qtyFromConfig === 0 && !hasStoredKarabiner) {
+      const defaultId = firstRowKarabinerIds(karabinerRing)[0] ?? "-"
+      resolvedKarabiners = { baseCarabiner: defaultId, extraCarabiner: [] }
+    }
+  }
+
   return {
     quantity: item.quantity,
     unitPrice: item.price,
-    baseUnitPrice: cartItemBaseUnitPrice(item),
+    baseUnitPrice: cartItemBaseUnitPrice(item, tagModelBasePrices),
     imageUrl: item.image,
     productSlug: item.productSlug,
     productName: item.productName,
+    tagModel: config.tagModel?.trim() || null,
     ringColor: config.ringColor,
     baseColor: config.baseOption,
-    baseCharms: config.charmOption,
-    extraCharms: config.wantExtraCharms === "tak" ? config.extraCharms : [],
-    baseCarabiner: karabiners.baseCarabiner,
-    extraCarabiner: karabiners.extraCarabiner,
-    stringPremium: config.wantString === "tak" ? config.premiumStrings : [],
-    stringClassic: config.wantString === "tak" ? config.classicStrings : [],
-    stringGlow: config.wantString === "tak" ? config.glowStrings : [],
-    dogNeck:
-      config.wantString === "tak" && config.stringLength ? `${config.stringLength} cm` : null,
-    stoppers:
-      config.wantStopers === "tak" && config.extraStopers.length > 0
-        ? config.extraStopers.join(",")
+    baseCharms: PLACEHOLDER,
+    extraCharms: config.wantExtraCharms === 'tak' ? config.extraCharms : [],
+    baseCarabiner: resolvedKarabiners.baseCarabiner,
+    extraCarabiner: resolvedKarabiners.extraCarabiner,
+    stringPremium: tagOnlyWithKarabiner ? [] : config.premiumStrings,
+    stringClassic: tagOnlyWithKarabiner ? [] : config.classicStrings,
+    stringGlow: tagOnlyWithKarabiner ? [] : config.glowStrings,
+    dogNeck: tagOnlyWithKarabiner ? null : config.stringLength ? `${config.stringLength} cm` : null,
+    stoppers: tagOnlyWithKarabiner
+      ? null
+      : config.wantStopers === "tak"
+        ? config.extraStopers[0] ?? (karabinerRing === "srebrny" ? "2" : "1")
         : null,
     sticker: skipsSticker
       ? null
@@ -194,21 +224,25 @@ export const mapClassicCartItemToOrderItem = (item: CartItemForOrder): CreateOrd
         ? `${config.phoneCode} ${formatPhoneGroupsClassic(config.phoneNumber, config.phoneCode)}`
         : formatPhoneGroupsClassic(config.phoneNumber, config.phoneCode),
     dialCodeInfo: config.includePhoneCode === "tak",
-    charmMounting: config.charmMounting,
+    charmMounting: null,
     nameLayout: config.petName.trim().length > 6 ? "imie6plus" : config.nameLayout,
     rogalikMounting: null,
     rogalikCordColor: null,
     rogalikBeads: null,
     rogalikCharms: [],
+    beadNecklaceColors: config.beadNecklaceColors ?? [],
   }
 }
 
-export const cartItemToCreateOrderItem = (item: CartItemForOrder): CreateOrderItemInput => {
+export const cartItemToCreateOrderItem = (
+  item: CartItemForOrder,
+  tagModelBasePrices?: TagModelBasePrices,
+): CreateOrderItemInput => {
   const mapped = isRogalikCartItem(item)
-    ? mapRogalikCartItemToOrderItem(item)
-    : mapClassicCartItemToOrderItem(item)
+    ? mapRogalikCartItemToOrderItem(item, tagModelBasePrices)
+    : mapClassicCartItemToOrderItem(item, tagModelBasePrices)
   return {
     ...mapped,
-    baseUnitPrice: cartItemBaseUnitPrice(item),
+    baseUnitPrice: cartItemBaseUnitPrice(item, tagModelBasePrices),
   }
 }

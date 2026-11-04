@@ -3,9 +3,9 @@ import {
   karabinerQuantitiesTotal,
   type KarabinerCatalogRingKey,
 } from "@/lib/karabiner-pricing"
+import { charmUnitPricePln, type CharmUnitPrices } from "@/lib/charm-pricing"
 import {
   DIAL_CODE_PRICE,
-  EXTRA_CHARM_PRICE,
   EXTRA_KARABINER_PRICE,
   stringSizeLabel,
   type StringSize,
@@ -13,10 +13,12 @@ import {
 import {
   ROGALIK_BASE_PRICE,
   ROGALIK_MOUNTING_KARABINER_PRICE,
+  ROGALIK_CHARM_OPTIONS,
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
   rogalikMountingUsesBeads,
   rogalikMountingUsesKarabinczyk,
+  rogalikOptionLabel,
   rogalikStringSizeFromNeckCm,
 } from "@/lib/rogalik-options"
 
@@ -42,6 +44,7 @@ export type RogalikPricingInput = {
   karabinerQuantities?: Record<string, number>
   karabinerCatalogRingKey?: KarabinerCatalogRingKey
   includeDialCode?: boolean
+  charmUnitPrices?: CharmUnitPrices
 }
 
 const neckCmFromStored = (dogNeck: string | null | undefined): string | undefined => {
@@ -87,12 +90,12 @@ export const rogalikPriceBreakdown = (input: RogalikPricingInput): RogalikPriceL
         })
       }
     }
-    const charmCount = input.rogalikCharms?.length ?? 0
-    if (charmCount > 0) {
+    for (const charmId of input.rogalikCharms ?? []) {
+      const unit = charmUnitPricePln(charmId, input.charmUnitPrices)
       lines.push({
-        label: `Charmsy ×${charmCount}`,
-        amountPln: charmCount * EXTRA_CHARM_PRICE,
-        detail: `${EXTRA_CHARM_PRICE} zł/szt`,
+        label: rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, charmId),
+        amountPln: unit,
+        detail: `${unit} zł`,
       })
     }
   } else {

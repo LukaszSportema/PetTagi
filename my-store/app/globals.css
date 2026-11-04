@@ -43,12 +43,14 @@ body {
   overflow-x: clip;
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-cormorant), "Times New Roman", serif;
-  font-weight: 400;
-  letter-spacing: 0.02em;
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-cormorant), "Times New Roman", serif;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
 }
 
 ::selection {

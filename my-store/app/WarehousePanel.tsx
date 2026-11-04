@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { listWarehouseStockAdmin, setWarehouseStock } from './actions/warehouse';
 import {
   isWarehouseLowStock,
@@ -8,6 +8,15 @@ import {
   type WarehouseKind,
 } from '@/lib/warehouse-stock';
 import type { WarehouseAdminRow } from './actions/warehouse';
+import type { WarehouseCharmSection } from '@/lib/warehouse-catalog';
+
+const CHARM_WAREHOUSE_SECTION_ORDER: WarehouseCharmSection[] = ['złote', 'srebrne', 'rogalik'];
+
+const charmWarehouseSectionTitle: Record<WarehouseCharmSection, string> = {
+  złote: 'Złote',
+  srebrne: 'Srebrne',
+  rogalik: 'Rogalik',
+};
 
 function StockRowEditor({
   row,
@@ -139,7 +148,34 @@ export function WarehousePanel() {
     return <p className="text-sm text-[#7A736C]">Ładowanie magazynu…</p>;
   }
 
-  const renderTable = (title: string, items: WarehouseAdminRow[], kind: WarehouseKind) => (
+  const renderCharmTableBody = (items: WarehouseAdminRow[]) => {
+    const nodes: ReactNode[] = [];
+    for (const sectionId of CHARM_WAREHOUSE_SECTION_ORDER) {
+      const sectionRows = items.filter((row) => row.charmSection === sectionId);
+      if (sectionRows.length === 0) continue;
+      nodes.push(
+        <tr key={`charm-section-${sectionId}`} className="bg-[#EFE8DC] border-t border-[#D6C7AE]">
+          <td
+            colSpan={5}
+            className="px-4 py-2.5 text-[11px] font-bold tracking-wider uppercase text-[#161616]"
+          >
+            {charmWarehouseSectionTitle[sectionId]}
+          </td>
+        </tr>,
+      );
+      for (const row of sectionRows) {
+        nodes.push(<StockRowEditor key={row.id} row={row} onUpdated={handleUpdated} />);
+      }
+    }
+    return nodes;
+  };
+
+  const renderTable = (
+    title: string,
+    items: WarehouseAdminRow[],
+    kind: WarehouseKind,
+    body?: ReactNode,
+  ) => (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-x-auto">
       <div className="px-4 md:px-6 py-4 border-b border-[#D6C7AE] bg-[#F9F5ED]">
         <h3 className="text-lg font-serif font-light text-[#161616]">{title}</h3>
@@ -159,11 +195,7 @@ export function WarehousePanel() {
             <th className="px-4 py-3 w-0"> </th>
           </tr>
         </thead>
-        <tbody>
-          {items.map((row) => (
-            <StockRowEditor key={row.id} row={row} onUpdated={handleUpdated} />
-          ))}
-        </tbody>
+        <tbody>{body ?? items.map((row) => <StockRowEditor key={row.id} row={row} onUpdated={handleUpdated} />)}</tbody>
       </table>
     </div>
   );
@@ -181,7 +213,7 @@ export function WarehousePanel() {
 
       {listError && <p className="text-sm text-red-500">{listError}</p>}
 
-      {renderTable('Charmsy', charms, 'charm')}
+      {renderTable('Charmsy', charms, 'charm', renderCharmTableBody(charms))}
       {renderTable('Karabińczyki', karabiners, 'karabiner')}
     </div>
   );

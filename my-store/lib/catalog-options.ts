@@ -25,6 +25,128 @@ export const RING_OPTIONS: CatalogOption[] = [
   { id: "glow", label: "Glow" },
 ]
 
+const oprawaAdjectiveLower = (ringColor: string) => {
+  if (ringColor === "złoty") return "złota"
+  if (ringColor === "srebrny") return "srebrna"
+  if (ringColor === "kwiat") return "kwiat"
+  return ringColor
+}
+
+/** Rodzaj oprawy po prawej w podsumowaniu / koszyku / mailu (np. „Złota”). */
+export const oprawaDisplayAdjective = (ringColor: string) => {
+  const adj = oprawaAdjectiveLower(ringColor)
+  if (!adj) return adj
+  return adj.charAt(0).toLocaleUpperCase("pl-PL") + adj.slice(1)
+}
+
+export const oprawaDisplayPhrase = (ringColor: string) => {
+  const adj = oprawaAdjectiveLower(ringColor)
+  return adj ? `Oprawa ${adj}` : ringColor
+}
+
+export type TagModelOption = {
+  id: string
+  image: string
+  label: string
+}
+
+export const TAG_MODEL_OPTIONS: TagModelOption[] = [
+  { id: "sznurek-karabinier", image: "/model/2.jpg", label: "Na sznurku z karabińczykiem" },
+  { id: "sznurek-bez-karabinier", image: "/model/1.jpg", label: "Na sznurku (bez karabińczyka)" },
+  { id: "naszyjnik-koraliki", image: "/model/3.jpg", label: "Naszyjnik z koralikami i adresówką" },
+  { id: "sama-karabinier", image: "/model/4.jpg", label: "Sama adresówka z karabińczykiem" },
+]
+
+export const BEAD_NECKLACE_TAG_MODEL_ID = "naszyjnik-koraliki"
+
+export const STRING_WITHOUT_KARABINER_TAG_MODEL_ID = "sznurek-bez-karabinier"
+
+export const TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID = "sama-karabinier"
+
+export const isBeadNecklaceTagModel = (tagModel?: string | null) =>
+  tagModel?.trim() === BEAD_NECKLACE_TAG_MODEL_ID
+
+export const isStringWithoutKarabinerTagModel = (tagModel?: string | null) =>
+  tagModel?.trim() === STRING_WITHOUT_KARABINER_TAG_MODEL_ID
+
+export const isTagOnlyWithKarabinerTagModel = (tagModel?: string | null) =>
+  tagModel?.trim() === TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID
+
+/** Karabińczyk w cenie bazowej — bez kroku konfiguratora i bez dopłaty. */
+export const tagModelKarabinerIncludedInBasePrice = (tagModel?: string | null) =>
+  isTagOnlyWithKarabinerTagModel(tagModel)
+
+/** Bez dopłat za sznurki, stopery i karabińczyki z konfiguratora (tylko charms, naklejka, kierunkowy). */
+export const tagModelSkipsStringAndKarabinerAddonCharges = (tagModel?: string | null) =>
+  isTagOnlyWithKarabinerTagModel(tagModel)
+
+/** Karabińczyki — każda sztuka płatna (naszyjnik z koralikami, sznurek bez karabińczyka w komplecie). */
+export const tagModelKarabinersAllUnitsPaid = (tagModel?: string | null) =>
+  tagModel?.trim() === BEAD_NECKLACE_TAG_MODEL_ID ||
+  tagModel?.trim() === STRING_WITHOUT_KARABINER_TAG_MODEL_ID
+
+/** Ten sam krok karabińczyków co w modelu naszyjnik z koralikami (siatka, mocowanie, brak „1 gratis”). */
+export const tagModelUsesNecklaceStyleKarabinerStep = (tagModel?: string | null) =>
+  tagModelKarabinersAllUnitsPaid(tagModel)
+
+/** W kroku karabińczyków dopuszczalne zero szt. (np. sznurek bez karabińczyka w komplecie). */
+export const tagModelKarabinersOptionalInConfigurator = (tagModel?: string | null) =>
+  isStringWithoutKarabinerTagModel(tagModel)
+
+/** Nie ustawiaj domyślnie 1 szt. karabińczyka (wybór modelu / oprawy). */
+export const tagModelSkipsDefaultKarabinerSelection = (tagModel?: string | null) =>
+  isBeadNecklaceTagModel(tagModel) ||
+  isStringWithoutKarabinerTagModel(tagModel) ||
+  isTagOnlyWithKarabinerTagModel(tagModel)
+
+export const classicTagShowsDetailedPriceBreakdown = (tagModel?: string | null) =>
+  isBeadNecklaceTagModel(tagModel) ||
+  isStringWithoutKarabinerTagModel(tagModel) ||
+  isTagOnlyWithKarabinerTagModel(tagModel)
+
+/** Rozbicie cen w koszyku / mailu — modele z dopłatami lub dopłata za oprawę kwiat. */
+export const classicTagShowsItemPriceBreakdown = (
+  tagModel?: string | null,
+  ringColor?: string | null,
+) => classicTagShowsDetailedPriceBreakdown(tagModel) || ringColor?.trim() === "kwiat"
+
+export const tagModelLabel = (id: string) =>
+  TAG_MODEL_OPTIONS.find((option) => option.id === id)?.label ?? id
+
+export type BeadNecklaceColorOption = CatalogOption & { image: string }
+
+/** Kolory koralików — model „Naszyjnik z koralikami i adresówką”. */
+export const BEAD_NECKLACE_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
+  {
+    id: "czekoladowy-braz",
+    label: "Czekoladowy brąz",
+    image: "/koraliki/Czekoladowy_braz.jpg",
+  },
+  {
+    id: "karmelowy-marmur",
+    label: "Karmelowy marmur",
+    image: "/koraliki/Karmelowy_marmur.jpg",
+  },
+  {
+    id: "bezowy-marmur",
+    label: "Beżowy marmur",
+    image: "/koraliki/Bezowy_marmur.jpg",
+  },
+  {
+    id: "mleczny-bez",
+    label: "Mleczny bez",
+    image: "/koraliki/Mleczny_bez_(polprzezroczysty).jpg",
+  },
+]
+
+export const beadNecklaceColorLabel = (id: string) =>
+  BEAD_NECKLACE_COLOR_OPTIONS.find((option) => option.id === id)?.label ?? id
+
+export const MAX_BEAD_NECKLACE_COLOR_SELECTIONS = 2
+
+export const beadNecklaceColorLabels = (ids: readonly string[]) =>
+  ids.map((id) => beadNecklaceColorLabel(id)).filter(Boolean)
+
 export const GLOW_BASE_CATALOG: BaseOption[] = [
   {
     id: "glow1",
@@ -76,6 +198,9 @@ export const GLOW_TEXT_OPTIONS: GlowTextOption[] = [
 ]
 
 export const GOLD_BASE_CATALOG: SingleBaseOption[] = [
+  { id: "29", label: "Perła biała", image: "/baza/goldperlabiala.jpg" },
+  { id: "30", label: "Perła brązowa", image: "/baza/goldperlabraz.jpg" },
+  { id: "31", label: "Jasny brąz", image: "/baza/goldjasnybraz.jpg" },
   { id: "8", label: "Ecru", image: "/baza/goldecru.jpg" },
   { id: "11", label: "Kremowy", image: "/baza/goldkremowy.jpg" },
   { id: "1", label: "Beżowy", image: "/baza/goldbezowy.jpg" },
@@ -96,6 +221,7 @@ export const GOLD_BASE_CATALOG: SingleBaseOption[] = [
 ]
 
 export const SILVER_BASE_CATALOG: SingleBaseOption[] = [
+  { id: "32", label: "Perła biała", image: "/baza/silverperlabiala.jpg" },
   { id: "23", label: "Ivory", image: "/baza/silverivory.jpg" },
   { id: "24", label: "Jasnoszary", image: "/baza/silverjasnyszary.jpg" },
   { id: "25", label: "Lawenda", image: "/baza/silverlawenda.jpg" },
@@ -129,88 +255,370 @@ export const BASE_OPTIONS: CatalogOption[] = [
 export type CharmCatalogItem = SingleBaseOption & {
   unavailable?: boolean
   hit?: boolean
+  /** Wymiary pod miniaturą w konfiguratorze, np. „8×8 mm”. */
+  sizeLabel?: string
+  /** Cena w konfiguratorze (PLN). Domyślnie — EXTRA_CHARM_PRICE z lib/pricing. */
+  pricePln?: number
 }
 
-export const CHARM_BESTSELLERS: CharmCatalogItem[] = [
-  { id: "kostkabiala", label: "Biała kostka", image: "/charms/kostkabiala.jpg", hit: true },
-  { id: "rogalcroissant", label: "Rogal – croissant", image: "/charms/rogalcroissant.jpg", hit: true },
-  { id: "sercestalnierdzewna", label: "Serce – stal nierdzewna", image: "/charms/sercestalnierdzewna.jpg", hit: true },
-  { id: "pszczolkadelikatna", label: "Pszczółka – delikatna", image: "/charms/pszczolkadelikatna.jpg", hit: true },
+export const CHARM_STEEL_CATALOG: CharmCatalogItem[] = [
+  { id: "stal_serce", label: "Serce", image: "/charms/Stal_Serce.jpg", sizeLabel: "8×8 mm" },
+  { id: "stal_lapka", label: "Łapka", image: "/charms/Stal_Lapka.jpg", sizeLabel: "7×7 mm", pricePln: 5 },
+  { id: "stal_kokardka", label: "Kokardka", image: "/charms/Stal_Kokardka.jpg", sizeLabel: "15×9 mm", pricePln: 6 },
+  { id: "stal_gwiazdka", label: "Gwiazdka", image: "/charms/Stal_Gwiazdka.jpg", sizeLabel: "10×10 mm", pricePln: 3 },
 ]
 
-export const CHARM_CATALOG: CharmCatalogItem[] = [
-  { id: "perelka", label: "Perełka", image: "/charms/perelka.jpg" },
-  { id: "lapkastalnierdzewna", label: "Łapka – stal nierdzewna", image: "/charms/lapkastalnierdzewna.jpg" },
-  { id: "lapka", label: "Łapka", image: "/charms/lapka.jpg" },
-  { id: "gwiazdkastalnierdzewna", label: "Gwiazdka – stal nierdzewna", image: "/charms/gwiazdkastalnierdzewna.jpg" },
-  { id: "kokardkastalnierdzewna", label: "Kokardka – stal nierdzewna", image: "/charms/kokardkastalnierdzewna.jpg" },
-  { id: "zlotakostka", label: "Złota kostka", image: "/charms/zlotakostka.jpg" },
-  { id: "czarnakostka", label: "Czarna kostka", image: "/charms/czarnakostka.jpg" },
-  { id: "serceintensywnierozowe", label: "Serce – intensywnie różowe", image: "/charms/serceintensywnierozowe.jpg" },
-  { id: "sercebiale", label: "Serce – białe", image: "/charms/sercebiale.jpg" },
-  { id: "sercedelikatnierozowe", label: "Serce – delikatnie różowe", image: "/charms/sercedelikatnierozowe.jpg" },
-  { id: "sercelimonkowe", label: "Serce – limonkowe", image: "/charms/sercelimonkowe.jpg" },
-  { id: "sercezolte", label: "Serce – żółte", image: "/charms/sercezolte.jpg" },
-  { id: "sercepomaranczowe", label: "Serce – pomarańczowe", image: "/charms/sercepomaranczowe.jpg" },
-  { id: "serceczerwone", label: "Serce – czerwone", image: "/charms/serceczerwone.jpg" },
-  { id: "sercefioletowe", label: "Serce – fioletowe", image: "/charms/sercefioletowe.jpg" },
-  { id: "serceczarne", label: "Serce – czarne", image: "/charms/serceczarne.jpg" },
-  { id: "serceblekitne", label: "Serce – błękitne", image: "/charms/serceblekitne.jpg" },
-  { id: "koronadelikatnierozowa", label: "Korona – delikatnie różowa", image: "/charms/koronadelikatnierozowa.jpg" },
-  { id: "koronabiala", label: "Korona – biała", image: "/charms/koronabiala.jpg" },
-  { id: "koronaczarna", label: "Korona – czarna", image: "/charms/koronaczarna.jpg" },
-  { id: "koronablekitna", label: "Korona – błękitna", image: "/charms/koronablekitna.jpg" },
-  { id: "hotdog", label: "Hot dog", image: "/charms/hotdog.jpg" },
-  { id: "motylekrozowy", label: "Motylek – różowy", image: "/charms/motylekrozowy.jpg" },
-  { id: "motylekbialy", label: "Motylek – biały", image: "/charms/motylekbialy.jpg" },
-  { id: "motylekblekitny", label: "Motylek – błękitny", image: "/charms/motylekblekitny.jpg" },
-  { id: "motylekdelikatnierozowy", label: "Motylek – delikatnie różowy", image: "/charms/motylekdelikatnierozowy.jpg" },
-  { id: "motylekfioletowy", label: "Motylek – fioletowy", image: "/charms/motylekfioletowy.jpg" },
-  { id: "motylekpomaranczowy", label: "Motylek – pomarańczowy", image: "/charms/motylekpomaranczowy.jpg" },
-  { id: "motylekzielony", label: "Motylek – zielony", image: "/charms/motylekzielony.jpg" },
+export const CHARM_DELICATE_CATALOG: CharmCatalogItem[] = [
   {
-    id: "motylekczerwony",
-    label: "Motylek – czerwony (chwilowo niedostępny)",
-    image: "/charms/motylekczerwony.jpg",
-    unavailable: true,
+    id: "delikatne_biala_kostka",
+    label: "Biała kostka",
+    image: "/charms/Delikatne_Biala_kostka.jpg",
+    sizeLabel: "13×8 mm",
+    pricePln: 3,
   },
-  { id: "motylekczarny", label: "Motylek – czarny", image: "/charms/motylekczarny.jpg" },
-  { id: "papryczkachili", label: "Papryczka chili", image: "/charms/papryczkachili.jpg" },
-  { id: "wasybrazowe", label: "Wąsy – brązowe", image: "/charms/wasybrazowe.jpg" },
-]
-
-export const CHARM_SILVER_CATALOG: CharmCatalogItem[] = [
-  { id: "srebrokwiatuszekrozowy", label: "Kwiatuszek – różowy", image: "/charms/srebrokwiatuszekrozowy.jpg" },
-  { id: "srebrokwiatuszekbialy", label: "Kwiatuszek – biały", image: "/charms/srebrokwiatuszekbialy.jpg" },
-  { id: "srebrosercestalnierdzewna", label: "Serce – stal nierdzewna", image: "/charms/srebrosercestalnierdzewna.jpg" },
-  { id: "srebrolapkastalnierdzewna", label: "Łapka – stal nierdzewna", image: "/charms/srebrolapkastalnierdzewna.jpg" },
-  { id: "srebrolapka", label: "Łapka", image: "/charms/srebrolapka.jpg" },
-  { id: "srebrogwiazdkastalnierdzewna", label: "Gwiazdka – stal nierdzewna", image: "/charms/srebrogwiazdkastalnierdzewna.jpg" },
-  { id: "srebroperelka", label: "Perełka", image: "/charms/srebroperelka.jpg" },
-  { id: "srebrosrebrnakostka", label: "Srebrna kostka", image: "/charms/srebrosrebrnakostka.jpg" },
-  { id: "srebrokokardkastalnierdzewna", label: "Kokardka", image: "/charms/srebrokokardkastalnierdzewna.jpg" },
-]
-
-export const CHARM_LARGE_CATALOG: CharmCatalogItem[] = [
-  { id: "duzypiesek", label: "Piesek", image: "/charms/duzypiesek.jpg" },
-  { id: "duzalapkaczarna", label: "Łapka – czarna", image: "/charms/duzalapkaczarna.jpg" },
   {
-    id: "duzykwiatuszekrozowy",
-    label: "Kwiatuszek – różowy",
-    image: "/charms/duzykwiatuszekrozowy.jpg",
-    unavailable: true,
+    id: "delikatne_perelka",
+    label: "Perełka",
+    image: "/charms/Delikatne_Perelka.jpg",
+    sizeLabel: "8×8 mm",
+    pricePln: 4,
   },
-  { id: "duzykwiatuszekdelikatnierozowy", label: "Kwiatuszek – delikatnie różowy", image: "/charms/duzykwiatuszekdelikatnierozowy.jpg" },
-  { id: "duzykwiatuszeklawendowy", label: "Kwiatuszek – lawendowy", image: "/charms/duzykwiatuszeklawendowy.jpg" },
-  { id: "duzamuszelka", label: "Muszelka", image: "/charms/duzamuszelka.jpg" },
-  { id: "duzeoko", label: "Oko", image: "/charms/duzeoko.jpg" },
+  {
+    id: "delikatne_lapka_ii",
+    label: "Łapka II",
+    image: "/charms/Delikatne_Lapka_II.jpg",
+    sizeLabel: "10×9 mm",
+    pricePln: 3,
+  },
+  {
+    id: "delikatne_zlota_kostka",
+    label: "Złota kostka",
+    image: "/charms/Delikatne_Zlota_kostka.jpg",
+    sizeLabel: "10×4 mm",
+    pricePln: 3,
+  },
+  {
+    id: "delikatne_motylek_bialy",
+    label: "Motylek biały",
+    image: "/charms/Delikatne_Motylek_bialy.jpg",
+    sizeLabel: "9×6 mm",
+    pricePln: 3,
+  },
+  {
+    id: "delikatne_korona_delikatnie_rozowa",
+    label: "Korona delikatnie różowa",
+    image: "/charms/Deliaktne_Korona_delikatnie_rozowa.jpg",
+    sizeLabel: "10×8 mm",
+    pricePln: 4,
+  },
+  {
+    id: "delikatne_korona_biala",
+    label: "Korona biała",
+    image: "/charms/Delikatne_Korona_biala.jpg",
+    sizeLabel: "10×8 mm",
+    pricePln: 4,
+  },
+  {
+    id: "delikatne_serce_biale",
+    label: "Serce białe",
+    image: "/charms/Delikatne_Serce_biale.jpg",
+    sizeLabel: "8×8 mm",
+    pricePln: 3,
+  },
+  {
+    id: "delikatne_serce_delikatnie_rozowe",
+    label: "Serce delikatnie różowe",
+    image: "/charms/Delikatne_Serce_delikatnie_rozowe.jpg",
+    sizeLabel: "8×8 mm",
+    pricePln: 3,
+  },
+  {
+    id: "delikatne_muszelka",
+    label: "Muszelka",
+    image: "/charms/Delikatne_Muszelka.jpg",
+    sizeLabel: "15×15 mm",
+    pricePln: 4,
+  },
+]
+
+export const CHARM_SILVER_STEEL_CATALOG: CharmCatalogItem[] = [
+  { id: "srebrne_serce", label: "Serce", image: "/charms/Srebrne_Serce.jpg", sizeLabel: "8×8 mm" },
+  { id: "srebrne_lapka", label: "Łapka", image: "/charms/Srebrne_Lapka.jpg", sizeLabel: "7×7 mm", pricePln: 5 },
+  {
+    id: "srebrne_kokardka",
+    label: "Kokardka",
+    image: "/charms/Srebrne_Kokardka.jpg",
+    sizeLabel: "15×9 mm",
+    pricePln: 6,
+  },
+  {
+    id: "srebrne_gwiazdka",
+    label: "Gwiazdka",
+    image: "/charms/Srebrne_Gwiazdka.jpg",
+    sizeLabel: "10×10 mm",
+    pricePln: 3,
+  },
+]
+
+export const CHARM_SILVER_DELICATE_CATALOG: CharmCatalogItem[] = [
+  {
+    id: "srebrne_perelka",
+    label: "Perełka",
+    image: "/charms/Srebrne_Perelka.jpg",
+    sizeLabel: "8×8 mm",
+  },
+  {
+    id: "srebrne_kostka",
+    label: "Kostka",
+    image: "/charms/Srebrne_kostka.jpg",
+    sizeLabel: "10×4 mm",
+  },
+  {
+    id: "srebrne_lapka_ii",
+    label: "Łapka II",
+    image: "/charms/Srebrne_Lapka_II.jpg",
+    sizeLabel: "10×9 mm",
+  },
+  {
+    id: "srebrne_kwiatuszek_rozowy",
+    label: "Kwiatuszek różowy",
+    image: "/charms/Srebrne_Kwiatuszek_rozowy.jpg",
+    sizeLabel: "10×10 mm",
+  },
+  {
+    id: "srebrne_kwiatuszek_bialy",
+    label: "Kwiatuszek biały",
+    image: "/charms/Srebrne_Kwiatuszek_bialy.jpg",
+    sizeLabel: "10×10 mm",
+  },
+]
+
+export const CHARM_BOLD_CATALOG: CharmCatalogItem[] = [
+  {
+    id: "wyraziste_rogal_croissant",
+    label: "Rogal – croissant",
+    image: "/charms/Wyraziste_Rogal_croissant.jpg",
+    sizeLabel: "16×10 mm",
+    pricePln: 5,
+  },
+  {
+    id: "wyraziste_wasy_brazowe",
+    label: "Wąsy brązowe",
+    image: "/charms/Wyraziste_Wasy_brazowe.jpg",
+    sizeLabel: "16×7 mm",
+    pricePln: 4,
+  },
+  {
+    id: "wyraziste_hot_dog",
+    label: "Hot dog",
+    image: "/charms/Wyraziste_Hot_dog.jpg",
+    sizeLabel: "20×7 mm",
+    pricePln: 4,
+  },
+  {
+    id: "wyraziste_papryczka_chili",
+    label: "Papryczka chili",
+    image: "/charms/Wyraziste_Papryczka_chili.jpg",
+    sizeLabel: "5×12 mm",
+    pricePln: 5,
+  },
+  {
+    id: "wyraziste_serce_czerwone",
+    label: "Serce czerwone",
+    image: "/charms/Wyraziste_Serce_czerwone.jpg",
+    sizeLabel: "8×8 mm",
+    pricePln: 3,
+  },
+  {
+    id: "wyraziste_serce_arbuzowe",
+    label: "Serce arbuzowe",
+    image: "/charms/Wyraziste_Serce_arbuzowe.jpg",
+    sizeLabel: "8×8 mm",
+    pricePln: 3,
+  },
+  {
+    id: "wyraziste_pszczolka",
+    label: "Pszczółka",
+    image: "/charms/Wyraziste_Pszczolka.jpg",
+    sizeLabel: "10×7 mm",
+    pricePln: 3,
+  },
+  {
+    id: "wyraziste_czarna_kostka",
+    label: "Czarna kostka",
+    image: "/charms/Wyraziste_Czarna_kostka.jpg",
+    sizeLabel: "13×8 mm",
+  },
+  {
+    id: "wyraziste_koniczyna",
+    label: "Koniczyna",
+    image: "/charms/Wyraziste_Koniczyna.jpg",
+    sizeLabel: "12×12 mm",
+  },
+]
+
+export const CHARM_LARGE_HANGING_CATALOG: CharmCatalogItem[] = [
+  {
+    id: "duze_kawa",
+    label: "Kawa",
+    image: "/charms/Duze_Kawa.jpg",
+    sizeLabel: "10×15 mm",
+  },
+  {
+    id: "duze_rogalik_ii",
+    label: "Rogalik II",
+    image: "/charms/Duze_Rogalik_II.jpg",
+    sizeLabel: "25×15 mm",
+  },
+  {
+    id: "duze_rogalik_iii",
+    label: "Rogalik III",
+    image: "/charms/Duze_Rogalik_III.jpg",
+    sizeLabel: "25×16 mm",
+  },
+  {
+    id: "duze_precelek",
+    label: "Precel",
+    image: "/charms/Duze_Precelek.jpg",
+    sizeLabel: "20×20 mm",
+  },
+  {
+    id: "duze_kwiatuszek_delikatnie_rozowy",
+    label: "Kwiatuszek delikatnie różowy",
+    image: "/charms/Duze_Kwiatuszek_delikatnie_rozowy.jpg",
+    sizeLabel: "15×15 mm",
+  },
+  {
+    id: "duze_kwiatuszek_lawendowy",
+    label: "Kwiatuszek lawendowy",
+    image: "/charms/Duze_Kwiatuszek_lawendowy.jpg",
+    sizeLabel: "15×15 mm",
+  },
+  {
+    id: "duze_lapka_czarna",
+    label: "Łapka czarna",
+    image: "/charms/Duze_Lapka_czarna.jpg",
+    sizeLabel: "15×14 mm",
+  },
+  {
+    id: "duze_oko",
+    label: "Oko",
+    image: "/charms/Duze_Oko.jpg",
+    sizeLabel: "15×15 mm",
+  },
+]
+
+export type CharmConfiguratorSection = {
+  title: string
+  subtitle?: string
+  items: CharmCatalogItem[]
+}
+
+export const CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS: CharmConfiguratorSection[] = [
+  { title: "Stal nierdzewna", items: CHARM_STEEL_CATALOG },
+  { title: "Delikatne akcenty", items: CHARM_DELICATE_CATALOG },
+  { title: "Wyraziste akcenty", items: CHARM_BOLD_CATALOG },
+  {
+    title: "Duże zawieszki",
+    subtitle: "Polecane do modeli bez karabińczyka oraz z koralikami",
+    items: CHARM_LARGE_HANGING_CATALOG,
+  },
+]
+
+export const CHARM_SILVER_CONFIGURATOR_SECTIONS: CharmConfiguratorSection[] = [
+  { title: "Stal nierdzewna", items: CHARM_SILVER_STEEL_CATALOG },
+  { title: "Delikatne akcenty", items: CHARM_SILVER_DELICATE_CATALOG },
+]
+
+/** Pełny katalog charmsów w magazynie (wszystkie oprawy). */
+export const CHARM_CONFIGURATOR_SECTIONS_ALL: CharmConfiguratorSection[] = [
+  ...CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS,
+  ...CHARM_SILVER_CONFIGURATOR_SECTIONS,
+]
+
+/** Sekcje widoczne w konfiguratorze dla wybranej oprawy (classic-tag, glow-tag). */
+export function charmConfiguratorSectionsForRing(ringColor: string): CharmConfiguratorSection[] {
+  if (ringColor === "srebrny") return CHARM_SILVER_CONFIGURATOR_SECTIONS
+  return CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS
+}
+
+/** Katalog charmsów w konfiguratorze (classic-tag, glow-tag) — zależnie od oprawy / bazy. */
+export function configuratorCharmCatalogForRing(ringColor: string): CharmCatalogItem[] {
+  return charmConfiguratorSectionsForRing(ringColor).flatMap((section) => section.items)
+}
+
+/** @deprecated Użyj charmConfiguratorSectionsForRing — złoto/kwiat bez srebra. */
+export const CHARM_CONFIGURATOR_SECTIONS = CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS
+
+export const CONFIGURATOR_CHARM_CATALOG: CharmCatalogItem[] = [
+  ...CHARM_STEEL_CATALOG,
+  ...CHARM_DELICATE_CATALOG,
+  ...CHARM_BOLD_CATALOG,
+  ...CHARM_LARGE_HANGING_CATALOG,
+  ...CHARM_SILVER_STEEL_CATALOG,
+  ...CHARM_SILVER_DELICATE_CATALOG,
+]
+
+/** Etykiety starych ID charmsów (zamówienia sprzed migracji katalogu). */
+const LEGACY_CHARM_LABEL_OPTIONS: CatalogOption[] = [
+  { id: "kostkabiala", label: "Biała kostka" },
+  { id: "rogalcroissant", label: "Rogal – croissant" },
+  { id: "sercestalnierdzewna", label: "Serce – stal nierdzewna" },
+  { id: "pszczolkadelikatna", label: "Pszczółka – delikatna" },
+  { id: "perelka", label: "Perełka" },
+  { id: "lapkastalnierdzewna", label: "Łapka – stal nierdzewna" },
+  { id: "lapka", label: "Łapka" },
+  { id: "gwiazdkastalnierdzewna", label: "Gwiazdka – stal nierdzewna" },
+  { id: "kokardkastalnierdzewna", label: "Kokardka – stal nierdzewna" },
+  { id: "zlotakostka", label: "Złota kostka" },
+  { id: "czarnakostka", label: "Czarna kostka" },
+  { id: "serceintensywnierozowe", label: "Serce – intensywnie różowe" },
+  { id: "sercebiale", label: "Serce – białe" },
+  { id: "sercedelikatnierozowe", label: "Serce – delikatnie różowe" },
+  { id: "sercelimonkowe", label: "Serce – limonkowe" },
+  { id: "sercezolte", label: "Serce – żółte" },
+  { id: "sercepomaranczowe", label: "Serce – pomarańczowe" },
+  { id: "serceczerwone", label: "Serce – czerwone" },
+  { id: "sercefioletowe", label: "Serce – fioletowe" },
+  { id: "serceczarne", label: "Serce – czarne" },
+  { id: "serceblekitne", label: "Serce – błękitne" },
+  { id: "koronadelikatnierozowa", label: "Korona – delikatnie różowa" },
+  { id: "koronabiala", label: "Korona – biała" },
+  { id: "koronaczarna", label: "Korona – czarna" },
+  { id: "koronablekitna", label: "Korona – błękitna" },
+  { id: "hotdog", label: "Hot dog" },
+  { id: "motylekrozowy", label: "Motylek – różowy" },
+  { id: "motylekbialy", label: "Motylek – biały" },
+  { id: "motylekblekitny", label: "Motylek – błękitny" },
+  { id: "motylekdelikatnierozowy", label: "Motylek – delikatnie różowy" },
+  { id: "motylekfioletowy", label: "Motylek – fioletowy" },
+  { id: "motylekpomaranczowy", label: "Motylek – pomarańczowy" },
+  { id: "motylekzielony", label: "Motylek – zielony" },
+  { id: "motylekczerwony", label: "Motylek – czerwony" },
+  { id: "motylekczarny", label: "Motylek – czarny" },
+  { id: "papryczkachili", label: "Papryczka chili" },
+  { id: "wasybrazowe", label: "Wąsy – brązowe" },
+  { id: "srebrokwiatuszekrozowy", label: "Kwiatuszek – różowy" },
+  { id: "srebrokwiatuszekbialy", label: "Kwiatuszek – biały" },
+  { id: "srebrosercestalnierdzewna", label: "Serce – stal nierdzewna" },
+  { id: "srebrolapkastalnierdzewna", label: "Łapka – stal nierdzewna" },
+  { id: "srebrolapka", label: "Łapka" },
+  { id: "srebrogwiazdkastalnierdzewna", label: "Gwiazdka – stal nierdzewna" },
+  { id: "srebroperelka", label: "Perełka" },
+  { id: "srebrosrebrnakostka", label: "Srebrna kostka" },
+  { id: "srebrokokardkastalnierdzewna", label: "Kokardka" },
+  { id: "duzypiesek", label: "Piesek" },
+  { id: "duzalapkaczarna", label: "Łapka – czarna" },
+  { id: "duzykwiatuszekrozowy", label: "Kwiatuszek – różowy" },
+  { id: "duzykwiatuszekdelikatnierozowy", label: "Kwiatuszek – delikatnie różowy" },
+  { id: "duzykwiatuszeklawendowy", label: "Kwiatuszek – lawendowy" },
+  { id: "duzamuszelka", label: "Muszelka" },
+  { id: "duzeoko", label: "Oko" },
 ]
 
 export const CHARM_OPTIONS: CatalogOption[] = [
-  ...CHARM_BESTSELLERS.map(({ id, label }) => ({ id, label })),
-  ...CHARM_CATALOG.map(({ id, label }) => ({ id, label })),
-  ...CHARM_SILVER_CATALOG.map(({ id, label }) => ({ id, label })),
-  ...CHARM_LARGE_CATALOG.map(({ id, label }) => ({ id, label })),
+  ...CONFIGURATOR_CHARM_CATALOG.map(({ id, label }) => ({ id, label })),
+  ...LEGACY_CHARM_LABEL_OPTIONS,
 ]
 
 export const CHARM_LABEL_OPTIONS = CHARM_OPTIONS
@@ -547,46 +955,14 @@ export const LEGACY_KARABINER_ID_TO_CONFIGURATOR: Record<string, string> = {
 export const KARABINER_OPTIONS: CatalogOption[] = KARABINER_CATALOG.map(({ id, label }) => ({ id, label }))
 
 export const PREMIUM_STRING_CATALOG: StringOption[] = [
-  {
-    id: "cappuccino",
-    label: "Cappuccino",
-    images: ["/sznurek/premiumcappuccino1.jpg", "/sznurek/premiumcappuccino2.jpg"],
-  },
-  {
-    id: "czekoladowy",
-    label: "Czekoladowy",
-    images: ["/sznurek/premiumczekoladowy1.jpg", "/sznurek/premiumczekoladowy2.jpg"],
-  },
-  {
-    id: "ecru",
-    label: "Ecru",
-    images: ["/sznurek/premiumecru1.jpg", "/sznurek/premiumecru2.jpg"],
-  },
-  {
-    id: "jasny-braz",
-    label: "Jasny brąz",
-    images: ["/sznurek/premiumjasnybraz1.jpg", "/sznurek/premiumjasnybraz2.jpg"],
-  },
-  {
-    id: "kremowy",
-    label: "Kremowy",
-    images: ["/sznurek/premiumkremowy1.jpg", "/sznurek/premiumkremowy2.jpg"],
-  },
-  {
-    id: "lawenda",
-    label: "Lawenda",
-    images: ["/sznurek/premiumlawenda1.jpg", "/sznurek/premiumlawenda2.jpg"],
-  },
-  {
-    id: "teal",
-    label: "Teal",
-    images: ["/sznurek/premiumteal1.jpg", "/sznurek/premiumteal2.jpg"],
-  },
-  {
-    id: "winny",
-    label: "Winny",
-    images: ["/sznurek/premiumwinny1.jpg", "/sznurek/premiumwinny2.jpg"],
-  },
+  { id: "cappuccino", label: "Cappuccino", images: ["/sznurek/premiumcappuccino.jpg"] },
+  { id: "czekoladowy", label: "Czekoladowy", images: ["/sznurek/premiumczekoladowy.jpg"] },
+  { id: "ecru", label: "Ecru", images: ["/sznurek/premiumecru.jpg"] },
+  { id: "jasny-braz", label: "Jasny brąz", images: ["/sznurek/premiumjasnybraz.jpg"] },
+  { id: "kremowy", label: "Kremowy", images: ["/sznurek/premiumkremowy.jpg"] },
+  { id: "lawenda", label: "Lawenda", images: ["/sznurek/premiumlawenda.jpg"] },
+  { id: "teal", label: "Teal", images: ["/sznurek/premiumteal.jpg"] },
+  { id: "winny", label: "Winny", images: ["/sznurek/premiumwinny.jpg"] },
 ]
 
 export const PREMIUM_STRING_OPTIONS: CatalogOption[] = PREMIUM_STRING_CATALOG.map(({ id, label }) => ({
@@ -595,56 +971,16 @@ export const PREMIUM_STRING_OPTIONS: CatalogOption[] = PREMIUM_STRING_CATALOG.ma
 }))
 
 export const CLASSIC_STRING_CATALOG: StringOption[] = [
-  {
-    id: "bezowy",
-    label: "Beżowy",
-    images: ["/sznurek/klasycznybezowy1.jpg", "/sznurek/klasycznybezowy2.jpg"],
-  },
-  {
-    id: "braz",
-    label: "Brąz",
-    images: ["/sznurek/klasycznybraz1.jpg", "/sznurek/klasycznybraz2.jpg"],
-  },
-  {
-    id: "butelkowy",
-    label: "Butelkowy",
-    images: ["/sznurek/klasycznybutelkowy1.jpg", "/sznurek/klasycznybutelkowy2.jpg"],
-  },
-  {
-    id: "ciemny-bez",
-    label: "Ciemny beż",
-    images: ["/sznurek/klasycznyciemnybez1.jpg", "/sznurek/klasycznyciemnybez2.jpg"],
-  },
-  {
-    id: "czarny",
-    label: "Czarny",
-    images: ["/sznurek/klasycznyczarny1.jpg", "/sznurek/klasycznyczarny2.jpg"],
-  },
-  {
-    id: "czerwony",
-    label: "Czerwony",
-    images: ["/sznurek/klasycznyczerwony1.jpg", "/sznurek/klasycznyczerwony2.jpg"],
-  },
-  {
-    id: "granatowy",
-    label: "Granatowy",
-    images: ["/sznurek/klasycznygranatowy1.jpg", "/sznurek/klasycznygranatowy2.jpg"],
-  },
-  {
-    id: "jasnorozowy",
-    label: "Jasnoróżowy",
-    images: ["/sznurek/klasycznyjasnorozowy1.jpg", "/sznurek/klasycznyjasnorozowy2.jpg"],
-  },
-  {
-    id: "niebieski",
-    label: "Niebieski",
-    images: ["/sznurek/klasycznyniebieski1.jpg", "/sznurek/klasycznyniebieski2.jpg"],
-  },
-  {
-    id: "srebrny",
-    label: "Srebrny",
-    images: ["/sznurek/klasycznysrebrny1.jpg", "/sznurek/klasycznysrebrny2.jpg"],
-  },
+  { id: "bezowy", label: "Beżowy", images: ["/sznurek/klasycznybezowy.jpg"] },
+  { id: "braz", label: "Brąz", images: ["/sznurek/klasycznybraz.jpg"] },
+  { id: "butelkowy", label: "Butelkowy", images: ["/sznurek/klasycznybutelkowy.jpg"] },
+  { id: "ciemny-bez", label: "Ciemny beż", images: ["/sznurek/klasycznyciemnybez.jpg"] },
+  { id: "czarny", label: "Czarny", images: ["/sznurek/klasycznyczarny.jpg"] },
+  { id: "czerwony", label: "Czerwony", images: ["/sznurek/klasycznyczerwony.jpg"] },
+  { id: "granatowy", label: "Granatowy", images: ["/sznurek/klasycznygranatowy.jpg"] },
+  { id: "jasnorozowy", label: "Jasnoróżowy", images: ["/sznurek/klasycznyjasnorozowy.jpg"] },
+  { id: "niebieski", label: "Niebieski", images: ["/sznurek/klasycznyniebieski.jpg"] },
+  { id: "srebrny", label: "Srebrny", images: ["/sznurek/klasycznysrebrny.jpg"] },
 ]
 
 export const CLASSIC_STRING_OPTIONS: CatalogOption[] = CLASSIC_STRING_CATALOG.map(({ id, label }) => ({
@@ -708,10 +1044,26 @@ export const stopperIdsFromStored = (value: string | null) => {
 export const stopperCountFromStored = (value: string | null) =>
   stopperIdsFromStored(value).length
 
-export const STICKER_OPTIONS: CatalogOption[] = Array.from({ length: 6 }, (_, index) => ({
-  id: String(index + 1),
-  label: `Pies ${index + 1}`,
+export const STICKER_COUNT = 49
+
+export const STICKER_CATALOG: { id: string; label: string; image: string }[] = Array.from(
+  { length: STICKER_COUNT },
+  (_, index) => {
+    const n = index + 1
+    return {
+      id: String(n),
+      label: `Pupil ${n}`,
+      image: `/naklejki/${n}.jpg`,
+    }
+  },
+)
+
+export const STICKER_OPTIONS: CatalogOption[] = STICKER_CATALOG.map(({ id, label }) => ({
+  id,
+  label,
 }))
 
 export const optionLabel = (options: CatalogOption[], id: string) =>
   options.find((option) => option.id === id)?.label ?? `Podpis ${id}`
+
+export const stickerLabel = (id: string) => optionLabel(STICKER_OPTIONS, id)

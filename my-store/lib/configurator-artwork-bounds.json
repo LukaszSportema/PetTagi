@@ -1,0 +1,572 @@
+{
+  "/charms/Deliaktne_Korona_delikatnie_rozowa.jpg": {
+    "minX": 832,
+    "minY": 1078,
+    "maxX": 2489,
+    "maxY": 3061
+  },
+  "/charms/Delikatne_Biala_kostka.jpg": {
+    "minX": 694,
+    "minY": 932,
+    "maxX": 2470,
+    "maxY": 3180
+  },
+  "/charms/Delikatne_Korona_biala.jpg": {
+    "minX": 862,
+    "minY": 1136,
+    "maxX": 2460,
+    "maxY": 3029
+  },
+  "/charms/Delikatne_Lapka_II.jpg": {
+    "minX": 944,
+    "minY": 1254,
+    "maxX": 2483,
+    "maxY": 2911
+  },
+  "/charms/Delikatne_Motylek_bialy.jpg": {
+    "minX": 920,
+    "minY": 1433,
+    "maxX": 2428,
+    "maxY": 2706
+  },
+  "/charms/Delikatne_Muszelka.jpg": {
+    "minX": 821,
+    "minY": 966,
+    "maxX": 2685,
+    "maxY": 3094
+  },
+  "/charms/Delikatne_Perelka.jpg": {
+    "minX": 1182,
+    "minY": 1255,
+    "maxX": 2219,
+    "maxY": 2884
+  },
+  "/charms/Delikatne_Serce_biale.jpg": {
+    "minX": 980,
+    "minY": 1358,
+    "maxX": 2341,
+    "maxY": 3045
+  },
+  "/charms/Delikatne_Serce_delikatnie_rozowe.jpg": {
+    "minX": 1010,
+    "minY": 1413,
+    "maxX": 2312,
+    "maxY": 3069
+  },
+  "/charms/Delikatne_Zlota_kostka.jpg": {
+    "minX": 950,
+    "minY": 1640,
+    "maxX": 2372,
+    "maxY": 2499
+  },
+  "/charms/Stal_Gwiazdka.jpg": {
+    "minX": 1022,
+    "minY": 1276,
+    "maxX": 2590,
+    "maxY": 3021
+  },
+  "/charms/Stal_Kokardka.jpg": {
+    "minX": 683,
+    "minY": 1462,
+    "maxX": 3166,
+    "maxY": 3178
+  },
+  "/charms/Stal_Lapka.jpg": {
+    "minX": 1133,
+    "minY": 1387,
+    "maxX": 2584,
+    "maxY": 3015
+  },
+  "/charms/Stal_Serce.jpg": {
+    "minX": 910,
+    "minY": 1527,
+    "maxX": 2597,
+    "maxY": 3007
+  },
+  "/charms/mocowanieoddzielne.jpg": {
+    "minX": 4,
+    "minY": 582,
+    "maxX": 3344,
+    "maxY": 3952
+  },
+  "/charms/mocowanierazem.jpg": {
+    "minX": 0,
+    "minY": 396,
+    "maxX": 3374,
+    "maxY": 3796
+  },
+  "/naklejki/1.jpg": {
+    "minX": 917,
+    "minY": 1482,
+    "maxX": 2484,
+    "maxY": 2815
+  },
+  "/naklejki/10.jpg": {
+    "minX": 1026,
+    "minY": 1360,
+    "maxX": 2506,
+    "maxY": 2515
+  },
+  "/naklejki/11.jpg": {
+    "minX": 1147,
+    "minY": 1545,
+    "maxX": 2332,
+    "maxY": 2699
+  },
+  "/naklejki/12.jpg": {
+    "minX": 978,
+    "minY": 1580,
+    "maxX": 2370,
+    "maxY": 2559
+  },
+  "/naklejki/13.jpg": {
+    "minX": 1039,
+    "minY": 1523,
+    "maxX": 2282,
+    "maxY": 2590
+  },
+  "/naklejki/14.jpg": {
+    "minX": 1052,
+    "minY": 1446,
+    "maxX": 2533,
+    "maxY": 2482
+  },
+  "/naklejki/15.jpg": {
+    "minX": 1044,
+    "minY": 1225,
+    "maxX": 2198,
+    "maxY": 2940
+  },
+  "/naklejki/16.jpg": {
+    "minX": 1039,
+    "minY": 1433,
+    "maxX": 2282,
+    "maxY": 2706
+  },
+  "/naklejki/17.jpg": {
+    "minX": 1101,
+    "minY": 1366,
+    "maxX": 2168,
+    "maxY": 2905
+  },
+  "/naklejki/18.jpg": {
+    "minX": 1090,
+    "minY": 1568,
+    "maxX": 2364,
+    "maxY": 2781
+  },
+  "/naklejki/19.jpg": {
+    "minX": 1036,
+    "minY": 1477,
+    "maxX": 2338,
+    "maxY": 2899
+  },
+  "/naklejki/2.jpg": {
+    "minX": 1182,
+    "minY": 1178,
+    "maxX": 2219,
+    "maxY": 2776
+  },
+  "/naklejki/20.jpg": {
+    "minX": 1094,
+    "minY": 1424,
+    "maxX": 2307,
+    "maxY": 2874
+  },
+  "/naklejki/21.jpg": {
+    "minX": 1010,
+    "minY": 1392,
+    "maxX": 2312,
+    "maxY": 2931
+  },
+  "/naklejki/22.jpg": {
+    "minX": 1152,
+    "minY": 1479,
+    "maxX": 2248,
+    "maxY": 2871
+  },
+  "/naklejki/23.jpg": {
+    "minX": 1062,
+    "minY": 1427,
+    "maxX": 2365,
+    "maxY": 2818
+  },
+  "/naklejki/24.jpg": {
+    "minX": 1067,
+    "minY": 1398,
+    "maxX": 2280,
+    "maxY": 2820
+  },
+  "/naklejki/25.jpg": {
+    "minX": 1060,
+    "minY": 1456,
+    "maxX": 2393,
+    "maxY": 2788
+  },
+  "/naklejki/26.jpg": {
+    "minX": 1129,
+    "minY": 1365,
+    "maxX": 2166,
+    "maxY": 2932
+  },
+  "/naklejki/27.jpg": {
+    "minX": 829,
+    "minY": 1078,
+    "maxX": 2545,
+    "maxY": 3061
+  },
+  "/naklejki/28.jpg": {
+    "minX": 1120,
+    "minY": 1048,
+    "maxX": 2333,
+    "maxY": 3118
+  },
+  "/naklejki/29.jpg": {
+    "minX": 1185,
+    "minY": 1106,
+    "maxX": 2163,
+    "maxY": 3059
+  },
+  "/naklejki/3.jpg": {
+    "minX": 1036,
+    "minY": 1433,
+    "maxX": 2338,
+    "maxY": 2706
+  },
+  "/naklejki/30.jpg": {
+    "minX": 1073,
+    "minY": 1045,
+    "maxX": 2169,
+    "maxY": 3173
+  },
+  "/naklejki/31.jpg": {
+    "minX": 1090,
+    "minY": 1449,
+    "maxX": 2364,
+    "maxY": 2427
+  },
+  "/naklejki/32.jpg": {
+    "minX": 1149,
+    "minY": 1575,
+    "maxX": 2304,
+    "maxY": 2643
+  },
+  "/naklejki/33.jpg": {
+    "minX": 1037,
+    "minY": 1579,
+    "maxX": 2311,
+    "maxY": 2586
+  },
+  "/naklejki/34.jpg": {
+    "minX": 980,
+    "minY": 1528,
+    "maxX": 2341,
+    "maxY": 2506
+  },
+  "/naklejki/35.jpg": {
+    "minX": 978,
+    "minY": 1490,
+    "maxX": 2370,
+    "maxY": 2675
+  },
+  "/naklejki/36.jpg": {
+    "minX": 893,
+    "minY": 1548,
+    "maxX": 2402,
+    "maxY": 2644
+  },
+  "/naklejki/37.jpg": {
+    "minX": 1097,
+    "minY": 1403,
+    "maxX": 2251,
+    "maxY": 2736
+  },
+  "/naklejki/38.jpg": {
+    "minX": 1068,
+    "minY": 1607,
+    "maxX": 2253,
+    "maxY": 2585
+  },
+  "/naklejki/39.jpg": {
+    "minX": 1100,
+    "minY": 1712,
+    "maxX": 2195,
+    "maxY": 2690
+  },
+  "/naklejki/4.jpg": {
+    "minX": 1094,
+    "minY": 1450,
+    "maxX": 2307,
+    "maxY": 2900
+  },
+  "/naklejki/40.jpg": {
+    "minX": 950,
+    "minY": 1531,
+    "maxX": 2372,
+    "maxY": 2450
+  },
+  "/naklejki/41.jpg": {
+    "minX": 954,
+    "minY": 1131,
+    "maxX": 2315,
+    "maxY": 3114
+  },
+  "/naklejki/42.jpg": {
+    "minX": 1155,
+    "minY": 942,
+    "maxX": 2192,
+    "maxY": 3012
+  },
+  "/naklejki/43.jpg": {
+    "minX": 980,
+    "minY": 1168,
+    "maxX": 2341,
+    "maxY": 2944
+  },
+  "/naklejki/44.jpg": {
+    "minX": 825,
+    "minY": 1088,
+    "maxX": 2602,
+    "maxY": 2893
+  },
+  "/naklejki/45.jpg": {
+    "minX": 943,
+    "minY": 1276,
+    "maxX": 2510,
+    "maxY": 3021
+  },
+  "/naklejki/46.jpg": {
+    "minX": 1002,
+    "minY": 1456,
+    "maxX": 2452,
+    "maxY": 2788
+  },
+  "/naklejki/47.jpg": {
+    "minX": 1179,
+    "minY": 1336,
+    "maxX": 2274,
+    "maxY": 2934
+  },
+  "/naklejki/48.jpg": {
+    "minX": 1070,
+    "minY": 1427,
+    "maxX": 2225,
+    "maxY": 2818
+  },
+  "/naklejki/49.jpg": {
+    "minX": 1240,
+    "minY": 1078,
+    "maxX": 2187,
+    "maxY": 3061
+  },
+  "/naklejki/5.jpg": {
+    "minX": 1100,
+    "minY": 1252,
+    "maxX": 2195,
+    "maxY": 2939
+  },
+  "/naklejki/6.jpg": {
+    "minX": 917,
+    "minY": 1255,
+    "maxX": 2484,
+    "maxY": 2884
+  },
+  "/naklejki/7.jpg": {
+    "minX": 1063,
+    "minY": 1366,
+    "maxX": 2337,
+    "maxY": 2905
+  },
+  "/naklejki/8.jpg": {
+    "minX": 1033,
+    "minY": 1542,
+    "maxX": 2394,
+    "maxY": 2755
+  },
+  "/naklejki/9.jpg": {
+    "minX": 1034,
+    "minY": 1394,
+    "maxX": 2367,
+    "maxY": 2903
+  },
+  "/charms/Wyraziste_Rogal_croissant.jpg": {
+    "minX": 626,
+    "minY": 1341,
+    "maxX": 2696,
+    "maxY": 2850
+  },
+  "/charms/Wyraziste_Wasy_brazowe.jpg": {
+    "minX": 505,
+    "minY": 1549,
+    "maxX": 2842,
+    "maxY": 2616
+  },
+  "/charms/Wyraziste_Hot_dog.jpg": {
+    "minX": 537,
+    "minY": 1461,
+    "maxX": 2785,
+    "maxY": 2704
+  },
+  "/charms/Wyraziste_Papryczka_chili.jpg": {
+    "minX": 1382,
+    "minY": 900,
+    "maxX": 2124,
+    "maxY": 3265
+  },
+  "/charms/Wyraziste_Serce_czerwone.jpg": {
+    "minX": 976,
+    "minY": 1231,
+    "maxX": 2398,
+    "maxY": 2829
+  },
+  "/charms/Wyraziste_Serce_arbuzowe.jpg": {
+    "minX": 972,
+    "minY": 1313,
+    "maxX": 2481,
+    "maxY": 2852
+  },
+  "/charms/Wyraziste_Pszczolka.jpg": {
+    "minX": 890,
+    "minY": 1319,
+    "maxX": 2458,
+    "maxY": 2741
+  },
+  "/charms/Wyraziste_Czarna_kostka.jpg": {
+    "minX": 796,
+    "minY": 1125,
+    "maxX": 2631,
+    "maxY": 3225
+  },
+  "/charms/Wyraziste_Koniczyna.jpg": {
+    "minX": 882,
+    "minY": 932,
+    "maxX": 2598,
+    "maxY": 3180
+  },
+  "/charms/Duze_Kawa.jpg": {
+    "minX": 375,
+    "minY": 364,
+    "maxX": 755,
+    "maxY": 960
+  },
+  "/charms/Duze_Rogalik_II.jpg": {
+    "minX": 230,
+    "minY": 408,
+    "maxX": 968,
+    "maxY": 958
+  },
+  "/charms/Duze_Rogalik_III.jpg": {
+    "minX": 211,
+    "minY": 376,
+    "maxX": 978,
+    "maxY": 1057
+  },
+  "/charms/Duze_Precelek.jpg": {
+    "minX": 171,
+    "minY": 316,
+    "maxX": 891,
+    "maxY": 1016
+  },
+  "/charms/Duze_Kwiatuszek_delikatnie_rozowy.jpg": {
+    "minX": 290,
+    "minY": 370,
+    "maxX": 840,
+    "maxY": 1022
+  },
+  "/charms/Duze_Kwiatuszek_lawendowy.jpg": {
+    "minX": 256,
+    "minY": 311,
+    "maxX": 814,
+    "maxY": 936
+  },
+  "/charms/Duze_Lapka_czarna.jpg": {
+    "minX": 246,
+    "minY": 337,
+    "maxX": 833,
+    "maxY": 970
+  },
+  "/charms/Duze_Oko.jpg": {
+    "minX": 247,
+    "minY": 318,
+    "maxX": 815,
+    "maxY": 989
+  },
+  "/charms/Srebrne_Serce.jpg": {
+    "minX": 1037,
+    "minY": 1456,
+    "maxX": 2311,
+    "maxY": 2788
+  },
+  "/charms/Srebrne_Lapka.jpg": {
+    "minX": 1237,
+    "minY": 1403,
+    "maxX": 2243,
+    "maxY": 2736
+  },
+  "/charms/Srebrne_Kokardka.jpg": {
+    "minX": 735,
+    "minY": 1336,
+    "maxX": 2718,
+    "maxY": 2934
+  },
+  "/charms/Srebrne_Gwiazdka.jpg": {
+    "minX": 1037,
+    "minY": 1315,
+    "maxX": 2311,
+    "maxY": 2824
+  },
+  "/charms/Srebrne_Perelka.jpg": {
+    "minX": 1269,
+    "minY": 1345,
+    "maxX": 2158,
+    "maxY": 2767
+  },
+  "/charms/Srebrne_kostka.jpg": {
+    "minX": 1008,
+    "minY": 1696,
+    "maxX": 2340,
+    "maxY": 2496
+  },
+  "/charms/Srebrne_Lapka_II.jpg": {
+    "minX": 975,
+    "minY": 1102,
+    "maxX": 2425,
+    "maxY": 2641
+  },
+  "/charms/Srebrne_Kwiatuszek_rozowy.jpg": {
+    "minX": 653,
+    "minY": 839,
+    "maxX": 2695,
+    "maxY": 3352
+  },
+  "/charms/Srebrne_Kwiatuszek_bialy.jpg": {
+    "minX": 717,
+    "minY": 826,
+    "maxX": 2552,
+    "maxY": 3102
+  },
+  "/koraliki/Czekoladowy_braz.jpg": {
+    "minX": 168,
+    "minY": 590,
+    "maxX": 3205,
+    "maxY": 3627
+  },
+  "/koraliki/Karmelowy_marmur.jpg": {
+    "minX": 168,
+    "minY": 590,
+    "maxX": 3205,
+    "maxY": 3627
+  },
+  "/koraliki/Bezowy_marmur.jpg": {
+    "minX": 168,
+    "minY": 590,
+    "maxX": 3205,
+    "maxY": 3627
+  },
+  "/koraliki/Mleczny_bez_(polprzezroczysty).jpg": {
+    "minX": 168,
+    "minY": 590,
+    "maxX": 3205,
+    "maxY": 3627
+  }
+}

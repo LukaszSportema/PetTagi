@@ -3,6 +3,7 @@
 import {
   warehouseCatalogById,
   warehouseCatalogItems,
+  type WarehouseCharmSection,
   type WarehouseKind,
 } from "@/lib/warehouse-catalog"
 import { WAREHOUSE_MAX_QUANTITY } from "@/lib/warehouse-stock"
@@ -22,6 +23,7 @@ export type WarehouseAdminRow = {
   kind: WarehouseKind
   image?: string
   group: string
+  charmSection?: WarehouseCharmSection
   quantity: number | null
   updatedAt: string | null
 }
@@ -61,6 +63,7 @@ export async function listWarehouseStockAdmin(): Promise<ListWarehouseStockAdmin
       kind: item.kind,
       image: item.image,
       group: item.group,
+      charmSection: item.charmSection,
       quantity: stock ? Number(stock.quantity) : null,
       updatedAt: stock?.updated_at ?? null,
     }

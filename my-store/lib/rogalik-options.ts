@@ -55,6 +55,8 @@ export type RogalikOption = {
   label: string
   image?: string
   comingSoon?: boolean
+  /** Cena charmsa rogalika (PLN). Domyślnie — EXTRA_CHARM_PRICE. */
+  pricePln?: number
 }
 
 export const ROGALIK_COLOR_OPTIONS: RogalikOption[] = [

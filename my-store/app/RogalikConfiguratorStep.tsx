@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
 import { ConfiguratorTileTitle, UniformTwoLineFontScope } from './components/TwoLineFitText';
+import { ConfiguratorTileFillImage } from './components/ConfiguratorTileFillImage';
 import {
   ROGALIK_BEADS_OPTIONS,
   ROGALIK_NECK_MAX,
@@ -40,6 +41,8 @@ type Props = {
 const sectionClass = 'space-y-4 pt-8 border-t border-[#D6C7AE] first:border-t-0 first:pt-0';
 const subtitleClass = 'text-sm text-[#7A736C] font-light';
 const titleClass = 'font-bold text-base text-[#161616]';
+const rogalikArtworkTileMediaClass =
+  'w-full aspect-square bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden relative flex items-center justify-center';
 
 function SectionTitle({ index, children }: { index: number; children: ReactNode }) {
   return (
@@ -93,9 +96,9 @@ function OptionTiles({
             }`}
           >
             {variant === 'image' && (
-              <div className="w-full aspect-square bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden flex items-center justify-center">
+              <div className={rogalikArtworkTileMediaClass}>
                 {option.image ? (
-                  <img src={option.image} alt={option.label} className="w-full h-full object-cover" />
+                  <ConfiguratorTileFillImage src={option.image} alt={option.label} />
                 ) : (
                   <span className="text-[10px] uppercase tracking-widest text-[#9A9288]">Zdjęcie wkrótce</span>
                 )}
@@ -263,9 +266,9 @@ export function RogalikConfiguratorStep({
                         : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
                   }`}
                 >
-                  <div className="w-full aspect-square bg-[#EFE8DC] border border-[#D6C7AE] overflow-hidden flex items-center justify-center">
+                  <div className={rogalikArtworkTileMediaClass}>
                     {charm.image ? (
-                      <img src={charm.image} alt={charm.label} className="w-full h-full object-cover" />
+                      <ConfiguratorTileFillImage src={charm.image} alt={charm.label} />
                     ) : (
                       <span className="text-[10px] text-[#9A9288] uppercase tracking-widest">Zdjęcie wkrótce</span>
                     )}

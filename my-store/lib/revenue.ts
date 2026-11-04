@@ -1,12 +1,13 @@
-import { itemQuantityParts, itemRevenueParts, type PricedOrderItem } from "@/lib/pricing"
+import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { itemQuantityParts, itemRevenueParts, type ItemRevenuePricingContext, type PricedOrderItem } from "@/lib/pricing"
 import {
   isRogalikRevenueItem,
   rogalikItemQuantityParts,
   rogalikItemRevenueParts,
 } from "@/lib/rogalik-revenue"
 
-const revenuePartsForItem = (item: PricedOrderItem) =>
-  isRogalikRevenueItem(item) ? rogalikItemRevenueParts(item) : itemRevenueParts(item)
+const revenuePartsForItem = (item: PricedOrderItem, ctx: RevenuePricingContext) =>
+  isRogalikRevenueItem(item) ? rogalikItemRevenueParts(item, ctx.charmPrices) : itemRevenueParts(item, ctx)
 
 const quantityPartsForItem = (item: PricedOrderItem) =>
   isRogalikRevenueItem(item) ? rogalikItemQuantityParts(item) : itemQuantityParts(item)
@@ -23,6 +24,8 @@ export type RevenueOrder = {
   fastDeliveryCost: number
   items: PricedOrderItem[]
 }
+
+export type RevenuePricingContext = ItemRevenuePricingContext
 
 export type RevenueTotals = {
   total: number
@@ -70,12 +73,12 @@ const roundTotals = (totals: RevenueTotals): RevenueTotals => ({
   shipping: roundMoney(totals.shipping),
 })
 
-const addOrder = (totals: RevenueTotals, order: RevenueOrder) => {
+const addOrder = (totals: RevenueTotals, order: RevenueOrder, ctx: RevenuePricingContext) => {
   totals.total += order.total
   totals.express += order.fastDeliveryCost
   totals.shipping += order.shippingCost
   for (const item of order.items) {
-    const parts = revenuePartsForItem(item)
+    const parts = revenuePartsForItem(item, ctx)
     totals.base += parts.base
     totals.charms += parts.charms
     totals.karabiners += parts.karabiners
@@ -86,10 +89,14 @@ const addOrder = (totals: RevenueTotals, order: RevenueOrder) => {
   }
 }
 
-const totalsForPeriod = (period: ReportPeriod, orders: RevenueOrder[]) => {
+const totalsForPeriod = (
+  period: ReportPeriod,
+  orders: RevenueOrder[],
+  ctx: RevenuePricingContext,
+) => {
   const totals = emptyTotals()
   for (const order of orders) {
-    if (inPeriod(warsawYmd(order.revenueAt), period)) addOrder(totals, order)
+    if (inPeriod(warsawYmd(order.revenueAt), period)) addOrder(totals, order, ctx)
   }
   return roundTotals(totals)
 }
@@ -129,11 +136,15 @@ const totalsForQuantityPeriod = (period: ReportPeriod, orders: RevenueOrder[]) =
   return totals
 }
 
-export const buildRevenueRows = (orders: RevenueOrder[], nowIso = new Date().toISOString()): RevenueRow[] =>
+export const buildRevenueRows = (
+  orders: RevenueOrder[],
+  ctx: RevenuePricingContext = {},
+  nowIso = new Date().toISOString(),
+): RevenueRow[] =>
   reportPeriods(nowIso).map((period) => ({
     key: period.key,
     label: period.label,
-    ...totalsForPeriod(period, orders),
+    ...totalsForPeriod(period, orders, ctx),
   }))
 
 export const buildQuantityRows = (orders: RevenueOrder[], nowIso = new Date().toISOString()): RevenueRow[] =>
