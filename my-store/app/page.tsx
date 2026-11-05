@@ -36,6 +36,7 @@ import { scrollToConfiguratorSection } from '@/lib/configurator-scroll';
 import { COUNTRY_DIAL_CODES } from '@/lib/country-dial-codes';
 import { fetchWarehouseStockMap } from './actions/warehouse';
 import { isWarehouseOutOfStock } from '@/lib/warehouse-stock';
+import { warehouseStickerStockIds } from '@/lib/warehouse-catalog';
 import FurgonetkaMap from './FurgonetkaMap';
 import OrderStatusLookupModal from './OrderStatusLookupModal';
 import {
@@ -95,7 +96,7 @@ import {
   NECK_CIRCUMFERENCE_MIN,
   isValidNeckCircumference,
   premiumStringUnitPrice,
-  STICKER_PRICE,
+  stickerUnitPricePln,
   DIAL_CODE_PRICE,
   amountUntilFreeShipping,
   freeShippingProgressPercent,
@@ -628,7 +629,9 @@ export default function Home() {
   const extraStopersCost = formData.wantStopers === 'tak' ? STOPPER_PRICE : 0;
   const stickerCost = skipsGraphicsStep
     ? 0
-    : formData.wantSticker === 'tak' && formData.stickerOption ? STICKER_PRICE : 0;
+    : formData.wantSticker === 'tak' && formData.stickerOption
+      ? stickerUnitPricePln(formData.stickerOption)
+      : 0;
   const dialCodeCost = formData.includePhoneCode === 'tak' ? DIAL_CODE_PRICE : 0;
   
   const stringSize = isRogalikTagConfigurator
@@ -1259,6 +1262,14 @@ export default function Home() {
         scrollToConfiguratorSection('sticker-choice');
         return;
       }
+      if (
+        formData.wantSticker === 'tak' &&
+        formData.stickerOption &&
+        stickerUnavailable(formData.stickerOption)
+      ) {
+        scrollToConfiguratorSection('sticker-choice');
+        return;
+      }
     }
     if (contentStep === 10) {
       setShowOrderErrors(true);
@@ -1390,6 +1401,9 @@ export default function Home() {
     isWarehouseOutOfStock(warehouseStock, id, catalogUnavailable);
 
   const karabinerUnavailable = (id: string) => isWarehouseOutOfStock(warehouseStock, id, false);
+  const stickerStockIds = useMemo(() => warehouseStickerStockIds(), []);
+  const stickerUnavailable = (id: string) =>
+    stickerStockIds.has(id) && isWarehouseOutOfStock(warehouseStock, id, false);
 
   const karabinersList = KARABINER_CATALOG.map((item) => ({
     id: item.id,
@@ -2110,6 +2124,14 @@ export default function Home() {
 
   const addToCart = () => {
     setShowOrderErrors(true);
+    if (
+      !skipsGraphicsStep &&
+      formData.wantSticker === 'tak' &&
+      (!formData.stickerOption || stickerUnavailable(formData.stickerOption))
+    ) {
+      setShowStickerErrors(true);
+      return;
+    }
     if (!isOrderValid || showAddedToCart) return;
     setCartItems((prev) => [...prev, buildCartItem()]);
     setShowAddedToCart(true);
@@ -2509,7 +2531,9 @@ export default function Home() {
                     className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]"
                   >
                     <span className="min-w-0 pl-3">Naklejka ({stickerLabel(formData.stickerOption)})</span>
-                    <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
+                    <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                      +{stickerUnitPricePln(formData.stickerOption)} zł
+                    </span>
                   </div>
                 );
               }
@@ -2714,7 +2738,9 @@ export default function Home() {
                 className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]"
               >
                 <span className="min-w-0 pl-3">Naklejka ({stickerLabel(formData.stickerOption)})</span>
-                <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+5 zł</span>
+                <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                  +{stickerUnitPricePln(formData.stickerOption)} zł
+                </span>
               </div>
             );
           }
@@ -3104,6 +3130,11 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!formData.stickerOption || !stickerUnavailable(formData.stickerOption)) return;
+    setFormData((prev) => ({ ...prev, stickerOption: '' }));
+  }, [warehouseStock, formData.stickerOption]);
 
   useEffect(() => {
     const enteredCheckout =
@@ -4985,28 +5016,62 @@ export default function Home() {
                           {showStickerErrors && formData.wantSticker === 'tak' && !formData.stickerOption && (
                             <p className="text-sm text-red-500">Wybierz grafikę pieska.</p>
                           )}
+                          {showStickerErrors &&
+                            formData.wantSticker === 'tak' &&
+                            formData.stickerOption &&
+                            stickerUnavailable(formData.stickerOption) && (
+                              <p className="text-sm text-red-500">
+                                Wybrana grafika jest chwilowo niedostępna — wybierz inną.
+                              </p>
+                            )}
                           </div>
 
                           {formData.wantSticker === 'tak' && (
                             <div className="space-y-4 pt-6 border-t border-[#D6C7AE]">
                               <p className="font-bold text-base text-[#161616]">Wybierz grafikę:</p>
                               <div className={stickerGridClass}>
-                                {STICKER_CATALOG.map((sticker) => (
+                                {STICKER_CATALOG.map((sticker) => {
+                                  const outOfStock = stickerUnavailable(sticker.id);
+                                  return (
                                   <div
                                     key={sticker.id}
-                                    onClick={() => setFormData({ ...formData, stickerOption: sticker.id })}
-                                    className={`cursor-pointer rounded-none p-3 md:p-4 border transition-colors duration-300 flex flex-col items-center text-center ${
-                                      formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                    onClick={() => {
+                                      if (outOfStock) return;
+                                      setFormData({ ...formData, stickerOption: sticker.id });
+                                    }}
+                                    className={`rounded-none p-3 md:p-4 border transition-colors duration-300 flex flex-col items-center text-center ${
+                                      outOfStock
+                                        ? 'cursor-not-allowed opacity-50 border-[#D6C7AE] bg-[#F4EFE6]'
+                                        : 'cursor-pointer'
+                                    } ${
+                                      !outOfStock && formData.stickerOption === sticker.id
+                                        ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                        : !outOfStock
+                                          ? 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                          : ''
                                     }`}
                                   >
                                     <div className={configuratorArtworkTileMediaCompactClass}>
                                       <ConfiguratorTileFillImage src={sticker.image} alt={sticker.label} />
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border mt-2 flex items-center justify-center transition-all ${formData.stickerOption === sticker.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                      {formData.stickerOption === sticker.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                                    </div>
+                                    {outOfStock ? (
+                                      <span className="mt-2 text-xs text-[#7A736C]">Chwilowo niedostępny</span>
+                                    ) : (
+                                      <div
+                                        className={`w-5 h-5 rounded-full border mt-2 flex items-center justify-center transition-all ${
+                                          formData.stickerOption === sticker.id
+                                            ? 'border-[#3A5A40] bg-[#3A5A40]'
+                                            : 'border-zinc-300'
+                                        }`}
+                                      >
+                                        {formData.stickerOption === sticker.id && (
+                                          <div className="w-2 h-2 rounded-full bg-white" />
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

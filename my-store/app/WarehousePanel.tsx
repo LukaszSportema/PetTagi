@@ -78,7 +78,7 @@ function StockRowEditor({
         </div>
       </td>
       <td className="px-4 py-3 text-xs uppercase tracking-wider text-[#9A9288]">
-        {row.kind === 'charm' ? 'Charms' : 'Karabińczyk'}
+        {row.kind === 'charm' ? 'Charms' : row.kind === 'sticker' ? 'Grafika' : 'Karabińczyk'}
       </td>
       <td className="px-4 py-3">
         <input
@@ -133,6 +133,7 @@ export function WarehousePanel() {
     void load();
   }, [load]);
 
+  const stickers = useMemo(() => rows.filter((r) => r.kind === 'sticker'), [rows]);
   const charms = useMemo(() => rows.filter((r) => r.kind === 'charm'), [rows]);
   const karabiners = useMemo(() => rows.filter((r) => r.kind === 'karabiner'), [rows]);
 
@@ -180,7 +181,7 @@ export function WarehousePanel() {
       <div className="px-4 md:px-6 py-4 border-b border-[#D6C7AE] bg-[#F9F5ED]">
         <h3 className="text-lg font-serif font-light text-[#161616]">{title}</h3>
         <p className="text-xs text-[#7A736C] mt-1">
-          {kind === 'charm'
+          {kind === 'charm' || kind === 'sticker'
             ? 'Poniżej 6 szt. — podświetlenie na czerwono.'
             : 'Poniżej 11 szt. — podświetlenie na czerwono.'}
         </p>
@@ -205,14 +206,16 @@ export function WarehousePanel() {
       <div>
         <h2 className="text-2xl font-serif font-light text-[#161616]">Magazyn</h2>
         <p className="text-sm text-[#7A736C] mt-2 max-w-2xl">
-          Stan magazynowy charmsów i karabińczyków. Przy ilości 0 produkt w konfiguratorze jest
-          oznaczony jako chwilowo niedostępny. Po oznaczeniu zamówienia jako Opłacone stany
-          zmniejszają się automatycznie (jednorazowo na zamówienie).
+          Stan magazynowy charmsów, karabińczyków oraz grafiki Pupil 1 (naklejka premium). Przy
+          ilości 0 produkt w konfiguratorze jest oznaczony jako chwilowo niedostępny. Po
+          oznaczeniu zamówienia jako Opłacone stany zmniejszają się automatycznie (jednorazowo na
+          zamówienie).
         </p>
       </div>
 
       {listError && <p className="text-sm text-red-500">{listError}</p>}
 
+      {stickers.length > 0 && renderTable('Grafiki', stickers, 'sticker')}
       {renderTable('Charmsy', charms, 'charm', renderCharmTableBody(charms))}
       {renderTable('Karabińczyki', karabiners, 'karabiner')}
     </div>

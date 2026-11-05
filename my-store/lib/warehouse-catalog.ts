@@ -3,10 +3,12 @@ import {
   CHARM_SILVER_CONFIGURATOR_SECTIONS,
   GOLD_RING_KARABINERS,
   SILVER_RING_KARABINERS,
+  STICKER_CATALOG,
 } from "@/lib/catalog-options"
+import { STICKER_PREMIUM_ID } from "@/lib/pricing"
 import { ROGALIK_CHARM_OPTIONS } from "@/lib/rogalik-options"
 
-export type WarehouseKind = "charm" | "karabiner"
+export type WarehouseKind = "charm" | "karabiner" | "sticker"
 
 /** Sekcja w tabeli magazynu (charmsy). */
 export type WarehouseCharmSection = "złote" | "srebrne" | "rogalik"
@@ -29,6 +31,17 @@ const pushUnique = (items: WarehouseCatalogItem[], seen: Set<string>, entry: War
 export const warehouseCatalogItems = (): WarehouseCatalogItem[] => {
   const seen = new Set<string>()
   const items: WarehouseCatalogItem[] = []
+
+  const premiumSticker = STICKER_CATALOG.find((entry) => entry.id === STICKER_PREMIUM_ID)
+  if (premiumSticker) {
+    pushUnique(items, seen, {
+      id: premiumSticker.id,
+      label: premiumSticker.label,
+      kind: "sticker",
+      image: premiumSticker.image,
+      group: "Grafiki — naklejki",
+    })
+  }
 
   for (const section of CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS) {
     for (const charm of section.items) {
@@ -93,3 +106,11 @@ export const warehouseCatalogById = () => {
   }
   return map
 }
+
+/** Id grafik/naklejek objętych magazynem (stan 0 → niedostępne w konfiguratorze). */
+export const warehouseStickerStockIds = (): Set<string> =>
+  new Set(
+    warehouseCatalogItems()
+      .filter((item) => item.kind === "sticker")
+      .map((item) => item.id),
+  )

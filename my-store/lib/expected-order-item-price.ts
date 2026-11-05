@@ -17,7 +17,7 @@ import {
   glowStringUnitPrice,
   premiumStringUnitPrice,
   STOPPER_PRICE,
-  STICKER_PRICE,
+  stickerUnitPricePln,
   stringSizeFromNeckCm,
   type PricedOrderItem,
 } from "@/lib/pricing"
@@ -130,7 +130,7 @@ export const expectedOrderItemUnitPrice = (
       item.stringGlow.length * glowPrice
   const stoppers = skipStringsStopers ? 0 : item.stoppers ? STOPPER_PRICE : 0
   const skipsSticker = product?.configuratorId === "glow-tag" || item.ringColor === "kwiat"
-  const stickers = !skipsSticker && item.sticker ? STICKER_PRICE : 0
+  const stickers = !skipsSticker && item.sticker ? stickerUnitPricePln(item.sticker) : 0
   const dialCode = item.dialCodeInfo ? DIAL_CODE_PRICE : 0
   const beadNecklace =
     item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID

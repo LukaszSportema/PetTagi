@@ -29,6 +29,12 @@ export const BASE_TAG_PRICE = BASE_TAG_PRICES.złoty
 export const EXTRA_KARABINER_PRICE = 5
 export const STOPPER_PRICE = 6
 export const STICKER_PRICE = 5
+/** Naklejka „Pupil 1” (/naklejki/1.jpg). */
+export const STICKER_PREMIUM_ID = "1"
+export const STICKER_PREMIUM_PRICE = 7
+
+export const stickerUnitPricePln = (stickerId?: string | null) =>
+  stickerId?.trim() === STICKER_PREMIUM_ID ? STICKER_PREMIUM_PRICE : STICKER_PRICE
 export const DIAL_CODE_PRICE = 2
 export const FREE_SHIPPING_THRESHOLD = 299
 export const SHIPPING_PACZKOMAT_PRICE = 12
@@ -196,7 +202,7 @@ export const itemRevenueParts = (
           item.stringGlow.length * glowPrice) *
         qty,
     stoppers: skipStringsStopers ? 0 : item.stoppers ? STOPPER_PRICE * qty : 0,
-    stickers: item.sticker ? STICKER_PRICE * qty : 0,
+    stickers: item.sticker ? stickerUnitPricePln(item.sticker) * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
 }

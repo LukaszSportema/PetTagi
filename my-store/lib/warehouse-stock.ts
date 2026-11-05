@@ -1,11 +1,15 @@
 export const WAREHOUSE_CHARM_LOW_THRESHOLD = 5
 export const WAREHOUSE_KARABINER_LOW_THRESHOLD = 10
+export const WAREHOUSE_STICKER_LOW_THRESHOLD = 5
 export const WAREHOUSE_MAX_QUANTITY = 999
 
-export type WarehouseKind = "charm" | "karabiner"
+export type WarehouseKind = "charm" | "karabiner" | "sticker"
 
-export const warehouseLowStockThreshold = (kind: WarehouseKind) =>
-  kind === "charm" ? WAREHOUSE_CHARM_LOW_THRESHOLD : WAREHOUSE_KARABINER_LOW_THRESHOLD
+export const warehouseLowStockThreshold = (kind: WarehouseKind) => {
+  if (kind === "charm") return WAREHOUSE_CHARM_LOW_THRESHOLD
+  if (kind === "sticker") return WAREHOUSE_STICKER_LOW_THRESHOLD
+  return WAREHOUSE_KARABINER_LOW_THRESHOLD
+}
 
 export const isWarehouseLowStock = (kind: WarehouseKind, quantity: number) =>
   quantity <= warehouseLowStockThreshold(kind)

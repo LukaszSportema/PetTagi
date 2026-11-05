@@ -25,7 +25,7 @@ import {
   glowStringUnitPrice,
   premiumStringUnitPrice,
   STOPPER_PRICE,
-  STICKER_PRICE,
+  stickerUnitPricePln,
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from "@/lib/pricing"
@@ -110,7 +110,9 @@ export const classicTagPriceBreakdown = (
   }
 
   const stickerLine: RogalikPriceLine | null =
-    !skipsSticker && input.sticker ? { label: "Naklejka", amountPln: STICKER_PRICE } : null
+    !skipsSticker && input.sticker
+      ? { label: "Naklejka", amountPln: stickerUnitPricePln(input.sticker) }
+      : null
 
   const colorCount = input.beadNecklaceColors?.length ?? 0
   const beadLine: RogalikPriceLine | null =
