@@ -778,9 +778,9 @@ function ConfiguratorAnalyticsPanel({
                 const maxCount = Math.max(...group.items.map((item) => item.count), 1);
                 return (
                   <div key={stepKey} className="bg-white border border-[#D6C7AE] rounded-2xl overflow-hidden">
-                    <div className="px-5 py-4 border-b border-[#D6C7AE] bg-[#F9F5ED]">
-                      <p className="text-[11px] uppercase tracking-wider text-[#9A9288]">Krok {stepKey}</p>
-                      <p className="font-medium text-[#161616]">{group.stepLabel}</p>
+                    <div className="px-5 py-4 border-b border-[#2E4833] bg-section-header">
+                      <p className="text-[11px] uppercase tracking-wider text-[#F4EFE6]/75">Krok {stepKey}</p>
+                      <p className="font-medium text-[#F4EFE6]">{group.stepLabel}</p>
                     </div>
                     <div className="divide-y divide-[#D6C7AE]">
                       {group.items.slice(0, 8).map((choice) => (

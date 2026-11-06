@@ -60,7 +60,7 @@ export const ROGALIK_TAG_PRODUCT: CatalogProduct = {
   emoji: "🥐",
   cta: "Skonfiguruj własną",
   configuratorId: "rogalik-tag",
-  gallery: [{ type: "image", src: "/rogalik/rogalikglowna.jpg" }],
+  gallery: [{ type: "image", src: "/produkty/glownerogalik.jpg" }],
 }
 
 export const CATALOG_PRODUCTS: CatalogProduct[] = [

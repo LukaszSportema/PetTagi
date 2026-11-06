@@ -178,9 +178,9 @@ export function WarehousePanel() {
     body?: ReactNode,
   ) => (
     <div className="bg-white rounded-3xl border border-[#D6C7AE] overflow-x-auto">
-      <div className="px-4 md:px-6 py-4 border-b border-[#D6C7AE] bg-[#F9F5ED]">
-        <h3 className="text-lg font-serif font-light text-[#161616]">{title}</h3>
-        <p className="text-xs text-[#7A736C] mt-1">
+      <div className="px-4 md:px-6 py-4 border-b border-[#2E4833] bg-section-header">
+        <h3 className="text-lg font-serif font-light text-[#F4EFE6]">{title}</h3>
+        <p className="text-xs text-[#F4EFE6]/85 mt-1">
           {kind === 'charm' || kind === 'sticker'
             ? 'Poniżej 6 szt. — podświetlenie na czerwono.'
             : 'Poniżej 11 szt. — podświetlenie na czerwono.'}

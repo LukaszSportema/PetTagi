@@ -374,8 +374,8 @@ export function PriceListsPanel() {
                 if (rows.length === 0) return null;
                 return (
                   <div key={section}>
-                    <div className="px-4 py-3 md:px-6 bg-[#F9F5ED] border-b border-[#EBE4D6]">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[#9A9288]">{section}</p>
+                    <div className="px-4 py-3 md:px-6 bg-section-header border-b border-[#2E4833]">
+                      <p className="text-xs uppercase tracking-[0.18em] text-[#F4EFE6]">{section}</p>
                     </div>
                     {rows.map((row) => (
                       <label

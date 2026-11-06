@@ -4,6 +4,8 @@
   --ivory: #f4efe6;
   --ecru: #ebe4d6;
   --cream: #f9f5ed;
+  /** Pasek nagłówka sekcji — ten sam zielony co pasek promocyjny / przyciski. */
+  --section-header: #3a5a40;
   --ink: #161616;
   --ink-soft: #3a3a3a;
   --gold: #c4a574;
@@ -20,6 +22,7 @@
   --color-ivory: var(--ivory);
   --color-ecru: var(--ecru);
   --color-cream: var(--cream);
+  --color-section-header: var(--section-header);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-gold: var(--gold);

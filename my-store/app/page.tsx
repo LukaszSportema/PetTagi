@@ -733,7 +733,7 @@ export default function Home() {
     label: 'Kolor rogalika',
     shortLabel: 'KOLOR',
     icon: '🎨',
-    thumbnail: '/miniatury/baza.jpg',
+    thumbnail: '/miniatury/ksztaltkolor.jpg',
   };
   const rogalikStepMocowanie = {
     id: 2,
@@ -766,7 +766,7 @@ export default function Home() {
     label: 'Dodatki',
     shortLabel: 'DODATKI',
     icon: '✨',
-    thumbnail: '/miniatury/dodatkowycharms.jpg',
+    thumbnail: '/miniatury/koraliki.jpg',
   };
   const rogalikStepsBeads = [
     rogalikStepKolor,
@@ -788,8 +788,8 @@ export default function Home() {
       : rogalikStepsBeads;
 
   const allStepsInfo = [
-    { id: 13, label: 'Model', icon: '📐', thumbnail: '/model/1.jpg' },
-    { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/oprawa.jpg' },
+    { id: 13, label: 'Model', icon: '📐', thumbnail: '/miniatury/model.jpg' },
+    { id: 1, label: 'Oprawa', icon: '💍', thumbnail: '/miniatury/ksztaltkolor.jpg' },
     { id: 2, label: 'Baza', icon: '🎨', thumbnail: '/miniatury/baza.jpg' },
     { id: 12, label: 'NAPIS', shortLabel: 'NAPIS', icon: '✨', thumbnail: '/miniatury/napis.png' },
     { id: 3, label: 'CHARMS (ZAWIESZKI)', shortLabel: 'CHARMS (ZAWIESZKI)', icon: '🦮', thumbnail: '/miniatury/darmowycharms.jpg' },
@@ -802,7 +802,7 @@ export default function Home() {
       label: 'GRAFIKI I DODATKI',
       shortLabel: 'GRAFIKI I DODATKI',
       icon: '🏷️',
-      thumbnail: '/naklejki/1.jpg',
+      thumbnail: '/miniatury/grafikidodatki.jpg',
     },
     { id: 10, label: 'Dane na adresówce', icon: '📝', thumbnail: '/miniatury/danenaadresowce.jpg' },
     { id: 11, label: 'Podsumowanie zamówienia', icon: '🛒', thumbnail: '/miniatury/koszyk.jpg' },
@@ -811,7 +811,7 @@ export default function Home() {
       label: 'Koraliki',
       shortLabel: 'KORALIKI',
       icon: '📿',
-      thumbnail: '/model/3.jpg',
+      thumbnail: '/miniatury/koraliki.jpg',
     },
   ];
   /** Kolejność treści kroków — adresówka biżuteryjna (contentStep id). */
@@ -1659,10 +1659,10 @@ export default function Home() {
     subtitle?: string,
   ) => (
     <section key={title} className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
-      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
-        <h3 className="font-serif font-bold text-lg text-[#161616]">{title}</h3>
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#2E4833] bg-section-header">
+        <h3 className="font-serif font-bold text-lg text-[#F4EFE6]">{title}</h3>
         {subtitle && (
-          <p className="mt-1 text-sm font-normal italic text-[#7A736C] leading-snug">{subtitle}</p>
+          <p className="mt-1 text-sm font-normal italic text-[#F4EFE6]/85 leading-snug">{subtitle}</p>
         )}
       </div>
       <div className="p-4 md:p-6">
@@ -1942,7 +1942,7 @@ export default function Home() {
         productName: activeProduct.name,
         quantity: 1,
         price: totalPrice,
-        image: '/rogalik/rogalikglowna.jpg',
+        image: '/produkty/glownerogalik.jpg',
         options,
         config: { ...formData },
       };
@@ -3462,15 +3462,15 @@ export default function Home() {
                   <div
                     className={
                       compactStepsBar
-                        ? 'flex items-center justify-center gap-2 sm:gap-3 w-full mb-1.5 px-1 pt-0.5'
-                        : 'flex items-center gap-3 md:gap-0 md:justify-between w-max md:w-full mb-1.5 px-1 pt-0.5'
+                        ? 'flex items-center justify-center gap-4 w-full mb-1.5 px-1 pt-0.5'
+                        : 'flex items-center gap-4 w-max md:w-full md:min-w-0 mb-1.5 px-1 pt-0.5'
                     }
                   >
                     {compactStepsBar && renderBackButton()}
                     <div
                       className={
                         compactStepsBar
-                          ? 'flex items-start gap-7 sm:gap-10 md:gap-14'
+                          ? 'flex items-start justify-center gap-4 shrink-0'
                           : 'contents'
                       }
                     >
@@ -3478,11 +3478,13 @@ export default function Home() {
                       <div
                         key={step.id}
                         data-step={step.id}
-                        className={`flex flex-col items-center gap-0.5 transition-opacity duration-300 ${
-                          compactStepsBar ? 'shrink-0 w-[4.25rem] sm:w-[4.75rem] md:w-[5.25rem]' : 'shrink-0 w-9 md:w-auto'
+                        className={`flex flex-col items-center gap-1 transition-opacity duration-300 ${
+                          compactStepsBar
+                            ? 'shrink-0 w-[5.25rem] sm:w-[5.75rem] md:w-[6.5rem]'
+                            : 'shrink-0 w-[3.25rem] sm:w-14 md:flex-1 md:min-w-0 md:w-auto'
                         } ${step.id === currentStep ? 'opacity-100' : 'opacity-40'}`}
                       >
-                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm border-2 overflow-hidden shrink-0 ${
+                        <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center text-sm md:text-base border-2 overflow-hidden shrink-0 ${
                           step.id === currentStep ? 'border-[#161616] bg-[#F4EFE6]' : 'border-[#D6C7AE] bg-white'
                         }`}>
                           {'thumbnail' in step && step.thumbnail ? (
@@ -3492,7 +3494,7 @@ export default function Home() {
                           )}
                         </div>
                         <span
-                          className={`text-[7px] md:text-[8px] font-medium uppercase tracking-wider text-center leading-tight ${
+                          className={`text-[8px] sm:text-[9px] md:text-[10px] font-medium uppercase tracking-wide text-center leading-snug ${
                             compactStepsBar ? 'block' : 'hidden md:block'
                           }`}
                         >
@@ -4640,20 +4642,25 @@ export default function Home() {
                                 }
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                   formData.wantExtraCharms === option.id
-                                    ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                    ? 'border-[#2E4833] bg-[#3A5A40] shadow-md'
                                     : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <ConfiguratorChoiceLabel text={option.label} />
+                                <ConfiguratorChoiceLabel
+                                  text={option.label}
+                                  className={
+                                    formData.wantExtraCharms === option.id ? 'text-[#F4EFE6]' : ''
+                                  }
+                                />
                                 <div
-                                  className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                                     formData.wantExtraCharms === option.id
-                                      ? 'border-[#3A5A40] bg-[#3A5A40]'
-                                      : 'border-zinc-300'
+                                      ? 'border-[#F4EFE6] bg-[#F4EFE6]'
+                                      : 'border-zinc-300 bg-white'
                                   }`}
                                 >
                                   {formData.wantExtraCharms === option.id && (
-                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#2E4833]" />
                                   )}
                                 </div>
                               </div>
@@ -4756,20 +4763,25 @@ export default function Home() {
                                     }}
                                     className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
                                       formData.wantStopers === option.id
-                                        ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+                                        ? 'border-[#2E4833] bg-[#3A5A40] shadow-md'
                                         : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                     }`}
                                   >
-                                    <ConfiguratorChoiceLabel text={option.label} />
+                                    <ConfiguratorChoiceLabel
+                                      text={option.label}
+                                      className={
+                                        formData.wantStopers === option.id ? 'text-[#F4EFE6]' : ''
+                                      }
+                                    />
                                     <div
-                                      className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                                         formData.wantStopers === option.id
-                                          ? 'border-[#3A5A40] bg-[#3A5A40]'
-                                          : 'border-zinc-300'
+                                          ? 'border-[#F4EFE6] bg-[#F4EFE6]'
+                                          : 'border-zinc-300 bg-white'
                                       }`}
                                     >
                                       {formData.wantStopers === option.id && (
-                                        <div className="w-2 h-2 rounded-full bg-white" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#2E4833]" />
                                       )}
                                     </div>
                                   </div>
@@ -4814,8 +4826,8 @@ export default function Home() {
                             <div className="space-y-6">
                               {isGlowTagConfigurator && (
                                 <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
-                                  <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
-                                    <h3 className="font-bold text-lg text-[#161616]">
+                                  <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#2E4833] bg-section-header">
+                                    <h3 className="font-bold text-lg text-[#F4EFE6]">
                                       Dodaj sznurek Glow (możesz wybrać wiele)
                                       {glowStringPrice ? ` — ${glowStringPrice} zł/szt` : ''}
                                     </h3>
@@ -4851,8 +4863,8 @@ export default function Home() {
                               )}
 
                               <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
-                                <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
-                                  <h3 className="font-bold text-lg text-[#161616]">
+                                <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#2E4833] bg-section-header">
+                                  <h3 className="font-bold text-lg text-[#F4EFE6]">
                                     Dodaj sznurek Premium (możesz wybrać wiele)
                                     {premiumStringPrice ? ` — od ${premiumStringPrice} zł/szt` : ''}
                                   </h3>
@@ -4917,8 +4929,8 @@ export default function Home() {
                               </section>
 
                               <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
-                                <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#D6C7AE] bg-[#F4EFE6]">
-                                  <h3 className="font-bold text-lg text-[#161616]">
+                                <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#2E4833] bg-section-header">
+                                  <h3 className="font-bold text-lg text-[#F4EFE6]">
                                     Dodaj sznurek Klasyczny (możesz wybrać wiele)
                                     {classicStringPrice ? ` — od ${classicStringPrice} zł/szt` : ''}
                                   </h3>
@@ -5003,12 +5015,25 @@ export default function Home() {
                                   stickerOption: option.id === 'nie' ? '' : formData.stickerOption
                                 })}
                                 className={`cursor-pointer rounded-none p-6 border transition-colors duration-300 flex items-center justify-between ${
-                                  formData.wantSticker === option.id ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+                                  formData.wantSticker === option.id
+                                    ? 'border-[#2E4833] bg-[#3A5A40] shadow-md'
+                                    : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <ConfiguratorChoiceLabel text={option.label} />
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${formData.wantSticker === option.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}>
-                                  {formData.wantSticker === option.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                                <ConfiguratorChoiceLabel
+                                  text={option.label}
+                                  className={
+                                    formData.wantSticker === option.id ? 'text-[#F4EFE6]' : ''
+                                  }
+                                />
+                                <div
+                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                                    formData.wantSticker === option.id ? 'border-[#F4EFE6] bg-[#F4EFE6]' : 'border-zinc-300 bg-white'
+                                  }`}
+                                >
+                                  {formData.wantSticker === option.id && (
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#2E4833]" />
+                                  )}
                                 </div>
                               </div>
                             ))}
