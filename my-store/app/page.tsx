@@ -876,8 +876,6 @@ export default function Home() {
   });
   const stepsInfo = isRogalikTagConfigurator ? rogalikStepsInfo : classicStepsInfo;
   const totalSteps = stepsInfo.length;
-  /** Mało kroków (np. rogalik): bez rozciągania na całą szerokość paska. */
-  const compactStepsBar = isRogalikTagConfigurator ? totalSteps <= 6 : totalSteps <= 4;
   const contentStep = isRogalikTagConfigurator
     ? currentStep
     : (visibleClassicSteps[currentStep - 1]?.id ?? currentStep);
@@ -3449,40 +3447,20 @@ export default function Home() {
         {activeTab === 'configurator' && isTagConfigurator && (
           <div className="bg-white border-b border-[#D6C7AE] py-2.5 shadow-xs">
             <div className="px-2 md:px-4 flex items-center gap-2 md:gap-4">
-              {!compactStepsBar && renderBackButton()}
+              {renderBackButton()}
               <div className="flex-1 min-w-0">
                 <div
                   ref={stepsScrollRef}
-                  className={
-                    compactStepsBar
-                      ? 'py-1.5 overflow-hidden'
-                      : 'overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1.5'
-                  }
+                  className="overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1.5"
                 >
-                  <div
-                    className={
-                      compactStepsBar
-                        ? 'flex items-center justify-center gap-4 w-full mb-1.5 px-1 pt-0.5'
-                        : 'flex items-center gap-4 w-max md:w-full md:min-w-0 mb-1.5 px-1 pt-0.5'
-                    }
-                  >
-                    {compactStepsBar && renderBackButton()}
-                    <div
-                      className={
-                        compactStepsBar
-                          ? 'flex items-start justify-center gap-4 shrink-0'
-                          : 'contents'
-                      }
-                    >
+                  <div className="flex items-center gap-4 w-max md:w-full md:min-w-0 mb-1.5 px-1 pt-0.5">
                     {stepsInfo.map((step) => (
                       <div
                         key={step.id}
                         data-step={step.id}
-                        className={`flex flex-col items-center gap-1 transition-opacity duration-300 ${
-                          compactStepsBar
-                            ? 'shrink-0 w-[5.25rem] sm:w-[5.75rem] md:w-[6.5rem]'
-                            : 'shrink-0 w-[3.25rem] sm:w-14 md:flex-1 md:min-w-0 md:w-auto'
-                        } ${step.id === currentStep ? 'opacity-100' : 'opacity-40'}`}
+                        className={`flex flex-col items-center gap-1 transition-opacity duration-300 shrink-0 w-[3.25rem] sm:w-14 md:flex-1 md:min-w-0 md:w-auto ${
+                          step.id === currentStep ? 'opacity-100' : 'opacity-40'
+                        }`}
                       >
                         <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center text-sm md:text-base border-2 overflow-hidden shrink-0 ${
                           step.id === currentStep ? 'border-[#161616] bg-[#F4EFE6]' : 'border-[#D6C7AE] bg-white'
@@ -3493,16 +3471,11 @@ export default function Home() {
                             step.icon
                           )}
                         </div>
-                        <span
-                          className={`text-[8px] sm:text-[9px] md:text-[10px] font-medium uppercase tracking-wide text-center leading-snug ${
-                            compactStepsBar ? 'block' : 'hidden md:block'
-                          }`}
-                        >
+                        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-medium uppercase tracking-wide text-center leading-snug hidden md:block">
                           {'shortLabel' in step && step.shortLabel ? step.shortLabel : step.label}
                         </span>
                       </div>
                     ))}
-                    </div>
                   </div>
                 </div>
                 <div className="h-1 bg-[#D6C7AE] rounded-full overflow-hidden">
