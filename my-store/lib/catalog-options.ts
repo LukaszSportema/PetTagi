@@ -92,9 +92,9 @@ export const tagModelKarabinersAllUnitsPaid = (tagModel?: string | null) =>
 export const tagModelUsesNecklaceStyleKarabinerStep = (tagModel?: string | null) =>
   tagModelKarabinersAllUnitsPaid(tagModel)
 
-/** W kroku karabińczyków dopuszczalne zero szt. (np. sznurek bez karabińczyka w komplecie). */
+/** W kroku karabińczyków dopuszczalne zero szt. (np. sznurek bez karabińczyka lub naszyjnik z koralikami). */
 export const tagModelKarabinersOptionalInConfigurator = (tagModel?: string | null) =>
-  isStringWithoutKarabinerTagModel(tagModel)
+  isBeadNecklaceTagModel(tagModel) || isStringWithoutKarabinerTagModel(tagModel)
 
 /** Nie ustawiaj domyślnie 1 szt. karabińczyka (wybór modelu / oprawy). */
 export const tagModelSkipsDefaultKarabinerSelection = (tagModel?: string | null) =>

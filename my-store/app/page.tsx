@@ -1835,6 +1835,9 @@ export default function Home() {
             maxFontPx={16}
             minFontPx={13}
           />
+          {isBeadNecklaceModel && (
+            <p className="text-sm font-normal italic text-[#7A736C] mt-1">Wybór jest opcjonalny</p>
+          )}
           {karabinerErrorVisible && <p className="text-sm text-red-500">{karabinerErrorCopy}</p>}
         </div>
       </div>
@@ -2547,9 +2550,6 @@ export default function Home() {
                       <span className="min-w-0 pl-3">
                         Koraliki
                         {stringSizeText ? ` (${stringSizeText})` : ''}
-                        {formData.beadNecklaceColors.length > 1
-                          ? ` ×${formData.beadNecklaceColors.length}`
-                          : ''}
                       </span>
                       <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
                         +{beadNecklacePrice} zł

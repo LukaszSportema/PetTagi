@@ -14,5 +14,6 @@ export const beadNecklaceCostPln = (
 ): number => {
   if (selectedColorCount < 1) return 0
   const unit = beadNecklaceUnitPrice(size) ?? 0
-  return unit * selectedColorCount
+  // 1 lub 2 rodzaje koralików — jedna stawka (jak za jeden wybór rozmiaru).
+  return unit
 }

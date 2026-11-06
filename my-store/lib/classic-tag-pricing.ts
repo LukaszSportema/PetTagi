@@ -120,7 +120,7 @@ export const classicTagPriceBreakdown = (
       ? (() => {
           const amount = beadNecklaceCostPln(size, colorCount)
           if (amount <= 0) return null
-          const detailParts = [sizeText, colorCount > 1 ? `×${colorCount}` : null].filter(Boolean)
+          const detailParts = [sizeText].filter(Boolean)
           return {
             label: "Koraliki",
             amountPln: amount,
