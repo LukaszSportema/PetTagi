@@ -1,4 +1,5 @@
 import { cartItemBaseUnitPrice } from "@/lib/cart-item-pricing"
+import type { RogalikMountingBasePrices } from "@/lib/rogalik-admin-pricing"
 import type { TagModelBasePrices } from "@/lib/tag-model-pricing"
 import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { rogalikMountingUsesBeads, rogalikStringSizeFromNeckCm } from "@/lib/rogalik-options"
@@ -77,6 +78,8 @@ export const isRogalikCartItem = (item: Pick<CartItemForOrder, "productSlug">) =
 export const mapRogalikCartItemToOrderItem = (
   item: CartItemForOrder,
   tagModelBasePrices?: TagModelBasePrices,
+  rogalikMountingBasePrices?: RogalikMountingBasePrices,
+  legacyRogalikSingleBasePln?: number,
 ): CreateOrderItemInput => {
   const config = item.config
   const usesBeads = rogalikMountingUsesBeads(config.rogalikMounting)
@@ -92,7 +95,12 @@ export const mapRogalikCartItemToOrderItem = (
   return {
     quantity: item.quantity,
     unitPrice: item.price,
-    baseUnitPrice: cartItemBaseUnitPrice(item, tagModelBasePrices),
+    baseUnitPrice: cartItemBaseUnitPrice(
+      item,
+      tagModelBasePrices,
+      rogalikMountingBasePrices,
+      legacyRogalikSingleBasePln,
+    ),
     imageUrl: item.image,
     productSlug: item.productSlug,
     productName: item.productName,
@@ -237,12 +245,24 @@ export const mapClassicCartItemToOrderItem = (
 export const cartItemToCreateOrderItem = (
   item: CartItemForOrder,
   tagModelBasePrices?: TagModelBasePrices,
+  rogalikMountingBasePrices?: RogalikMountingBasePrices,
+  legacyRogalikSingleBasePln?: number,
 ): CreateOrderItemInput => {
   const mapped = isRogalikCartItem(item)
-    ? mapRogalikCartItemToOrderItem(item, tagModelBasePrices)
+    ? mapRogalikCartItemToOrderItem(
+        item,
+        tagModelBasePrices,
+        rogalikMountingBasePrices,
+        legacyRogalikSingleBasePln,
+      )
     : mapClassicCartItemToOrderItem(item, tagModelBasePrices)
   return {
     ...mapped,
-    baseUnitPrice: cartItemBaseUnitPrice(item, tagModelBasePrices),
+    baseUnitPrice: cartItemBaseUnitPrice(
+      item,
+      tagModelBasePrices,
+      rogalikMountingBasePrices,
+      legacyRogalikSingleBasePln,
+    ),
   }
 }

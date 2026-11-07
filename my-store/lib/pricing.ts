@@ -10,6 +10,7 @@ import {
   karabinerRevenueFromOrder,
   type KarabinerPricingOptions,
 } from "@/lib/karabiner-pricing"
+import type { RogalikMountingBasePrices } from "@/lib/rogalik-mounting-ids"
 import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
 export { EXTRA_CHARM_PRICE } from "@/lib/pricing-constants"
 
@@ -139,11 +140,17 @@ export type PricedOrderItem = {
   rogalikBeads?: string | null
   rogalikCharms?: string[]
   beadNecklaceColors?: string[]
+  /** Snapshot ceny bazowej rogalika (order_items.base_unit_price). */
+  rogalikBaseUnitPln?: number | null
 }
 
 export type ItemRevenuePricingContext = {
   charmPrices?: CharmUnitPrices
   tagModelBasePrices?: TagModelBasePrices
+  /** Fallback gdy brak snapshotu w wierszu zamówienia (jedna wartość — starsze zamówienia). */
+  rogalikBaseUnitPricePln?: number
+  /** Fallback per wariant mocowania (nowsze ustawienia). */
+  rogalikMountingBasePrices?: RogalikMountingBasePrices
 }
 
 const jewelryKarabinerRingForRevenue = (item: PricedOrderItem) => {

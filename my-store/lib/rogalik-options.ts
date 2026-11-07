@@ -1,3 +1,4 @@
+import { ROGALIK_BASE_PRICE, ROGALIK_MOUNTING_IDS } from "@/lib/rogalik-mounting-ids"
 import {
   parseNeckCircumferenceCm,
   type StringSize,
@@ -22,7 +23,7 @@ export const isValidRogalikNeckCircumference = (value: string | null | undefined
 export const isValidRogalikPhoneNumber = (digits: string) =>
   /^\d{9}$/.test(digits.trim()) && !digits.trim().startsWith("0")
 
-export const ROGALIK_BASE_PRICE = 50
+export { ROGALIK_BASE_PRICE }
 
 /** Dopłata za mocowanie „Na karabińczyku” (karabińczyk w komplecie). */
 export const ROGALIK_MOUNTING_KARABINER_PRICE = 5
@@ -65,12 +66,34 @@ export const ROGALIK_COLOR_OPTIONS: RogalikOption[] = [
   { id: "jasny-braz", label: "Jasny brąz", image: "/rogalik/rogalikjasnybraz.jpg" },
 ]
 
-export const ROGALIK_MOUNTING_OPTIONS: RogalikOption[] = [
-  { id: "koraliki", label: "Z koralikami" },
-  { id: "karabinczyk", label: "Na karabińczyku" },
-  { id: "sznureczek", label: "Na sznureczku", comingSoon: true },
-  { id: "sznureczek-karabinczyk", label: "Na sznureczku z karabińczykiem", comingSoon: true },
-]
+const ROGALIK_MOUNTING_STEP_LABELS: Record<(typeof ROGALIK_MOUNTING_IDS)[number], string> = {
+  koraliki: "Z koralikami",
+  karabinczyk: "Na karabińczyku",
+  sznureczek: "Na sznureczku",
+  "sznureczek-karabinczyk": "Na sznureczku z karabińczykiem",
+}
+
+/** Opcje kroku MODEL — id zsynchronizowane z `ROGALIK_MOUNTING_IDS`. */
+export const ROGALIK_MOUNTING_OPTIONS: RogalikOption[] = ROGALIK_MOUNTING_IDS.map((id) => ({
+  id,
+  label: ROGALIK_MOUNTING_STEP_LABELS[id],
+}))
+
+/** Etykiety na kafelach mocowania (jak krok MODEL biżuterii); id wartości `rogalikMounting` bez zmian. */
+export const ROGALIK_MOUNTING_TILE_LABELS: Record<string, string> = {
+  koraliki: "Naszyjnik z koralikami i adresówką",
+  karabinczyk: "Na sznurku z karabińczykiem",
+  sznureczek: "Na sznurku (bez karabińczyka)",
+  "sznureczek-karabinczyk": "Sama adresówka z karabińczykiem",
+}
+
+/** Grafiki kafli mocowania — `public/rogalik/Rogalik_*.jpg`. */
+export const ROGALIK_MOUNTING_TILE_IMAGES: Record<string, string> = {
+  koraliki: "/rogalik/Rogalik_naszyjnik_z_koralikami_i_adresowka.jpg",
+  karabinczyk: "/rogalik/Rogalik_na_sznurku_z_karabinczykiem.jpg",
+  sznureczek: "/rogalik/Rogalik_na_sznurku_(bez_karabinczyka).jpg",
+  "sznureczek-karabinczyk": "/rogalik/Rogalik_sama_adresowka.jpg",
+}
 
 export const ROGALIK_CORD_COLOR_OPTIONS: RogalikOption[] = [
   { id: "kremowy", label: "Kremowy", image: "/rogalik/sznurekkremowy.jpg" },
@@ -109,8 +132,8 @@ export type RogalikFlowStep =
 
 /** Mapowanie numeru kroku w UI na ekran (zależy od mocowania). */
 export const rogalikFlowStepAt = (mounting: string, stepIndex: number): RogalikFlowStep => {
-  if (stepIndex <= 1) return "kolor"
-  if (stepIndex === 2) return "mocowanie"
+  if (stepIndex <= 1) return "mocowanie"
+  if (stepIndex === 2) return "kolor"
 
   if (rogalikMountingUsesBeads(mounting)) {
     if (stepIndex === 3) return "dodatki"

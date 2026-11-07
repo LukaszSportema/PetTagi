@@ -18,10 +18,12 @@ import {
   getExpressShippingEnabled,
   getPaymentRecipient,
   getCharmUnitPrices,
+  getRogalikMountingBasePrices,
   setExpressShippingEnabled,
   setPaymentRecipient,
 } from './actions/settings';
 import { buildDefaultCharmUnitPrices, type CharmUnitPrices } from '@/lib/charm-unit-pricing';
+import { DEFAULT_ROGALIK_MOUNTING_BASE_PRICES } from '@/lib/rogalik-admin-pricing';
 import { generateShippingLabel } from './actions/shipping';
 import {
   canSetOrderStatusToPending,
@@ -1657,11 +1659,17 @@ function OrderDetailView({
   const [charmUnitPrices, setCharmUnitPrices] = useState<CharmUnitPrices>(() =>
     buildDefaultCharmUnitPrices(),
   );
+  const [rogalikMountingBasePrices, setRogalikMountingBasePrices] = useState(() =>
+    DEFAULT_ROGALIK_MOUNTING_BASE_PRICES,
+  );
 
   useEffect(() => {
-    void getCharmUnitPrices().then((result) => {
-      if (result.ok) setCharmUnitPrices(result.prices);
-    });
+    void Promise.all([getCharmUnitPrices(), getRogalikMountingBasePrices()]).then(
+      ([charmResult, rogalikMountingBaseResult]) => {
+        if (charmResult.ok) setCharmUnitPrices(charmResult.prices);
+        if (rogalikMountingBaseResult.ok) setRogalikMountingBasePrices(rogalikMountingBaseResult.prices);
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -1786,7 +1794,9 @@ function OrderDetailView({
                       </div>
                       {isRogalikOrderItem(item) && (
                         <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
-                          {rogalikOrderItemPriceLines(item, charmUnitPrices).map((line) => (
+                          {rogalikOrderItemPriceLines(item, charmUnitPrices, {
+                            mountingBasePrices: rogalikMountingBasePrices,
+                          }).map((line) => (
                             <li
                               key={`${item.id}-price-${line.label}`}
                               className="flex justify-between gap-2 text-xs text-[#7A736C]"

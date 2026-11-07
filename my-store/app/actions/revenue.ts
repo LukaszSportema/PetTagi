@@ -2,8 +2,9 @@
 
 import { buildQuantityRows, buildRevenueRows, type RevenueOrder, type RevenueRow } from "@/lib/revenue"
 import { buildDefaultCharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { DEFAULT_ROGALIK_MOUNTING_BASE_PRICES } from "@/lib/rogalik-admin-pricing"
 import { DEFAULT_TAG_MODEL_BASE_PRICES } from "@/lib/tag-model-pricing"
-import { getCharmUnitPrices, getTagModelBasePrices } from "@/app/actions/settings"
+import { getCharmUnitPrices, getRogalikMountingBasePrices, getTagModelBasePrices } from "@/app/actions/settings"
 import {
   DEFAULT_PAYMENT_RECIPIENT,
   parsePaymentRecipientId,
@@ -31,6 +32,7 @@ type RevenueItemRow = {
   rogalik_cord_color?: string | null
   rogalik_beads?: string | null
   rogalik_charms?: unknown
+  base_unit_price?: number | string | null
 }
 
 type RevenueOrderRow = {
@@ -99,6 +101,10 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
     rogalikCordColor: item.rogalik_cord_color ?? null,
     rogalikBeads: item.rogalik_beads ?? null,
     rogalikCharms: toStringArray(item.rogalik_charms),
+    rogalikBaseUnitPln:
+      item.base_unit_price === null || item.base_unit_price === undefined || item.base_unit_price === ""
+        ? null
+        : toMoney(item.base_unit_price),
   })),
 })
 
@@ -141,9 +147,10 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
       : []
   const orders = rows.map(mapOrder)
 
-  const [charmPricesResult, tagModelBasePricesResult] = await Promise.all([
+  const [charmPricesResult, tagModelBasePricesResult, rogalikMountingBaseResult] = await Promise.all([
     getCharmUnitPrices(),
     getTagModelBasePrices(),
+    getRogalikMountingBasePrices(),
   ])
   const revenuePricing = {
     charmPrices: charmPricesResult.ok
@@ -152,6 +159,9 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
     tagModelBasePrices: tagModelBasePricesResult.ok
       ? tagModelBasePricesResult.prices
       : DEFAULT_TAG_MODEL_BASE_PRICES,
+    rogalikMountingBasePrices: rogalikMountingBaseResult.ok
+      ? rogalikMountingBaseResult.prices
+      : DEFAULT_ROGALIK_MOUNTING_BASE_PRICES,
   }
 
   const byRecipient = Object.fromEntries(

@@ -5,7 +5,14 @@ import { expressFulfillmentRangeCompact, standardFulfillmentRangeCompact } from 
 import { isPolishMobilePhone } from '@/lib/phone';
 import { validateDiscountCodeForCheckout } from './actions/discount-codes';
 import { createOrder } from './actions/orders';
-import { getExpressShippingEnabled, getCharmUnitPrices, getTagModelBasePrices, getTagModelStartPrices } from './actions/settings';
+import {
+  getExpressShippingEnabled,
+  getCharmUnitPrices,
+  getRogalikMountingBasePrices,
+  getRogalikMountingStartPrices,
+  getTagModelBasePrices,
+  getTagModelStartPrices,
+} from './actions/settings';
 import { cartItemToCreateOrderItem, isRogalikCartItem } from '@/lib/order-from-cart';
 import { classicCartPriceBreakdown } from '@/lib/classic-tag-pricing';
 import {
@@ -20,6 +27,13 @@ import {
   discountAmountForLines,
   discountedProductsValue,
 } from '@/lib/cart-item-pricing';
+import {
+  DEFAULT_ROGALIK_MOUNTING_BASE_PRICES,
+  DEFAULT_ROGALIK_MOUNTING_START_PRICES,
+  rogalikBaseUnitPriceForMounting,
+  type RogalikMountingBasePrices,
+  type RogalikMountingStartPrices,
+} from '@/lib/rogalik-admin-pricing';
 import {
   DEFAULT_TAG_MODEL_BASE_PRICES,
   DEFAULT_TAG_MODEL_START_PRICES,
@@ -66,7 +80,6 @@ import {
   type CatalogMedia,
 } from '@/lib/catalog';
 import {
-  ROGALIK_BASE_PRICE,
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
   rogalikStringSizeFromNeckCm,
@@ -216,6 +229,8 @@ type CartItem = {
   image: string;
   options: { label: string; values: string[] }[];
   config: FormDataState;
+  /** Snapshot ceny bazowej rogalika w momencie dodania do koszyka (per model mocowania). */
+  baseUnitPriceSnapshot?: number;
 };
 
 type ConfiguratorBaseOption = {
@@ -554,8 +569,17 @@ export default function Home() {
   const [tagModelBasePrices, setTagModelBasePrices] = useState<TagModelBasePrices>(
     DEFAULT_TAG_MODEL_BASE_PRICES,
   );
+  const [rogalikMountingStartPrices, setRogalikMountingStartPrices] =
+    useState<RogalikMountingStartPrices>(DEFAULT_ROGALIK_MOUNTING_START_PRICES);
+  const [rogalikMountingBasePrices, setRogalikMountingBasePrices] =
+    useState<RogalikMountingBasePrices>(DEFAULT_ROGALIK_MOUNTING_BASE_PRICES);
   const [charmUnitPrices, setCharmUnitPrices] = useState<CharmUnitPrices>(() =>
     buildDefaultCharmUnitPrices(),
+  );
+
+  const effectiveRogalikBaseUnitPricePln = useMemo(
+    () => rogalikBaseUnitPriceForMounting(formData.rogalikMounting, rogalikMountingBasePrices),
+    [formData.rogalikMounting, rogalikMountingBasePrices],
   );
 
   const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
@@ -588,7 +612,14 @@ export default function Home() {
   );
   const usesNecklaceStyleKarabinerStep =
     isClassicTagConfigurator && tagModelUsesNecklaceStyleKarabinerStep(formData.tagModel);
-  const beadNecklaceKarabinerPricing = usesNecklaceStyleKarabinerStep
+  /** Rogalik „Na sznurku (bez karabińczyka)” — ten sam układ / zasady co biżuteria „sznurek bez karabińczyka”. */
+  const rogalikMountingSznureczekBezKarabiner =
+    isRogalikTagConfigurator && formData.rogalikMounting === 'sznureczek';
+  const necklaceLayoutKarabinerStep =
+    usesNecklaceStyleKarabinerStep || rogalikMountingSznureczekBezKarabiner;
+  const karabinersOptionalForActiveConfigurator =
+    karabinersOptionalInConfigurator || rogalikMountingSznureczekBezKarabiner;
+  const beadNecklaceKarabinerPricing = necklaceLayoutKarabinerStep
     ? ({ allUnitsPaid: true } as const)
     : undefined;
   const rogalikFlowStep = isRogalikTagConfigurator
@@ -604,7 +635,7 @@ export default function Home() {
 
   // --- LOGIKA OBLICZANIA CENY ---
   const basePrice = isRogalikTagConfigurator
-    ? ROGALIK_BASE_PRICE
+    ? effectiveRogalikBaseUnitPricePln
     : isClassicTagConfigurator
       ? classicTagBaseUnitPrice({
           tagModel: formData.tagModel,
@@ -674,7 +705,7 @@ export default function Home() {
       ? ROGALIK_MOUNTING_KARABINER_PRICE
       : 0;
   const totalPrice = isRogalikTagConfigurator
-    ? ROGALIK_BASE_PRICE +
+    ? effectiveRogalikBaseUnitPricePln +
       rogalikCordCost +
       rogalikBeadsCost +
       rogalikCharmsCost +
@@ -729,16 +760,16 @@ export default function Home() {
   const isTagConfigurator = isClassicTagConfigurator || isGlowTagConfigurator || isRogalikTagConfigurator;
 
   const rogalikStepKolor = {
-    id: 1,
+    id: 2,
     label: 'Kolor rogalika',
     shortLabel: 'KOLOR',
     icon: '🎨',
     thumbnail: '/miniatury/ksztaltkolor.jpg',
   };
-  const rogalikStepMocowanie = {
-    id: 2,
-    label: 'Sposób mocowania',
-    shortLabel: 'MOCOWANIE',
+  const rogalikStepModel = {
+    id: 1,
+    label: 'Model',
+    shortLabel: 'MODEL',
     icon: '🔗',
     thumbnail: '/miniatury/darmowykarabinczyk.jpg',
   };
@@ -769,15 +800,15 @@ export default function Home() {
     thumbnail: '/miniatury/koraliki.jpg',
   };
   const rogalikStepsBeads = [
+    rogalikStepModel,
     rogalikStepKolor,
-    rogalikStepMocowanie,
     rogalikStepDodatki,
     { ...rogalikStepDane, id: 4 },
     { ...rogalikStepSummary, id: 5 },
   ];
   const rogalikStepsKarabinczyk = [
+    rogalikStepModel,
     rogalikStepKolor,
-    rogalikStepMocowanie,
     rogalikStepKarabiners,
     { ...rogalikStepDane, id: 4 },
     { ...rogalikStepSummary, id: 5 },
@@ -1095,17 +1126,17 @@ export default function Home() {
   const isOrderValid = !Object.values(orderErrors).some(Boolean);
 
   const nextStep = () => {
-    if (isRogalikTagConfigurator && rogalikFlowStep === 'kolor') {
-      setShowRogalikErrors(true);
-      if (!formData.rogalikColor) {
-        scrollToConfiguratorSection('rogalik-color');
-        return;
-      }
-    }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'mocowanie') {
       setShowRogalikErrors(true);
       if (!formData.rogalikMounting) {
         scrollToConfiguratorSection('rogalik-mounting');
+        return;
+      }
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'kolor') {
+      setShowRogalikErrors(true);
+      if (!formData.rogalikColor) {
+        scrollToConfiguratorSection('rogalik-color');
         return;
       }
     }
@@ -1126,14 +1157,16 @@ export default function Home() {
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'karabinier') {
       setShowFreeKarabinerErrors(true);
-      const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
-        (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
-        0,
-      );
-      const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
-      if (firstRowQty < 1 || totalQty < 1) {
-        scrollToConfiguratorSection('free-karabiner-choice');
-        return;
+      if (!karabinersOptionalForActiveConfigurator) {
+        const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
+          (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+          0,
+        );
+        const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
+        if (firstRowQty < 1 || totalQty < 1) {
+          scrollToConfiguratorSection('free-karabiner-choice');
+          return;
+        }
       }
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'dane') {
@@ -1800,25 +1833,25 @@ export default function Home() {
     const titleTexts = items.map((item) => item.label);
     const subtitleTexts = items.map((item) => `Materiał: ${item.material}`);
 
-    const headingCopy = usesNecklaceStyleKarabinerStep
+    const headingCopy = necklaceLayoutKarabinerStep
       ? 'W zestawie otrzymujesz mocowanie, dzięki któremu możesz przepiąć adresówkę i nosić ją na karabińczyku. Czy chcesz dodać karabińczyki?'
       : 'Wybierz swoje karabińczyki:';
 
     const karabinerErrorVisible =
       showFreeKarabinerErrors &&
-      !karabinersOptionalInConfigurator &&
-      (usesNecklaceStyleKarabinerStep
+      !karabinersOptionalForActiveConfigurator &&
+      (necklaceLayoutKarabinerStep
         ? karabinerQuantitiesTotal(formData.karabinerQuantities) < 1
         : firstRowKarabinerIds(karabinerRingKey).reduce(
             (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
             0,
           ) < 1 || karabinerQuantitiesTotal(formData.karabinerQuantities) < 1);
 
-    const karabinerErrorCopy = usesNecklaceStyleKarabinerStep
+    const karabinerErrorCopy = necklaceLayoutKarabinerStep
       ? 'Wybierz co najmniej jeden karabińczyk.'
       : 'Dodaj co najmniej jeden karabińczyk z pierwszego wiersza (1 szt. gratis na zamówienie).';
 
-    const necklaceIntroBlock = usesNecklaceStyleKarabinerStep ? (
+    const necklaceIntroBlock = necklaceLayoutKarabinerStep ? (
       <div className="mt-1 md:mt-1.5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-1 sm:gap-x-1.5 -ml-1 sm:-ml-2">
         <img
           src="/karabinczyk/mocowanie.png"
@@ -1833,7 +1866,7 @@ export default function Home() {
             maxFontPx={16}
             minFontPx={13}
           />
-          {isBeadNecklaceModel && (
+          {(isBeadNecklaceModel || rogalikMountingSznureczekBezKarabiner) && (
             <p className="text-sm font-normal italic text-[#7A736C] mt-1">Wybór jest opcjonalny</p>
           )}
           {karabinerErrorVisible && <p className="text-sm text-red-500">{karabinerErrorCopy}</p>}
@@ -1841,7 +1874,7 @@ export default function Home() {
       </div>
     ) : null;
 
-    const karabinerGrid = usesNecklaceStyleKarabinerStep ? (
+    const karabinerGrid = necklaceLayoutKarabinerStep ? (
       <div className={karabinerGridClass} data-uniform-font-grid>
         {items.map(renderKarabinerQuantityCard)}
       </div>
@@ -1874,7 +1907,7 @@ export default function Home() {
         subtitleMax={14}
       >
         <div
-          className={`scroll-mt-28 ${usesNecklaceStyleKarabinerStep ? 'space-y-3' : 'space-y-8'}`}
+          className={`scroll-mt-28 ${necklaceLayoutKarabinerStep ? 'space-y-3' : 'space-y-8'}`}
           data-configurator-section="free-karabiner-choice"
         >
           {necklaceIntroBlock}
@@ -1943,6 +1976,7 @@ export default function Home() {
         image: '/produkty/glownerogalik.jpg',
         options,
         config: { ...formData },
+        baseUnitPriceSnapshot: effectiveRogalikBaseUnitPricePln,
       };
     }
 
@@ -2181,6 +2215,9 @@ export default function Home() {
   };
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const rogalikCartLegacyBasePln = (item: CartItem) =>
+    item.baseUnitPriceSnapshot ??
+    rogalikBaseUnitPriceForMounting(item.config.rogalikMounting, rogalikMountingBasePrices);
   const cartDiscountLines = cartItems.map((item) => ({
     price: item.price,
     quantity: item.quantity,
@@ -2191,6 +2228,8 @@ export default function Home() {
         config: item.config,
       },
       tagModelBasePrices,
+      undefined,
+      isRogalikCartItem(item) ? rogalikCartLegacyBasePln(item) : undefined,
     ),
   }));
   const cartProductsValueBeforeDiscount = cartDiscountLines.reduce(
@@ -2360,6 +2399,8 @@ export default function Home() {
             config: item.config,
           },
           tagModelBasePrices,
+          undefined,
+          isRogalikCartItem(item) ? rogalikCartLegacyBasePln(item) : undefined,
         ),
       ),
     });
@@ -2894,18 +2935,18 @@ export default function Home() {
       <div className="space-y-3 text-sm text-[#7A736C]">
         <div className="flex justify-between items-start gap-4">
           <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
-          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{ROGALIK_BASE_PRICE} zł</span>
+          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{effectiveRogalikBaseUnitPricePln} zł</span>
         </div>
+        {formData.rogalikMounting && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Model</span>
+            <span className="shrink-0 text-right">{rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, formData.rogalikMounting)}</span>
+          </div>
+        )}
         {formData.rogalikColor && (
           <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
             <span className="min-w-0 pl-3">Kolor rogalika</span>
             <span className="shrink-0 text-right">{rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, formData.rogalikColor)}</span>
-          </div>
-        )}
-        {formData.rogalikMounting && (
-          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
-            <span className="min-w-0 pl-3">Mocowanie</span>
-            <span className="shrink-0 text-right">{rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, formData.rogalikMounting)}</span>
           </div>
         )}
         {rogalikUsesBeadMounting && formData.rogalikCordColor && rogalikCordPrice !== null && (
@@ -2999,6 +3040,9 @@ export default function Home() {
       }),
       includeDialCode: item.config.includePhoneCode === 'tak',
       charmUnitPrices,
+      baseUnitPricePln: isRogalikCartItem(item)
+        ? rogalikCartLegacyBasePln(item)
+        : undefined,
     });
 
   const classicCartPriceLines = (item: CartItem) =>
@@ -3158,13 +3202,18 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([getTagModelStartPrices(), getTagModelBasePrices()]).then(
-      ([startResult, baseResult]) => {
-        if (cancelled) return;
-        if (startResult.ok) setTagModelStartPrices(startResult.prices);
-        if (baseResult.ok) setTagModelBasePrices(baseResult.prices);
-      },
-    );
+    void Promise.all([
+      getTagModelStartPrices(),
+      getTagModelBasePrices(),
+      getRogalikMountingStartPrices(),
+      getRogalikMountingBasePrices(),
+    ]).then(([startResult, baseResult, rogalikMountingResult, rogalikMountingBaseResult]) => {
+      if (cancelled) return;
+      if (startResult.ok) setTagModelStartPrices(startResult.prices);
+      if (baseResult.ok) setTagModelBasePrices(baseResult.prices);
+      if (rogalikMountingResult.ok) setRogalikMountingStartPrices(rogalikMountingResult.prices);
+      if (rogalikMountingBaseResult.ok) setRogalikMountingBasePrices(rogalikMountingBaseResult.prices);
+    });
     return () => {
       cancelled = true;
     };
@@ -4213,19 +4262,6 @@ export default function Home() {
                         usesNecklaceStyleKarabinerStep && contentStep === 5 ? 'pt-0.5 md:pt-1' : 'pt-1 md:pt-2'
                       }
                     >
-                      {isRogalikTagConfigurator && rogalikFlowStep === 'kolor' && (
-                        <RogalikConfiguratorStep
-                          formData={formData}
-                          onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
-                          onToggleCharm={toggleRogalikCharm}
-                          showErrors={showRogalikErrors}
-                          stringSizeText={stringSizeText ?? ''}
-                          step="kolor"
-                          showNeckSection={false}
-                          warehouseStock={warehouseStock}
-                        />
-                      )}
-
                       {isRogalikTagConfigurator && rogalikFlowStep === 'mocowanie' && (
                         <RogalikConfiguratorStep
                           formData={formData}
@@ -4254,6 +4290,21 @@ export default function Home() {
                           step="mocowanie"
                           showNeckSection={false}
                           warehouseStock={warehouseStock}
+                          rogalikMountingStartPrices={rogalikMountingStartPrices}
+                        />
+                      )}
+
+                      {isRogalikTagConfigurator && rogalikFlowStep === 'kolor' && (
+                        <RogalikConfiguratorStep
+                          formData={formData}
+                          onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+                          onToggleCharm={toggleRogalikCharm}
+                          showErrors={showRogalikErrors}
+                          stringSizeText={stringSizeText ?? ''}
+                          step="kolor"
+                          showNeckSection={false}
+                          warehouseStock={warehouseStock}
+                          rogalikMountingStartPrices={rogalikMountingStartPrices}
                         />
                       )}
 
@@ -4267,6 +4318,7 @@ export default function Home() {
                           step="dodatki"
                           showNeckSection={rogalikUsesBeadMounting}
                           warehouseStock={warehouseStock}
+                          rogalikMountingStartPrices={rogalikMountingStartPrices}
                         />
                       )}
 

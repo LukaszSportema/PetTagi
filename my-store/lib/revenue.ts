@@ -1,4 +1,3 @@
-import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
 import { itemQuantityParts, itemRevenueParts, type ItemRevenuePricingContext, type PricedOrderItem } from "@/lib/pricing"
 import {
   isRogalikRevenueItem,
@@ -7,7 +6,9 @@ import {
 } from "@/lib/rogalik-revenue"
 
 const revenuePartsForItem = (item: PricedOrderItem, ctx: RevenuePricingContext) =>
-  isRogalikRevenueItem(item) ? rogalikItemRevenueParts(item, ctx.charmPrices) : itemRevenueParts(item, ctx)
+  isRogalikRevenueItem(item)
+    ? rogalikItemRevenueParts(item, ctx.charmPrices, ctx)
+    : itemRevenueParts(item, ctx)
 
 const quantityPartsForItem = (item: PricedOrderItem) =>
   isRogalikRevenueItem(item) ? rogalikItemQuantityParts(item) : itemQuantityParts(item)

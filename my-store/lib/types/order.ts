@@ -139,6 +139,8 @@ export type OrderItemRecord = {
   rogalikBeads: string | null
   rogalikCharms: string[]
   beadNecklaceColors: string[]
+  /** Zapisana przy składaniu zamówienia (rabat od bazy). */
+  baseUnitPricePln?: number | null
 }
 
 export type OrderDetail = OrderRecord & {

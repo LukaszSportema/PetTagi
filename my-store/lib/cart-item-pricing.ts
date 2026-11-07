@@ -2,8 +2,11 @@ import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 import type { CartItemForOrder } from "@/lib/order-from-cart"
 import { baseTagPrice } from "@/lib/pricing"
+import {
+  rogalikBaseUnitPriceForMounting,
+  type RogalikMountingBasePrices,
+} from "@/lib/rogalik-admin-pricing"
 import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
-import { ROGALIK_BASE_PRICE } from "@/lib/rogalik-options"
 
 export const roundMoney = (value: number) => Math.round(value * 100) / 100
 
@@ -13,6 +16,9 @@ export const orderItemBaseUnitPriceFromOrder = (item: {
   ringColor: string
   tagModel?: string | null
   tagModelBasePrices?: TagModelBasePrices
+  rogalikMounting?: string | null
+  /** Zapis w order_items (od 2026-11). */
+  baseUnitPricePln?: number | null
 }) => {
   const product = getCatalogProduct(item.productSlug)
   if (
@@ -20,7 +26,11 @@ export const orderItemBaseUnitPriceFromOrder = (item: {
     item.productSlug === ROGALIK_TAG_PRODUCT.slug ||
     item.ringColor === ROGALIK_ORDER_RING_COLOR
   ) {
-    return ROGALIK_BASE_PRICE
+    const stored = item.baseUnitPricePln
+    if (typeof stored === "number" && Number.isFinite(stored) && stored >= 0) {
+      return roundMoney(stored)
+    }
+    return roundMoney(rogalikBaseUnitPriceForMounting(item.rogalikMounting, undefined))
   }
   if (product?.configuratorId === "glow-tag") {
     return baseTagPrice("glow")
@@ -39,10 +49,24 @@ export const orderItemBaseUnitPriceFromOrder = (item: {
 export const cartItemBaseUnitPrice = (
   item: Pick<CartItemForOrder, "productSlug" | "config">,
   tagModelBasePrices?: TagModelBasePrices,
+  rogalikMountingBasePrices?: RogalikMountingBasePrices,
+  legacyRogalikSingleBasePln?: number,
 ): number => {
   const product = getCatalogProduct(item.productSlug)
   if (product?.configuratorId === "rogalik-tag" || item.productSlug === ROGALIK_TAG_PRODUCT.slug) {
-    return ROGALIK_BASE_PRICE
+    if (rogalikMountingBasePrices !== undefined) {
+      return roundMoney(
+        rogalikBaseUnitPriceForMounting(item.config.rogalikMounting, rogalikMountingBasePrices),
+      )
+    }
+    if (
+      typeof legacyRogalikSingleBasePln === "number" &&
+      Number.isFinite(legacyRogalikSingleBasePln) &&
+      legacyRogalikSingleBasePln >= 0
+    ) {
+      return roundMoney(legacyRogalikSingleBasePln)
+    }
+    return roundMoney(rogalikBaseUnitPriceForMounting(item.config.rogalikMounting, undefined))
   }
   if (product?.configuratorId === "glow-tag") {
     return baseTagPrice("glow")

@@ -1,13 +1,14 @@
 import { charmsTotalPln } from "@/lib/charm-pricing"
 import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
 import { ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
+import { rogalikBaseUnitPriceForMounting } from "@/lib/rogalik-admin-pricing"
 import {
   EXTRA_KARABINER_PRICE,
   DIAL_CODE_PRICE,
+  type ItemRevenuePricingContext,
   type PricedOrderItem,
 } from "@/lib/pricing"
 import {
-  ROGALIK_BASE_PRICE,
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
   rogalikMountingUsesBeads,
@@ -23,8 +24,21 @@ export const isRogalikRevenueItem = (item: Pick<PricedOrderItem, "ringColor" | "
 export const rogalikItemRevenueParts = (
   item: PricedOrderItem,
   charmPrices?: CharmUnitPrices,
+  ctx?: Pick<ItemRevenuePricingContext, "rogalikBaseUnitPricePln" | "rogalikMountingBasePrices">,
 ) => {
   const qty = item.quantity > 0 ? item.quantity : 1
+  const rogalikMountingBasePrices = ctx?.rogalikMountingBasePrices
+  const legacySingleBase = ctx?.rogalikBaseUnitPricePln
+  const baseUnit =
+    typeof item.rogalikBaseUnitPln === "number" &&
+    Number.isFinite(item.rogalikBaseUnitPln) &&
+    item.rogalikBaseUnitPln >= 0
+      ? item.rogalikBaseUnitPln
+      : typeof legacySingleBase === "number" &&
+          Number.isFinite(legacySingleBase) &&
+          legacySingleBase >= 0
+        ? legacySingleBase
+        : rogalikBaseUnitPriceForMounting(item.rogalikMounting, rogalikMountingBasePrices)
   const usesBeads = rogalikMountingUsesBeads(item.rogalikMounting ?? "")
   const size = rogalikStringSizeFromNeckCm(item.dogNeck)
   const cordPrice =
@@ -40,7 +54,7 @@ export const rogalikItemRevenueParts = (
     extraKarabinerCount * EXTRA_KARABINER_PRICE
 
   return {
-    base: ROGALIK_BASE_PRICE * qty,
+    base: baseUnit * qty,
     charms: charmsRevenue * qty,
     karabiners: karabinersRevenue * qty,
     strings: (cordPrice + beadsPrice) * qty,

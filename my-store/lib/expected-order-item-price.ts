@@ -8,6 +8,10 @@ import {
   karabinerRevenueFromOrder,
 } from "@/lib/karabiner-pricing"
 import { isRogalikRevenueItem, rogalikItemRevenueParts } from "@/lib/rogalik-revenue"
+import {
+  rogalikBaseUnitPriceForMounting,
+  type RogalikMountingBasePrices,
+} from "@/lib/rogalik-admin-pricing"
 import { ROGALIK_BASE_PRICE } from "@/lib/rogalik-options"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 import {
@@ -29,6 +33,8 @@ import type { CreateOrderItemInput } from "@/lib/types/order"
 export type OrderPricingContext = {
   charmPrices?: CharmUnitPrices
   tagModelBasePrices?: TagModelBasePrices
+  rogalikBaseUnitPricePln?: number
+  rogalikMountingBasePrices?: RogalikMountingBasePrices
 }
 
 const jewelryKarabinerRingKey = (item: CreateOrderItemInput) => {
@@ -55,6 +61,10 @@ export const expectedOrderItemBaseUnitPrice = (
     item.productSlug === ROGALIK_TAG_PRODUCT.slug ||
     item.ringColor === ROGALIK_ORDER_RING_COLOR
   ) {
+    const fromCtx = rogalikBaseUnitPriceForMounting(item.rogalikMounting, ctx.rogalikMountingBasePrices)
+    if (typeof fromCtx === "number" && Number.isFinite(fromCtx) && fromCtx >= 0) {
+      return roundMoney(fromCtx)
+    }
     return ROGALIK_BASE_PRICE
   }
   if (product?.configuratorId === "glow-tag") {
@@ -90,6 +100,7 @@ const toPricedItem = (item: CreateOrderItemInput): PricedOrderItem => ({
   rogalikBeads: item.rogalikBeads,
   rogalikCharms: item.rogalikCharms,
   beadNecklaceColors: item.beadNecklaceColors,
+  rogalikBaseUnitPln: item.baseUnitPrice,
 })
 
 export const expectedOrderItemUnitPrice = (
@@ -98,7 +109,7 @@ export const expectedOrderItemUnitPrice = (
 ): number => {
   if (isRogalikRevenueItem({ ringColor: item.ringColor, productSlug: item.productSlug })) {
     const qty = Math.max(1, item.quantity)
-    const parts = rogalikItemRevenueParts(toPricedItem(item), ctx.charmPrices)
+    const parts = rogalikItemRevenueParts(toPricedItem(item), ctx.charmPrices, ctx)
     const lineTotal =
       parts.base + parts.charms + parts.karabiners + parts.strings + parts.dialCode
     return roundMoney(lineTotal / qty)

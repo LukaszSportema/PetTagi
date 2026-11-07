@@ -14,7 +14,15 @@ import {
   ROGALIK_CORD_COLOR_OPTIONS,
   ROGALIK_MAX_CHARMS,
   ROGALIK_MOUNTING_OPTIONS,
+  ROGALIK_MOUNTING_TILE_IMAGES,
+  ROGALIK_MOUNTING_TILE_LABELS,
 } from '@/lib/rogalik-options';
+import {
+  DEFAULT_ROGALIK_MOUNTING_START_PRICES,
+  rogalikMountingStartPricePln,
+  type RogalikMountingStartPrices,
+} from '@/lib/rogalik-admin-pricing';
+import { tagModelStartPriceLabel } from '@/lib/tag-model-pricing';
 
 type RogalikFormSlice = {
   rogalikColor: string;
@@ -31,11 +39,13 @@ type Props = {
   onToggleCharm: (id: string) => void;
   showErrors: boolean;
   stringSizeText: string;
-  /** Kolor, mocowanie lub dodatki (obwód, sznureczek, koraliki, charmsy). */
+  /** Model (mocowanie), kolor lub dodatki (obwód, sznureczek, koraliki, charmsy). */
   step: 'kolor' | 'mocowanie' | 'dodatki';
   /** Obwód szyi — pierwsza sekcja kroku DODATKI (mocowanie „Z koralikami”). */
   showNeckSection: boolean;
   warehouseStock: Record<string, number>;
+  /** „Od X zł” na kafelach mocowania rogalika (panel admina). */
+  rogalikMountingStartPrices?: RogalikMountingStartPrices;
 };
 
 const sectionClass = 'space-y-4 pt-8 border-t border-[#D6C7AE] first:border-t-0 first:pt-0';
@@ -194,7 +204,9 @@ export function RogalikConfiguratorStep({
   step,
   showNeckSection,
   warehouseStock,
+  rogalikMountingStartPrices,
 }: Props) {
+  const mountingStartPrices = rogalikMountingStartPrices ?? DEFAULT_ROGALIK_MOUNTING_START_PRICES;
   if (step === 'dodatki') {
     const cordIndex = showNeckSection ? 2 : 1;
     const beadsIndex = showNeckSection ? 3 : 2;
@@ -303,7 +315,7 @@ export function RogalikConfiguratorStep({
     return (
       <div className="space-y-2">
         <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-color">
-          <SectionTitle index={1}>Wybierz kolor rogalika</SectionTitle>
+          <SectionTitle index={2}>Wybierz kolor rogalika</SectionTitle>
           <p className={subtitleClass}>Wybierz kolor, który najbardziej Ci odpowiada:</p>
           <OptionTiles
             options={ROGALIK_COLOR_OPTIONS}
@@ -322,17 +334,80 @@ export function RogalikConfiguratorStep({
   return (
     <div className="space-y-2">
       <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-mounting">
-        <SectionTitle index={1}>Wybierz sposób mocowania</SectionTitle>
+        <SectionTitle index={1}>Wybierz model</SectionTitle>
         <p className={subtitleClass}>Wybierz w jaki sposób adresówka będzie mocowana:</p>
-        <OptionTiles
-          options={ROGALIK_MOUNTING_OPTIONS}
-          selectedId={formData.rogalikMounting}
-          onSelect={(id) => onChange({ rogalikMounting: id })}
-          columns={2}
-          variant="text"
-        />
+        <div className="grid grid-cols-2 gap-4 md:gap-8">
+          {ROGALIK_MOUNTING_OPTIONS.map((option) => {
+            const disabled = option.comingSoon;
+            const isSelected = !disabled && formData.rogalikMounting === option.id;
+            const tileLabel = ROGALIK_MOUNTING_TILE_LABELS[option.id] ?? option.label;
+            const imageSrc = ROGALIK_MOUNTING_TILE_IMAGES[option.id];
+            const startPricePln = rogalikMountingStartPricePln(option.id, mountingStartPrices);
+
+            return (
+              <div
+                key={option.id}
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                aria-disabled={disabled}
+                onClick={() => !disabled && onChange({ rogalikMounting: option.id })}
+                onKeyDown={(event) => {
+                  if (disabled) return;
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onChange({ rogalikMounting: option.id });
+                  }
+                }}
+                className={`rounded-none p-3 md:p-6 border transition-colors duration-300 flex flex-col items-stretch ${
+                  disabled
+                    ? 'border-[#E8E0D4] bg-[#F9F5ED] opacity-70 cursor-not-allowed'
+                    : isSelected
+                      ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+                      : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+                }`}
+              >
+                <div className="relative w-full aspect-square bg-[#FAF6EF] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE]">
+                  {imageSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- statyczne JPG z public/
+                    <img
+                      src={imageSrc}
+                      alt={tileLabel}
+                      className="absolute inset-0 h-full w-full object-cover object-top select-none"
+                      draggable={false}
+                      decoding="async"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-widest text-[#9A9288]">
+                      Zdjęcie wkrótce
+                    </span>
+                  )}
+                  {startPricePln != null && (
+                    <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[#9AAD92] px-4 py-1.5 font-serif text-sm md:text-base text-white whitespace-nowrap shadow-sm">
+                      {tagModelStartPriceLabel(startPricePln)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-center text-xs md:text-sm font-medium text-[#161616] leading-snug px-1">
+                  {tileLabel}
+                </p>
+                {option.comingSoon && (
+                  <span className="text-center text-xs text-[#7A736C] font-light mt-1">już wkrótce</span>
+                )}
+                {!disabled && (
+                  <div
+                    className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${
+                      isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+                    }`}
+                  >
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
         {showErrors && !formData.rogalikMounting && (
-          <p className="text-sm text-red-500">Wybierz sposób mocowania.</p>
+          <p className="text-sm text-red-500">Wybierz model.</p>
         )}
       </section>
     </div>

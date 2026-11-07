@@ -45,6 +45,8 @@ export type RogalikPricingInput = {
   karabinerCatalogRingKey?: KarabinerCatalogRingKey
   includeDialCode?: boolean
   charmUnitPrices?: CharmUnitPrices
+  /** Cena bazowa z admina / snapshotu; domyślnie ROGALIK_BASE_PRICE. */
+  baseUnitPricePln?: number | null
 }
 
 const neckCmFromStored = (dogNeck: string | null | undefined): string | undefined => {
@@ -59,10 +61,19 @@ const resolveStringSize = (input: RogalikPricingInput): StringSize | null => {
   return rogalikStringSizeFromNeckCm(neckCmFromStored(input.dogNeck))
 }
 
+const resolveRogalikBaseUnitPln = (input: RogalikPricingInput): number => {
+  const v = input.baseUnitPricePln
+  if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+    return Math.round(v * 100) / 100
+  }
+  return ROGALIK_BASE_PRICE
+}
+
 /** Pozycje cenowe rogalika (konfigurator, koszyk, zamówienia, maile). */
 export const rogalikPriceBreakdown = (input: RogalikPricingInput): RogalikPriceLine[] => {
+  const basePln = resolveRogalikBaseUnitPln(input)
   const lines: RogalikPriceLine[] = [
-    { label: "Adresówka rogalik", amountPln: ROGALIK_BASE_PRICE, isBase: true },
+    { label: "Adresówka rogalik", amountPln: basePln, isBase: true },
   ]
   const mounting = input.rogalikMounting ?? ""
   const usesBeads = rogalikMountingUsesBeads(mounting)

@@ -11,6 +11,15 @@ import {
   type TagModelStartPrices,
 } from "@/lib/tag-model-pricing"
 import {
+  parseRogalikBaseUnitPricePln,
+  parseRogalikMountingBasePrices,
+  parseRogalikMountingStartPrices,
+  rogalikMountingBasePricesToJson,
+  rogalikMountingStartPricesToJson,
+  type RogalikMountingBasePrices,
+  type RogalikMountingStartPrices,
+} from "@/lib/rogalik-admin-pricing"
+import {
   charmUnitPricesToJson,
   mergeCharmUnitPrices,
   type CharmUnitPrices,
@@ -236,6 +245,175 @@ export async function setTagModelBasePrices(
   } catch (error) {
     console.error("admin_set_tag_model_base_prices failed", error)
     return { ok: false, message: "Nie udało się zapisać cennika bazowego modeli." }
+  }
+}
+
+export type GetRogalikMountingStartPricesResult =
+  | { ok: true; prices: RogalikMountingStartPrices }
+  | { ok: false; message: string }
+
+export type SetRogalikMountingStartPricesResult =
+  | { ok: true; prices: RogalikMountingStartPrices }
+  | { ok: false; message: string }
+
+export async function getRogalikMountingStartPrices(): Promise<GetRogalikMountingStartPricesResult> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("get_rogalik_mounting_start_prices")
+
+    if (error) {
+      console.error("get_rogalik_mounting_start_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("get_rogalik_mounting_start_prices")
+          ? "Brak cennika rogalika w Supabase. Uruchom migrację rogalik_pricing."
+          : "Nie udało się pobrać cen kaflów rogalika.",
+      }
+    }
+
+    return { ok: true, prices: parseRogalikMountingStartPrices(data) }
+  } catch (error) {
+    console.error("get_rogalik_mounting_start_prices failed", error)
+    return { ok: false, message: "Nie udało się pobrać cen kaflów rogalika." }
+  }
+}
+
+export async function setRogalikMountingStartPrices(
+  prices: RogalikMountingStartPrices,
+): Promise<SetRogalikMountingStartPricesResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
+  const payload = rogalikMountingStartPricesToJson(parseRogalikMountingStartPrices(prices))
+
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("admin_set_rogalik_mounting_start_prices", {
+      p_prices: payload,
+    })
+    if (error) {
+      console.error("admin_set_rogalik_mounting_start_prices failed", error)
+      return { ok: false, message: "Nie udało się zapisać cen kaflów rogalika." }
+    }
+    return { ok: true, prices: parseRogalikMountingStartPrices(data) }
+  } catch (error) {
+    console.error("admin_set_rogalik_mounting_start_prices failed", error)
+    return { ok: false, message: "Nie udało się zapisać cen kaflów rogalika." }
+  }
+}
+
+export type GetRogalikMountingBasePricesResult =
+  | { ok: true; prices: RogalikMountingBasePrices }
+  | { ok: false; message: string }
+
+export type SetRogalikMountingBasePricesResult =
+  | { ok: true; prices: RogalikMountingBasePrices }
+  | { ok: false; message: string }
+
+export async function getRogalikMountingBasePrices(): Promise<GetRogalikMountingBasePricesResult> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("get_rogalik_mounting_base_prices")
+
+    if (error) {
+      console.error("get_rogalik_mounting_base_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("get_rogalik_mounting_base_prices")
+          ? "Brak mapy cen bazowych rogalika w Supabase. Uruchom migrację 20261111_rogalik_mounting_base_prices.sql."
+          : "Nie udało się pobrać cen bazowych rogalika.",
+      }
+    }
+
+    return { ok: true, prices: parseRogalikMountingBasePrices(data) }
+  } catch (error) {
+    console.error("get_rogalik_mounting_base_prices failed", error)
+    return { ok: false, message: "Nie udało się pobrać cen bazowych rogalika." }
+  }
+}
+
+export async function setRogalikMountingBasePrices(
+  prices: RogalikMountingBasePrices,
+): Promise<SetRogalikMountingBasePricesResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
+  const parsed = parseRogalikMountingBasePrices(prices)
+  const payload = rogalikMountingBasePricesToJson(parsed)
+
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("admin_set_rogalik_mounting_base_prices", {
+      p_prices: payload,
+    })
+    if (error) {
+      console.error("admin_set_rogalik_mounting_base_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("admin_set_rogalik_mounting_base_prices")
+          ? "Brak mapy cen bazowych rogalika w Supabase. Uruchom migrację 20261111_rogalik_mounting_base_prices.sql."
+          : "Nie udało się zapisać cen bazowych rogalika.",
+      }
+    }
+    return { ok: true, prices: parseRogalikMountingBasePrices(data) }
+  } catch (error) {
+    console.error("admin_set_rogalik_mounting_base_prices failed", error)
+    return { ok: false, message: "Nie udało się zapisać cen bazowych rogalika." }
+  }
+}
+
+export type GetRogalikBaseUnitPriceResult =
+  | { ok: true; pricePln: number }
+  | { ok: false; message: string }
+
+export type SetRogalikBaseUnitPriceResult =
+  | { ok: true; pricePln: number }
+  | { ok: false; message: string }
+
+export async function getRogalikBaseUnitPrice(): Promise<GetRogalikBaseUnitPriceResult> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("get_rogalik_base_unit_price")
+
+    if (error) {
+      console.error("get_rogalik_base_unit_price failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("get_rogalik_base_unit_price")
+          ? "Brak ceny bazowej rogalika w Supabase. Uruchom migrację rogalik_pricing."
+          : "Nie udało się pobrać ceny bazowej rogalika.",
+      }
+    }
+
+    return { ok: true, pricePln: parseRogalikBaseUnitPricePln(data) }
+  } catch (error) {
+    console.error("get_rogalik_base_unit_price failed", error)
+    return { ok: false, message: "Nie udało się pobrać ceny bazowej rogalika." }
+  }
+}
+
+export async function setRogalikBaseUnitPrice(amount: number): Promise<SetRogalikBaseUnitPriceResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+
+  const value = parseRogalikBaseUnitPricePln(amount)
+  if (!Number.isFinite(value) || value < 0) {
+    return { ok: false, message: "Podaj poprawną cenę bazową (liczba ≥ 0)." }
+  }
+
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("admin_set_rogalik_base_unit_price", {
+      p_amount: value,
+    })
+    if (error) {
+      console.error("admin_set_rogalik_base_unit_price failed", error)
+      return { ok: false, message: "Nie udało się zapisać ceny bazowej rogalika." }
+    }
+    return { ok: true, pricePln: parseRogalikBaseUnitPricePln(data) }
+  } catch (error) {
+    console.error("admin_set_rogalik_base_unit_price failed", error)
+    return { ok: false, message: "Nie udało się zapisać ceny bazowej rogalika." }
   }
 }
 

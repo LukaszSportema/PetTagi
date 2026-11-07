@@ -174,6 +174,7 @@ function fitImageToContainer(
   naturalH: number,
   bounds: ContentBounds,
   insetFraction = 0,
+  contentVerticalAlign: 'center' | 'start' = 'center',
 ): CSSProperties {
   const insetX = containerW * insetFraction;
   const insetY = containerH * insetFraction;
@@ -189,7 +190,7 @@ function fitImageToContainer(
       width: '100%',
       height: '100%',
       objectFit: 'contain',
-      objectPosition: 'center',
+      objectPosition: contentVerticalAlign === 'start' ? 'top' : 'center',
     };
   }
 
@@ -197,7 +198,9 @@ function fitImageToContainer(
   const width = naturalW * scale;
   const height = naturalH * scale;
   const left = -(bounds.minX * scale) + insetX + (innerW - contentW * scale) / 2;
-  const top = -(bounds.minY * scale) + insetY + (innerH - contentH * scale) / 2;
+  const verticalOffset =
+    contentVerticalAlign === 'start' ? 0 : (innerH - contentH * scale) / 2;
+  const top = -(bounds.minY * scale) + insetY + verticalOffset;
 
   return {
     position: 'absolute',
@@ -216,6 +219,11 @@ type ConfiguratorTileFillImageProps = {
   className?: string;
   /** Luka wokół kadru (0–0.5), np. 0.06 = ~6% z każdej strony. */
   fitInsetFraction?: number;
+  /**
+   * Pionowe wyrównanie wykrytej zawartości w kontenerze.
+   * `start` — przy górnej krawędzi (mniej „pustego” pasma u góry przy zdjęciach z jasnym tłem w dolnej części kadru).
+   */
+  contentVerticalAlign?: 'center' | 'start';
 };
 
 /** Wypełnia prostokąt kafelka — wykrywa zawartość w JPG/PNG i skaluje bez wychodzenia poza box. */
@@ -224,6 +232,7 @@ export function ConfiguratorTileFillImage({
   alt,
   className = '',
   fitInsetFraction = 0,
+  contentVerticalAlign = 'center',
 }: ConfiguratorTileFillImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -263,10 +272,11 @@ export function ConfiguratorTileFillImage({
           img.naturalHeight,
           boundsRef.current,
           fitInsetFraction,
+          contentVerticalAlign,
         ),
       );
     },
-    [src, fitInsetFraction],
+    [src, fitInsetFraction, contentVerticalAlign],
   );
 
   const onImageLoad = useCallback(
@@ -304,7 +314,9 @@ export function ConfiguratorTileFillImage({
         className={
           imgStyle
             ? 'block pointer-events-none select-none'
-            : 'absolute inset-0 m-auto max-w-full max-h-full object-contain object-center'
+            : `absolute inset-0 m-auto max-w-full max-h-full object-contain ${
+                contentVerticalAlign === 'start' ? 'object-top' : 'object-center'
+              }`
         }
         style={imgStyle ?? undefined}
         draggable={false}

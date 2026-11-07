@@ -2,7 +2,13 @@
 
 import { sendOrderPaidEmail, sendOrderPlacedEmail } from "@/lib/email"
 import { DEFAULT_PAYMENT_RECIPIENT, parsePaymentRecipientId } from "@/lib/payment"
-import { getExpressShippingEnabled, getPaymentRecipient, getCharmUnitPrices, getTagModelBasePrices } from "@/app/actions/settings"
+import {
+  getExpressShippingEnabled,
+  getPaymentRecipient,
+  getCharmUnitPrices,
+  getTagModelBasePrices,
+  getRogalikMountingBasePrices,
+} from "@/app/actions/settings"
 import { requireAdmin } from "@/lib/supabase/auth"
 import { createClient } from "@/lib/supabase/server"
 import { formatClientPhoneStorage, isPolishMobilePhone } from "@/lib/phone"
@@ -14,6 +20,7 @@ import {
   expectedOrderItemUnitPrice,
 } from "@/lib/expected-order-item-price"
 import { buildDefaultCharmUnitPrices } from "@/lib/charm-unit-pricing"
+import { DEFAULT_ROGALIK_MOUNTING_BASE_PRICES } from "@/lib/rogalik-admin-pricing"
 import { DEFAULT_TAG_MODEL_BASE_PRICES } from "@/lib/tag-model-pricing"
 import { orderDiscountDetailsFromCreateItems, orderDiscountDetailsFromItems } from "@/lib/order-discount-summary"
 import type { OrderDiscountDetails } from "@/lib/types/order"
@@ -58,6 +65,10 @@ const placeOrderErrorMessage = (message: string) => {
 
   if (normalized.includes("charm_mounting") || normalized.includes("name_layout")) {
     return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20260927_order_item_mounting_name_layout.sql."
+  }
+
+  if (normalized.includes("base_unit_price")) {
+    return "Baza Supabase wymaga aktualizacji. Uruchom migrację supabase/migrations/20261109_order_item_base_unit_price.sql."
   }
 
   if (normalized.includes("rogalik_mounting") || normalized.includes("rogalik_charms")) {
@@ -113,9 +124,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     discountLabel = discountCheck.label
   }
 
-  const [charmPricesResult, tagModelBasePricesResult] = await Promise.all([
+  const [charmPricesResult, tagModelBasePricesResult, rogalikMountingBaseResult] = await Promise.all([
     getCharmUnitPrices(),
     getTagModelBasePrices(),
+    getRogalikMountingBasePrices(),
   ])
   const orderPricing = {
     charmPrices: charmPricesResult.ok
@@ -124,6 +136,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     tagModelBasePrices: tagModelBasePricesResult.ok
       ? tagModelBasePricesResult.prices
       : DEFAULT_TAG_MODEL_BASE_PRICES,
+    rogalikMountingBasePrices: rogalikMountingBaseResult.ok
+      ? rogalikMountingBaseResult.prices
+      : DEFAULT_ROGALIK_MOUNTING_BASE_PRICES,
   }
 
   for (const item of input.items) {
@@ -242,6 +257,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     rogalik_beads: item.rogalikBeads,
     rogalik_charms: item.rogalikCharms,
     bead_necklace_colors: item.beadNecklaceColors,
+    base_unit_price: roundMoney(item.baseUnitPrice),
   }))
 
   const { data, error } = await supabase.rpc("place_order", {
@@ -356,6 +372,7 @@ type OrderItemRow = {
   rogalik_beads?: string | null
   rogalik_charms?: unknown
   bead_necklace_colors?: unknown
+  base_unit_price?: number | string | null
 }
 
 const toMoney = (value: unknown) => {
@@ -450,6 +467,10 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   rogalikBeads: row.rogalik_beads ?? null,
   rogalikCharms: toStringArray(row.rogalik_charms),
   beadNecklaceColors: toStringArray(row.bead_necklace_colors),
+  baseUnitPricePln:
+    row.base_unit_price === null || row.base_unit_price === undefined || row.base_unit_price === ""
+      ? null
+      : toMoney(row.base_unit_price),
 })
 
 const missingAdminSqlMessage =
@@ -683,10 +704,21 @@ export async function updateOrderStatus(
 
   if (error) {
     console.error("admin_set_order_status failed", error)
+    const err = error.message.toLowerCase()
     if (error.message.includes("paid order cannot be set back to pending")) {
       return {
         ok: false,
         message: "Opłaconego zamówienia nie można oznaczyć ponownie jako oczekujące na płatność.",
+      }
+    }
+    if (err.includes("brak uprawnień administratora") || err.includes("not authorized")) {
+      return { ok: false, message: "Brak uprawnień administratora w Supabase (app_metadata.role)." }
+    }
+    if (err.includes("warehouse_karabiner_stock_id")) {
+      return {
+        ok: false,
+        message:
+          "Baza Supabase wymaga migracji magazynu. Uruchom supabase/migrations/20261018_warehouse_karabiner_catalog.sql.",
       }
     }
     return {

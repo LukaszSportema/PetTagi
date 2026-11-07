@@ -12,6 +12,7 @@ import {
   rogalikMountingUsesKarabinczyk,
   rogalikOptionLabel,
 } from "@/lib/rogalik-options"
+import { rogalikBaseUnitPriceForMounting, type RogalikMountingBasePrices } from "@/lib/rogalik-admin-pricing"
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
 import { formatPolishMobile, normalizePolishPhone } from "@/lib/phone"
 import { rogalikPriceBreakdown, type RogalikPriceLine } from "@/lib/rogalik-pricing"
@@ -225,11 +226,16 @@ export type OrderItemOptionsSource = Pick<
   | "rogalikCordColor"
   | "rogalikBeads"
   | "rogalikCharms"
+  | "baseUnitPricePln"
 >
 
 export const rogalikOrderItemPriceLines = (
   item: OrderItemOptionsSource,
   charmPrices?: import("@/lib/charm-unit-pricing").CharmUnitPrices,
+  rogalikBaseFallbacks?: {
+    mountingBasePrices?: RogalikMountingBasePrices
+    legacySingleBasePln?: number
+  },
 ): RogalikPriceLine[] =>
   rogalikPriceBreakdown({
     rogalikMounting: item.rogalikMounting ?? "",
@@ -240,6 +246,12 @@ export const rogalikOrderItemPriceLines = (
     extraKarabiners: item.extraCarabiner,
     includeDialCode: item.dialCodeInfo,
     charmUnitPrices: charmPrices,
+    baseUnitPricePln:
+      item.baseUnitPricePln != null
+        ? item.baseUnitPricePln
+        : rogalikBaseFallbacks?.mountingBasePrices
+          ? rogalikBaseUnitPriceForMounting(item.rogalikMounting, rogalikBaseFallbacks.mountingBasePrices)
+          : rogalikBaseFallbacks?.legacySingleBasePln,
   })
 
 export const classicOrderItemPriceLines = (
@@ -308,16 +320,16 @@ export const rogalikConfiguratorOptions = (
   const usesBeads = rogalikMountingUsesBeads(mounting)
   const charms = input.rogalikCharms ?? []
 
+  if (mounting) {
+    options.push({
+      label: "Model",
+      values: [rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, mounting)],
+    })
+  }
   options.push({
     label: "Kolor rogalika",
     values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, input.rogalikColor)],
   })
-  if (mounting) {
-    options.push({
-      label: "Mocowanie",
-      values: [rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, mounting)],
-    })
-  }
 
   if (usesBeads) {
     if (input.dogNeckDisplay) {
