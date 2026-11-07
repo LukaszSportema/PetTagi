@@ -12,12 +12,10 @@ import {
 } from "@/lib/pricing"
 import {
   ROGALIK_BASE_PRICE,
-  ROGALIK_MOUNTING_KARABINER_PRICE,
   ROGALIK_CHARM_OPTIONS,
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
   rogalikMountingUsesBeads,
-  rogalikMountingUsesKarabinczyk,
   rogalikOptionLabel,
   rogalikStringSizeFromNeckCm,
 } from "@/lib/rogalik-options"
@@ -80,39 +78,35 @@ export const rogalikPriceBreakdown = (input: RogalikPricingInput): RogalikPriceL
   const size = resolveStringSize(input)
   const sizeText = stringSizeLabel(size)
 
-  if (usesBeads) {
-    if (input.rogalikCordColor) {
-      const unit = rogalikCordUnitPrice(size)
-      if (unit !== null) {
-        lines.push({
-          label: "Sznureczek",
-          amountPln: unit,
-          detail: sizeText ?? undefined,
-        })
-      }
-    }
-    if (input.rogalikBeads) {
-      const unit = rogalikBeadsUnitPrice(size)
-      if (unit !== null) {
-        lines.push({
-          label: "Koraliki",
-          amountPln: unit,
-          detail: sizeText ?? undefined,
-        })
-      }
-    }
-    for (const charmId of input.rogalikCharms ?? []) {
-      const unit = charmUnitPricePln(charmId, input.charmUnitPrices)
+  if (input.rogalikCordColor) {
+    const unit = rogalikCordUnitPrice(size)
+    if (unit !== null) {
       lines.push({
-        label: rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, charmId),
+        label: "Sznureczek",
         amountPln: unit,
-        detail: `${unit} zł`,
+        detail: sizeText ?? undefined,
       })
     }
-  } else {
-    if (rogalikMountingUsesKarabinczyk(mounting)) {
-      lines.push({ label: "Karabińczyk", amountPln: ROGALIK_MOUNTING_KARABINER_PRICE })
+  }
+  if (input.rogalikBeads) {
+    const unit = rogalikBeadsUnitPrice(size)
+    if (unit !== null) {
+      lines.push({
+        label: "Koraliki",
+        amountPln: unit,
+        detail: sizeText ?? undefined,
+      })
     }
+  }
+  for (const charmId of input.rogalikCharms ?? []) {
+    const unit = charmUnitPricePln(charmId, input.charmUnitPrices)
+    lines.push({
+      label: rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, charmId),
+      amountPln: unit,
+      detail: `${unit} zł`,
+    })
+  }
+  if (!usesBeads) {
     const karabinerQtyTotal = input.karabinerQuantities
       ? karabinerQuantitiesTotal(input.karabinerQuantities)
       : 0

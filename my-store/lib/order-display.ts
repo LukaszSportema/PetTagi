@@ -7,9 +7,8 @@ import {
   ROGALIK_CHARM_OPTIONS,
   ROGALIK_COLOR_OPTIONS,
   ROGALIK_CORD_COLOR_OPTIONS,
-  ROGALIK_MOUNTING_OPTIONS,
-  rogalikMountingUsesBeads,
-  rogalikMountingUsesKarabinczyk,
+  rogalikMountingTileLabel,
+  rogalikMountingUsesKarabinerStep,
   rogalikOptionLabel,
 } from "@/lib/rogalik-options"
 import { rogalikBaseUnitPriceForMounting, type RogalikMountingBasePrices } from "@/lib/rogalik-admin-pricing"
@@ -29,6 +28,7 @@ import {
   inferGlowTextColorFromKarabiners,
   karabinerCatalogRingKey,
   karabinerQuantitiesFromOrder,
+  karabinerQuantitiesTotal,
   karabinerSummaryLines,
 } from "@/lib/karabiner-pricing"
 import {
@@ -236,14 +236,24 @@ export const rogalikOrderItemPriceLines = (
     mountingBasePrices?: RogalikMountingBasePrices
     legacySingleBasePln?: number
   },
-): RogalikPriceLine[] =>
-  rogalikPriceBreakdown({
+): RogalikPriceLine[] => {
+  const karabinerQuantities = karabinerQuantitiesFromOrder(
+    item.baseCarabiner ?? "-",
+    item.extraCarabiner ?? [],
+  )
+  const rogalikKarabinerRing = karabinerCatalogRingKey({
+    configuratorId: "rogalik-tag",
+    ringColor: item.ringColor ?? "",
+    glowTextColor: "",
+  })
+  return rogalikPriceBreakdown({
     rogalikMounting: item.rogalikMounting ?? "",
     dogNeck: item.dogNeck,
     rogalikCordColor: item.rogalikCordColor,
     rogalikBeads: item.rogalikBeads,
     rogalikCharms: item.rogalikCharms,
-    extraKarabiners: item.extraCarabiner,
+    karabinerQuantities,
+    karabinerCatalogRingKey: rogalikKarabinerRing,
     includeDialCode: item.dialCodeInfo,
     charmUnitPrices: charmPrices,
     baseUnitPricePln:
@@ -253,6 +263,7 @@ export const rogalikOrderItemPriceLines = (
           ? rogalikBaseUnitPriceForMounting(item.rogalikMounting, rogalikBaseFallbacks.mountingBasePrices)
           : rogalikBaseFallbacks?.legacySingleBasePln,
   })
+}
 
 export const classicOrderItemPriceLines = (
   item: OrderItemOptionsSource,
@@ -317,13 +328,12 @@ export const rogalikConfiguratorOptions = (
 ): OrderOption[] => {
   const options: OrderOption[] = []
   const mounting = input.rogalikMounting ?? ""
-  const usesBeads = rogalikMountingUsesBeads(mounting)
   const charms = input.rogalikCharms ?? []
 
   if (mounting) {
     options.push({
       label: "Model",
-      values: [rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, mounting)],
+      values: [rogalikMountingTileLabel(mounting)],
     })
   }
   options.push({
@@ -331,52 +341,48 @@ export const rogalikConfiguratorOptions = (
     values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, input.rogalikColor)],
   })
 
-  if (usesBeads) {
-    if (input.dogNeckDisplay) {
-      options.push({ label: "Obwód szyi", values: [input.dogNeckDisplay] })
-    }
-    if (input.rogalikCordColor) {
-      options.push({
-        label: "Kolor sznureczka",
-        values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, input.rogalikCordColor)],
+  if (input.dogNeckDisplay) {
+    options.push({ label: "Obwód szyi", values: [input.dogNeckDisplay] })
+  }
+  if (input.rogalikCordColor) {
+    options.push({
+      label: "Kolor sznureczka",
+      values: [rogalikOptionLabel(ROGALIK_CORD_COLOR_OPTIONS, input.rogalikCordColor)],
+    })
+  }
+  if (input.rogalikBeads) {
+    options.push({
+      label: "Koraliki",
+      values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, input.rogalikBeads)],
+    })
+  }
+
+  if (rogalikMountingUsesKarabinerStep(mounting)) {
+    const fromQuantities = input.karabinerQuantities ?? {}
+    const quantities =
+      karabinerQuantitiesTotal(fromQuantities) > 0
+        ? fromQuantities
+        : karabinerQuantitiesFromOrder(input.karabinerOption ?? "-", input.extraKarabiners ?? [])
+    if (karabinerQuantitiesTotal(quantities) > 0) {
+      const rogalikKarabinerRing = karabinerCatalogRingKey({
+        configuratorId: "rogalik-tag",
+        ringColor: "",
+        glowTextColor: "",
       })
-    }
-    if (input.rogalikBeads) {
-      options.push({
-        label: "Koraliki",
-        values: [rogalikOptionLabel(ROGALIK_BEADS_OPTIONS, input.rogalikBeads)],
-      })
-    }
-    if (charms.length > 0) {
-      options.push({
-        label: "Charmsy",
-        values: charms.map((id) =>
-          charmSummaryLine(id, rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id), charmPrices),
-        ),
-      })
-    }
-  } else if (rogalikMountingUsesKarabinczyk(mounting)) {
-    const quantityEntries = Object.entries(input.karabinerQuantities ?? {}).filter(
-      ([, qty]) => qty > 0,
-    )
-    if (quantityEntries.length > 0) {
       options.push({
         label: "Karabińczyki",
-        values: quantityEntries.map(([id, qty]) => `${optionTitle(id)} ×${qty}`),
+        values: karabinerSummaryLines(quantities, rogalikKarabinerRing, optionTitle),
       })
-    } else {
-      const karabinerId = input.karabinerOption?.trim()
-      if (karabinerId && karabinerId !== "-") {
-        options.push({ label: "Karabińczyk", values: [optionTitle(karabinerId)] })
-      }
-      const extras = input.extraKarabiners ?? []
-      if (extras.length > 0) {
-        options.push({
-          label: "Dodatkowe karabińczyki",
-          values: extras.map(optionTitle),
-        })
-      }
     }
+  }
+
+  if (charms.length > 0) {
+    options.push({
+      label: "Charmsy",
+      values: charms.map((id) =>
+        charmSummaryLine(id, rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id), charmPrices),
+      ),
+    })
   }
 
   options.push({ label: "Imię pupila", values: [input.petName] })

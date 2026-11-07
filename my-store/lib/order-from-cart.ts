@@ -85,12 +85,11 @@ export const mapRogalikCartItemToOrderItem = (
   const usesBeads = rogalikMountingUsesBeads(config.rogalikMounting)
   const stringSize = rogalikStringSizeFromNeckCm(config.stringLength)
   const sizeLabel = stringSizeLabel(stringSize)
-  const dogNeck =
-    usesBeads && config.stringLength.trim()
-      ? sizeLabel
-        ? `${config.stringLength} cm (${sizeLabel})`
-        : `${config.stringLength} cm`
-      : null
+  const dogNeck = config.stringLength.trim()
+    ? sizeLabel
+      ? `${config.stringLength} cm (${sizeLabel})`
+      : `${config.stringLength} cm`
+    : null
 
   return {
     quantity: item.quantity,
@@ -149,9 +148,9 @@ export const mapRogalikCartItemToOrderItem = (
     charmMounting: null,
     nameLayout: null,
     rogalikMounting: config.rogalikMounting,
-    rogalikCordColor: usesBeads ? config.rogalikCordColor || null : null,
-    rogalikBeads: usesBeads ? config.rogalikBeads || null : null,
-    rogalikCharms: usesBeads ? config.rogalikCharms : [],
+    rogalikCordColor: config.rogalikCordColor || null,
+    rogalikBeads: config.rogalikBeads || null,
+    rogalikCharms: config.rogalikCharms,
     beadNecklaceColors: [],
   }
 }

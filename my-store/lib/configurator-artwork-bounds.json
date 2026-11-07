@@ -568,5 +568,41 @@
     "minY": 590,
     "maxX": 3205,
     "maxY": 3627
+  },
+  "/rogalik/koralikiopcja1.jpg": {
+    "minX": 680,
+    "minY": 602,
+    "maxX": 3050,
+    "maxY": 3576
+  },
+  "/rogalik/koralikiopcja2.jpg": {
+    "minX": 680,
+    "minY": 602,
+    "maxX": 3050,
+    "maxY": 3576
+  },
+  "/rogalik/koralikiopcja3.jpg": {
+    "minX": 680,
+    "minY": 602,
+    "maxX": 3050,
+    "maxY": 3576
+  },
+  "/rogalik/sznurekkremowy.jpg": {
+    "minX": 680,
+    "minY": 904,
+    "maxX": 3050,
+    "maxY": 3274
+  },
+  "/rogalik/sznurekjasnybraz.jpg": {
+    "minX": 680,
+    "minY": 904,
+    "maxX": 3050,
+    "maxY": 3274
+  },
+  "/rogalik/sznurekczekoladowy.jpg": {
+    "minX": 680,
+    "minY": 904,
+    "maxX": 3050,
+    "maxY": 3274
   }
 }

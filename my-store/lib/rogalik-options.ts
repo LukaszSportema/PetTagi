@@ -122,6 +122,10 @@ export const rogalikMountingUsesBeads = (mounting: string) => mounting === "kora
 
 export const rogalikMountingUsesKarabinczyk = (mounting: string) => mounting === "karabinczyk"
 
+/** Krok KARABIŃCZYKI w konfiguratorze — tylko wybrane modele na sznurku. */
+export const rogalikMountingUsesKarabinerStep = (mounting: string) =>
+  mounting === "karabinczyk" || mounting === "sznureczek-karabinczyk"
+
 export type RogalikFlowStep =
   | "kolor"
   | "mocowanie"
@@ -134,17 +138,23 @@ export type RogalikFlowStep =
 export const rogalikFlowStepAt = (mounting: string, stepIndex: number): RogalikFlowStep => {
   if (stepIndex <= 1) return "mocowanie"
   if (stepIndex === 2) return "kolor"
+  if (stepIndex === 3) return "dodatki"
 
-  if (rogalikMountingUsesBeads(mounting)) {
-    if (stepIndex === 3) return "dodatki"
-    if (stepIndex === 4) return "dane"
+  const hasKarabinerStep = rogalikMountingUsesKarabinerStep(mounting)
+  if (hasKarabinerStep) {
+    if (stepIndex === 4) return "karabinier"
+    if (stepIndex === 5) return "dane"
     return "podsumowanie"
   }
 
-  if (stepIndex === 3) return "karabinier"
   if (stepIndex === 4) return "dane"
   return "podsumowanie"
 }
 
 export const rogalikOptionLabel = (options: RogalikOption[], id: string) =>
   options.find((option) => option.id === id)?.label ?? id
+
+/** Nazwa modelu jak na kafelkach kroku MODEL (podsumowanie, zamówienia, maile). */
+export const rogalikMountingTileLabel = (mountingId: string) =>
+  ROGALIK_MOUNTING_TILE_LABELS[mountingId] ??
+  rogalikOptionLabel(ROGALIK_MOUNTING_OPTIONS, mountingId)

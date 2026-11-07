@@ -41,8 +41,6 @@ type Props = {
   stringSizeText: string;
   /** Model (mocowanie), kolor lub dodatki (obwód, sznureczek, koraliki, charmsy). */
   step: 'kolor' | 'mocowanie' | 'dodatki';
-  /** Obwód szyi — pierwsza sekcja kroku DODATKI (mocowanie „Z koralikami”). */
-  showNeckSection: boolean;
   warehouseStock: Record<string, number>;
   /** „Od X zł” na kafelach mocowania rogalika (panel admina). */
   rogalikMountingStartPrices?: RogalikMountingStartPrices;
@@ -62,18 +60,36 @@ function SectionTitle({ index, children }: { index: number; children: ReactNode 
   );
 }
 
+/** JPG sznurka: wewnętrzna ramka + boczne tło — cover + zoom wypełnia kafel. */
+const RogalikCordTileImage = ({ src, alt, zoom }: { src: string; alt: string; zoom: number }) => (
+  <img
+    src={src}
+    alt={alt}
+    decoding="async"
+    draggable={false}
+    className="absolute inset-0 h-full w-full origin-center object-cover object-center pointer-events-none select-none"
+    style={{ transform: `scale(${zoom})` }}
+  />
+);
+
 function OptionTiles({
   options,
   selectedId,
   onSelect,
   columns = 2,
   variant = 'image',
+  tileArtworkInset = 0,
+  tileImageCoverZoom,
 }: {
   options: typeof ROGALIK_COLOR_OPTIONS;
   selectedId: string;
   onSelect: (id: string) => void;
   columns?: 2 | 3 | 4;
   variant?: 'image' | 'text';
+  /** Luka między grafiką a krawędzią kwadratu kafelka (np. koraliki). */
+  tileArtworkInset?: number;
+  /** Pełne wypełnienie kwadratu (sznurek) — odetnie boczne tło z pliku. */
+  tileImageCoverZoom?: number;
 }) {
   const gridClass =
     columns === 3
@@ -108,7 +124,15 @@ function OptionTiles({
             {variant === 'image' && (
               <div className={rogalikArtworkTileMediaClass}>
                 {option.image ? (
-                  <ConfiguratorTileFillImage src={option.image} alt={option.label} />
+                  tileImageCoverZoom != null ? (
+                    <RogalikCordTileImage src={option.image} alt={option.label} zoom={tileImageCoverZoom} />
+                  ) : (
+                    <ConfiguratorTileFillImage
+                      src={option.image}
+                      alt={option.label}
+                      fitInsetFraction={tileArtworkInset}
+                    />
+                  )
                 ) : (
                   <span className="text-[10px] uppercase tracking-widest text-[#9A9288]">Zdjęcie wkrótce</span>
                 )}
@@ -202,35 +226,29 @@ export function RogalikConfiguratorStep({
   showErrors,
   stringSizeText,
   step,
-  showNeckSection,
   warehouseStock,
   rogalikMountingStartPrices,
 }: Props) {
   const mountingStartPrices = rogalikMountingStartPrices ?? DEFAULT_ROGALIK_MOUNTING_START_PRICES;
   if (step === 'dodatki') {
-    const cordIndex = showNeckSection ? 2 : 1;
-    const beadsIndex = showNeckSection ? 3 : 2;
-    const charmsIndex = showNeckSection ? 4 : 3;
-
     return (
       <div className="space-y-2">
-        {showNeckSection && (
-          <NeckCircumferenceSection
-            formData={formData}
-            onChange={onChange}
-            showErrors={showErrors}
-            stringSizeText={stringSizeText}
-            sectionIndex={1}
-          />
-        )}
+        <NeckCircumferenceSection
+          formData={formData}
+          onChange={onChange}
+          showErrors={showErrors}
+          stringSizeText={stringSizeText}
+          sectionIndex={1}
+        />
 
         <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-cord">
-          <SectionTitle index={cordIndex}>Wybierz kolor sznureczka</SectionTitle>
+          <SectionTitle index={2}>Wybierz kolor sznureczka</SectionTitle>
           <OptionTiles
             options={ROGALIK_CORD_COLOR_OPTIONS}
             selectedId={formData.rogalikCordColor}
             onSelect={(id) => onChange({ rogalikCordColor: id })}
             columns={3}
+            tileImageCoverZoom={1.36}
           />
           {showErrors && !formData.rogalikCordColor && (
             <p className="text-sm text-red-500">Wybierz kolor sznureczka.</p>
@@ -238,13 +256,14 @@ export function RogalikConfiguratorStep({
         </section>
 
         <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-beads">
-          <SectionTitle index={beadsIndex}>Wybierz koraliki</SectionTitle>
+          <SectionTitle index={3}>Wybierz koraliki</SectionTitle>
           <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
           <OptionTiles
             options={ROGALIK_BEADS_OPTIONS}
             selectedId={formData.rogalikBeads}
             onSelect={(id) => onChange({ rogalikBeads: id })}
             columns={3}
+            tileArtworkInset={0.07}
           />
           {showErrors && !formData.rogalikBeads && (
             <p className="text-sm text-red-500">Wybierz wariant koralików.</p>
@@ -252,7 +271,7 @@ export function RogalikConfiguratorStep({
         </section>
 
         <section className={sectionClass}>
-          <SectionTitle index={charmsIndex}>Dodaj charmsy</SectionTitle>
+          <SectionTitle index={4}>Dodaj charmsy</SectionTitle>
           <p className={subtitleClass}>
             Możesz dodać do {ROGALIK_MAX_CHARMS} charmsów i stworzyć własną, wyjątkową adresówkę
           </p>
