@@ -1,4 +1,9 @@
-import { BEAD_NECKLACE_TAG_MODEL_ID } from "@/lib/catalog-options"
+import {
+  BEAD_NECKLACE_TAG_MODEL_ID,
+  isStringWithoutKarabinerTagModel,
+  isTagOnlyWithKarabinerTagModel,
+} from "@/lib/catalog-options"
+import { rogalikAddonFlowSteps, type RogalikAddonFlowStep } from "@/lib/rogalik-options"
 
 export type JewelryConfiguratorAddonKind = "sticker" | "karabiners" | "charms"
 
@@ -126,6 +131,112 @@ export const appendBeadNecklaceOrderedOptions = (
     const block = input[kind]
     if (block) target.push(block)
   }
+}
+
+const rogalikSummaryKindsForAddonStep = (
+  step: RogalikAddonFlowStep,
+  mounting: string,
+): ConfiguratorSummaryAddonKind[] => {
+  switch (step) {
+    case "koraliki":
+      return ["neckCircumference", "beadNecklace"]
+    case "sznurek": {
+      const kinds: ConfiguratorSummaryAddonKind[] = ["stringsPremium", "stringsClassic", "stopers"]
+      if (mounting !== "koraliki") {
+        return ["neckCircumference", ...kinds]
+      }
+      return kinds
+    }
+    case "charms":
+      return ["charms"]
+    case "karabinier":
+      return ["karabiners"]
+    default:
+      return []
+  }
+}
+
+/** Kolejność pozycji w podsumowaniu — zgodna z krokami rogalika. */
+export const rogalikConfiguratorSummaryAddonOrder = (mounting: string): ConfiguratorSummaryAddonKind[] => {
+  const kinds: ConfiguratorSummaryAddonKind[] = []
+  for (const step of rogalikAddonFlowSteps(mounting)) {
+    kinds.push(...rogalikSummaryKindsForAddonStep(step, mounting))
+  }
+  kinds.push("dialCode")
+  return kinds
+}
+
+const classicContentStepAddonKinds = (
+  contentStepId: number,
+  input: {
+    isBeadNecklace: boolean
+    isTagOnlyWithKarabiner: boolean
+    isGlowConfigurator: boolean
+  },
+): ConfiguratorSummaryAddonKind[] => {
+  switch (contentStepId) {
+    case 9:
+      return ["sticker"]
+    case 14:
+      return ["neckCircumference", "beadNecklace"]
+    case 7: {
+      const kinds: ConfiguratorSummaryAddonKind[] = [
+        "stringsPremium",
+        "stringsClassic",
+        ...(input.isGlowConfigurator ? (["stringsGlow"] as const) : []),
+        "stopers",
+      ]
+      if (!input.isBeadNecklace && !input.isTagOnlyWithKarabiner) {
+        return ["neckCircumference", ...kinds]
+      }
+      return kinds
+    }
+    case 3:
+      return ["charms"]
+    case 5:
+      return ["karabiners"]
+    case 10:
+      return ["dialCode"]
+    default:
+      return []
+  }
+}
+
+const classicConfiguratorContentStepOrder = (tagModel: string): number[] => {
+  if (isBeadNecklaceTagModel(tagModel)) {
+    return [13, 1, 9, 14, 7, 3, 5, 10, 11]
+  }
+  if (isTagOnlyWithKarabinerTagModel(tagModel)) {
+    return [13, 1, 9, 5, 3, 10, 11]
+  }
+  if (isStringWithoutKarabinerTagModel(tagModel)) {
+    return [13, 1, 9, 7, 3, 5, 10, 11]
+  }
+  return [13, 1, 9, 5, 3, 7, 10, 11]
+}
+
+/** Kolejność pozycji w podsumowaniu — zgodna z kolejnością kroków classic / glow. */
+export const classicConfiguratorSummaryAddonOrder = (input: {
+  tagModel?: string | null
+  configuratorId?: string | null
+}): ConfiguratorSummaryAddonKind[] => {
+  const tagModel = input.tagModel?.trim() ?? ""
+  if (!tagModel) return []
+  const isGlow = input.configuratorId === "glow-tag"
+  const stepOrder = isGlow
+    ? [13, 1, 12, 3, 5, 7, 10, 11]
+    : classicConfiguratorContentStepOrder(tagModel)
+  const kinds: ConfiguratorSummaryAddonKind[] = []
+  for (const stepId of stepOrder) {
+    kinds.push(
+      ...classicContentStepAddonKinds(stepId, {
+        isBeadNecklace: isBeadNecklaceTagModel(tagModel),
+        isTagOnlyWithKarabiner: isTagOnlyWithKarabinerTagModel(tagModel),
+        isGlowConfigurator: isGlow,
+      }),
+    )
+  }
+  return kinds
 }
 
 export const appendJewelryConfiguratorAddonOptions = (

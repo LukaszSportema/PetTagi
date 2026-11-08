@@ -32,6 +32,7 @@ type RevenueItemRow = {
   rogalik_cord_color?: string | null
   rogalik_beads?: string | null
   rogalik_charms?: unknown
+  bead_necklace_colors?: unknown
   base_unit_price?: number | string | null
 }
 
@@ -101,6 +102,7 @@ const mapOrder = (row: RevenueOrderRow): RevenueOrder => ({
     rogalikCordColor: item.rogalik_cord_color ?? null,
     rogalikBeads: item.rogalik_beads ?? null,
     rogalikCharms: toStringArray(item.rogalik_charms),
+    beadNecklaceColors: toStringArray(item.bead_necklace_colors),
     rogalikBaseUnitPln:
       item.base_unit_price === null || item.base_unit_price === undefined || item.base_unit_price === ""
         ? null

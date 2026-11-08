@@ -2,7 +2,8 @@ import { cartItemBaseUnitPrice } from "@/lib/cart-item-pricing"
 import type { RogalikMountingBasePrices } from "@/lib/rogalik-admin-pricing"
 import type { TagModelBasePrices } from "@/lib/tag-model-pricing"
 import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
-import { rogalikMountingUsesBeads, rogalikStringSizeFromNeckCm } from "@/lib/rogalik-options"
+import { rogalikMountingToTagModel } from "@/lib/rogalik-options"
+import { stringSizeFromNeckCm, stringSizeLabel } from "@/lib/pricing"
 import {
   karabinerCatalogRingKey,
   firstRowKarabinerIds,
@@ -10,7 +11,6 @@ import {
   orderKarabinersFromQuantities,
 } from "@/lib/karabiner-pricing"
 import { TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID } from "@/lib/catalog-options"
-import { stringSizeLabel } from "@/lib/pricing"
 import type { CreateOrderItemInput } from "@/lib/types/order"
 
 /** Wiersz order_items — rogalik vs klasyczna biżuteria. */
@@ -82,14 +82,20 @@ export const mapRogalikCartItemToOrderItem = (
   legacyRogalikSingleBasePln?: number,
 ): CreateOrderItemInput => {
   const config = item.config
-  const usesBeads = rogalikMountingUsesBeads(config.rogalikMounting)
-  const stringSize = rogalikStringSizeFromNeckCm(config.stringLength)
+  const tagOnlyWithKarabiner =
+    rogalikMountingToTagModel(config.rogalikMounting) === TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID
+  const stringSize = stringSizeFromNeckCm(config.stringLength)
   const sizeLabel = stringSizeLabel(stringSize)
   const dogNeck = config.stringLength.trim()
     ? sizeLabel
       ? `${config.stringLength} cm (${sizeLabel})`
       : `${config.stringLength} cm`
     : null
+  const karabinerRing = karabinerCatalogRingKey({
+    configuratorId: "rogalik-tag",
+    ringColor: config.ringColor,
+    glowTextColor: config.glowTextColor ?? "",
+  })
 
   return {
     quantity: item.quantity,
@@ -107,51 +113,37 @@ export const mapRogalikCartItemToOrderItem = (
     ringColor: ROGALIK_ORDER_RING_COLOR,
     baseColor: config.rogalikColor,
     baseCharms: PLACEHOLDER,
-    extraCharms: [],
-    baseCarabiner: usesBeads
-      ? PLACEHOLDER
-      : config.karabinerQuantities &&
-          Object.keys(config.karabinerQuantities).length > 0
-        ? orderKarabinersFromQuantities(
-            config.karabinerQuantities,
-            karabinerCatalogRingKey({
-              configuratorId: "rogalik-tag",
-              ringColor: config.ringColor,
-              glowTextColor: config.glowTextColor ?? "",
-            }),
-          ).baseCarabiner
-        : config.karabinerOption,
-    extraCarabiner: usesBeads
-      ? []
-      : config.karabinerQuantities &&
-          Object.keys(config.karabinerQuantities).length > 0
-        ? orderKarabinersFromQuantities(
-            config.karabinerQuantities,
-            karabinerCatalogRingKey({
-              configuratorId: "rogalik-tag",
-              ringColor: config.ringColor,
-              glowTextColor: config.glowTextColor ?? "",
-            }),
-          ).extraCarabiner
+    extraCharms: config.wantExtraCharms === "tak" ? config.extraCharms : [],
+    baseCarabiner:
+      config.karabinerQuantities && Object.keys(config.karabinerQuantities).length > 0
+        ? orderKarabinersFromQuantities(config.karabinerQuantities, karabinerRing).baseCarabiner
+        : PLACEHOLDER,
+    extraCarabiner:
+      config.karabinerQuantities && Object.keys(config.karabinerQuantities).length > 0
+        ? orderKarabinersFromQuantities(config.karabinerQuantities, karabinerRing).extraCarabiner
         : config.wantExtraKarabiners === "tak"
           ? config.extraKarabiners
           : [],
-    stringPremium: [],
-    stringClassic: [],
-    stringGlow: [],
-    dogNeck,
-    stoppers: null,
+    stringPremium: tagOnlyWithKarabiner ? [] : config.premiumStrings,
+    stringClassic: tagOnlyWithKarabiner ? [] : config.classicStrings,
+    stringGlow: tagOnlyWithKarabiner ? [] : config.glowStrings,
+    dogNeck: tagOnlyWithKarabiner ? null : dogNeck,
+    stoppers: tagOnlyWithKarabiner
+      ? null
+      : config.wantStopers === "tak"
+        ? config.extraStopers[0] ?? (karabinerRing === "srebrny" ? "2" : "1")
+        : null,
     sticker: null,
     dogName: config.petName,
     numberOnTag: config.phoneNumber.trim(),
-    dialCodeInfo: false,
+    dialCodeInfo: config.includePhoneCode === "tak",
     charmMounting: null,
     nameLayout: null,
     rogalikMounting: config.rogalikMounting,
-    rogalikCordColor: config.rogalikCordColor || null,
-    rogalikBeads: config.rogalikBeads || null,
-    rogalikCharms: config.rogalikCharms,
-    beadNecklaceColors: [],
+    rogalikCordColor: null,
+    rogalikBeads: null,
+    rogalikCharms: [],
+    beadNecklaceColors: config.beadNecklaceColors ?? [],
   }
 }
 

@@ -2,10 +2,11 @@
  * Id wariantów mocowania rogalika (krok MODEL) — jeden moduł bez importu z rogalalik-options/pricing,
  * żeby uniknąć cykli ES modules i błędu „Cannot access before initialization”.
  */
+/** Kolejność kafli w kroku MODEL (2×2: lewy-góra, prawy-góra, lewy-dół, prawy-dół). */
 export const ROGALIK_MOUNTING_IDS = [
-  "koraliki",
   "karabinczyk",
   "sznureczek",
+  "koraliki",
   "sznureczek-karabinczyk",
 ] as const
 

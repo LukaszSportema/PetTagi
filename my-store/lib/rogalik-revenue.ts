@@ -9,6 +9,10 @@ import {
 } from "@/lib/pricing"
 import { karabinerRevenueFromOrder } from "@/lib/karabiner-pricing"
 import {
+  rogalikJewelryAddonRevenueParts,
+  rogalikOrderUsesLegacyRogalikAddons,
+} from "@/lib/rogalik-jewelry-addons"
+import {
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
   rogalikMountingUsesBeads,
@@ -37,15 +41,27 @@ export const rogalikItemRevenueParts = (
           legacySingleBase >= 0
         ? legacySingleBase
         : rogalikBaseUnitPriceForMounting(item.rogalikMounting, rogalikMountingBasePrices)
+  const usesLegacyAddons = rogalikOrderUsesLegacyRogalikAddons(item)
+  if (!usesLegacyAddons) {
+    const jewelry = rogalikJewelryAddonRevenueParts(item, charmPrices, "złoty")
+    return {
+      base: baseUnit * qty,
+      charms: jewelry.charms * qty,
+      karabiners: jewelry.karabiners * qty,
+      strings: jewelry.strings * qty,
+      stoppers: jewelry.stoppers * qty,
+      stickers: 0,
+      dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
+    }
+  }
   const usesBeads = rogalikMountingUsesBeads(item.rogalikMounting ?? "")
   const size = rogalikStringSizeFromNeckCm(item.dogNeck)
   const cordPrice = item.rogalikCordColor ? rogalikCordUnitPrice(size) ?? 0 : 0
   const beadsPrice = item.rogalikBeads ? rogalikBeadsUnitPrice(size) ?? 0 : 0
   const charmsRevenue = charmsTotalPln(item.rogalikCharms ?? [], charmPrices)
   const hasRogalikKarabinerSelection =
-    !usesBeads &&
-    (item.extraCarabiner.length > 0 ||
-      (item.baseCarabiner?.trim() && item.baseCarabiner !== "-"))
+    item.extraCarabiner.length > 0 ||
+    Boolean(item.baseCarabiner?.trim() && item.baseCarabiner !== "-")
   const karabinersRevenue = hasRogalikKarabinerSelection
     ? karabinerRevenueFromOrder(item.baseCarabiner ?? "-", item.extraCarabiner, "złoty")
     : 0
@@ -63,12 +79,34 @@ export const rogalikItemRevenueParts = (
 
 export const rogalikItemQuantityParts = (item: PricedOrderItem) => {
   const qty = item.quantity > 0 ? item.quantity : 1
+  if (!rogalikOrderUsesLegacyRogalikAddons(item)) {
+    const premium = item.stringPremium?.length ?? 0
+    const classic = item.stringClassic?.length ?? 0
+    const glow = item.stringGlow?.length ?? 0
+    const bead = (item.beadNecklaceColors?.length ?? 0) > 0 ? 1 : 0
+    const charmsCount = item.extraCharms?.length ?? 0
+    const hasRogalikKarabinerSelection =
+      item.extraCarabiner.length > 0 ||
+      Boolean(item.baseCarabiner?.trim() && item.baseCarabiner !== "-")
+    return {
+      base: qty,
+      charms: charmsCount * qty,
+      karabiners: hasRogalikKarabinerSelection
+        ? (item.extraCarabiner.length +
+            (item.baseCarabiner?.trim() && item.baseCarabiner !== "-" ? 1 : 0)) *
+          qty
+        : 0,
+      strings: (premium + classic + glow + bead) * qty,
+      stoppers: item.stoppers ? qty : 0,
+      stickers: 0,
+      dialCode: 0,
+    }
+  }
   const usesBeads = rogalikMountingUsesBeads(item.rogalikMounting ?? "")
   const stringUnits = (item.rogalikCordColor ? 1 : 0) + (item.rogalikBeads ? 1 : 0)
   const hasRogalikKarabinerSelection =
-    !usesBeads &&
-    (item.extraCarabiner.length > 0 ||
-      Boolean(item.baseCarabiner?.trim() && item.baseCarabiner !== "-"))
+    item.extraCarabiner.length > 0 ||
+    Boolean(item.baseCarabiner?.trim() && item.baseCarabiner !== "-")
 
   return {
     base: qty,

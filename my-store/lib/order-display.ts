@@ -8,9 +8,11 @@ import {
   ROGALIK_COLOR_OPTIONS,
   ROGALIK_CORD_COLOR_OPTIONS,
   rogalikMountingTileLabel,
+  rogalikMountingToTagModel,
   rogalikMountingUsesKarabinerStep,
   rogalikOptionLabel,
 } from "@/lib/rogalik-options"
+import { rogalikOrderUsesLegacyRogalikAddons } from "@/lib/rogalik-jewelry-addons"
 import { rogalikBaseUnitPriceForMounting, type RogalikMountingBasePrices } from "@/lib/rogalik-admin-pricing"
 import { fulfillmentRangeCompact } from "@/lib/fulfillment-dates"
 import { formatPolishMobile, normalizePolishPhone } from "@/lib/phone"
@@ -249,6 +251,14 @@ export const rogalikOrderItemPriceLines = (
   return rogalikPriceBreakdown({
     rogalikMounting: item.rogalikMounting ?? "",
     dogNeck: item.dogNeck,
+    beadNecklaceColors: item.beadNecklaceColors,
+    extraCharms: item.extraCharms,
+    stringPremium: item.stringPremium,
+    stringClassic: item.stringClassic,
+    stringGlow: item.stringGlow,
+    stoppers: item.stoppers,
+    baseCarabiner: item.baseCarabiner,
+    extraCarabiner: item.extraCarabiner,
     rogalikCordColor: item.rogalikCordColor,
     rogalikBeads: item.rogalikBeads,
     rogalikCharms: item.rogalikCharms,
@@ -310,12 +320,21 @@ export type RogalikConfiguratorOptionsInput = {
   rogalikMounting: string
   /** Gotowy tekst obwodu (np. z zamówienia) lub złożony w koszyku. */
   dogNeckDisplay?: string | null
+  beadNecklaceColors?: string[]
+  wantExtraCharms?: string
+  extraCharms?: string[]
+  premiumStrings?: string[]
+  classicStrings?: string[]
+  glowStrings?: string[]
+  wantStopers?: string
+  extraStopers?: string[]
   rogalikCordColor?: string | null
   rogalikBeads?: string | null
   rogalikCharms?: string[]
   karabinerOption?: string
   extraKarabiners?: string[]
   karabinerQuantities?: Record<string, number>
+  karabinerSummaryValues?: string[]
   petName: string
   phoneNumber: string
   includeDialCode?: boolean
@@ -328,6 +347,7 @@ export const rogalikConfiguratorOptions = (
 ): OrderOption[] => {
   const options: OrderOption[] = []
   const mounting = input.rogalikMounting ?? ""
+  const tagModel = rogalikMountingToTagModel(mounting)
   const charms = input.rogalikCharms ?? []
 
   if (mounting) {
@@ -340,6 +360,133 @@ export const rogalikConfiguratorOptions = (
     label: "Kolor rogalika",
     values: [rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, input.rogalikColor)],
   })
+
+  const usesLegacy = rogalikOrderUsesLegacyRogalikAddons({
+    rogalikCordColor: input.rogalikCordColor,
+    rogalikBeads: input.rogalikBeads,
+    rogalikCharms: charms,
+    beadNecklaceColors: input.beadNecklaceColors,
+    extraCharms: input.extraCharms,
+    stringPremium: input.premiumStrings,
+    stringClassic: input.classicStrings,
+    stringGlow: input.glowStrings,
+  })
+
+  if (!usesLegacy && tagModel) {
+    const beadNecklaceOptionBlock =
+      (input.beadNecklaceColors?.length ?? 0) > 0
+        ? { label: "Koraliki", values: beadNecklaceColorLabels(input.beadNecklaceColors ?? []) }
+        : null
+    const neckCircumferenceOptionBlock = input.dogNeckDisplay
+      ? { label: "Obwód szyi", values: [input.dogNeckDisplay] }
+      : null
+    const charmsOptionBlock =
+      input.wantExtraCharms === "tak" && (input.extraCharms?.length ?? 0) > 0
+        ? {
+            label: "Charms (zawieszki)",
+            values: (input.extraCharms ?? []).map((id) =>
+              charmSummaryLine(id, optionLabel(CHARM_LABEL_OPTIONS, id), charmPrices),
+            ),
+          }
+        : null
+    const karabinersOptionBlock =
+      input.karabinerSummaryValues && input.karabinerSummaryValues.length > 0
+        ? { label: "Karabińczyki", values: input.karabinerSummaryValues }
+        : null
+  const premiumStringsBlock =
+    (input.premiumStrings?.length ?? 0) > 0
+      ? {
+          label: "Sznurek Premium",
+          values: (input.premiumStrings ?? []).map((id) =>
+            optionLabel(PREMIUM_STRING_OPTIONS, id),
+          ),
+        }
+      : null
+    const classicStringsBlock =
+      (input.classicStrings?.length ?? 0) > 0
+        ? {
+            label: "Sznurek Klasyczny",
+            values: (input.classicStrings ?? []).map((id) =>
+              optionLabel(CLASSIC_STRING_OPTIONS, id),
+            ),
+          }
+        : null
+    const stopersOptionBlock =
+      input.wantStopers === "tak"
+        ? {
+            label: "Stopery",
+            values: [
+              stopperSelectionLabel(
+                (input.extraStopers?.length ?? 0) > 0 ? input.extraStopers! : ["1"],
+              ),
+            ],
+          }
+        : null
+
+    if (isBeadNecklaceTagModel(tagModel)) {
+      appendBeadNecklaceOrderedOptions(options, {
+        ringColor: "złoty",
+        sticker: null,
+        beadNecklace: beadNecklaceOptionBlock,
+        neckCircumference: neckCircumferenceOptionBlock,
+        stringsPremium: premiumStringsBlock,
+        stringsClassic: classicStringsBlock,
+        stringsGlow: null,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        stopers: stopersOptionBlock,
+        dialCode: null,
+      })
+    } else if (isTagOnlyWithKarabinerTagModel(tagModel)) {
+      appendBeadNecklaceOrderedOptions(options, {
+        ringColor: "złoty",
+        sticker: null,
+        beadNecklace: null,
+        neckCircumference: null,
+        stringsPremium: null,
+        stringsClassic: null,
+        stringsGlow: null,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        stopers: null,
+        dialCode: null,
+      })
+    } else if (isStringWithoutKarabinerTagModel(tagModel)) {
+      appendBeadNecklaceOrderedOptions(options, {
+        ringColor: "złoty",
+        sticker: null,
+        beadNecklace: null,
+        neckCircumference: neckCircumferenceOptionBlock,
+        stringsPremium: premiumStringsBlock,
+        stringsClassic: classicStringsBlock,
+        stringsGlow: null,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        stopers: stopersOptionBlock,
+        dialCode: null,
+      })
+    } else {
+      appendJewelryConfiguratorAddonOptions(options, {
+        configuratorId: "classic-tag",
+        ringColor: "złoty",
+        tagModel,
+        charms: charmsOptionBlock,
+        karabiners: karabinersOptionBlock,
+        sticker: null,
+      })
+      if (neckCircumferenceOptionBlock) options.push(neckCircumferenceOptionBlock)
+      if (premiumStringsBlock) options.push(premiumStringsBlock)
+      if (classicStringsBlock) options.push(classicStringsBlock)
+      if (stopersOptionBlock) options.push(stopersOptionBlock)
+    }
+
+    options.push({ label: "Imię pupila", values: [input.petName] })
+    options.push({
+      label: "Nr telefonu",
+      values: [formatTagPhoneNumber(input.phoneNumber, input.includeDialCode === true)],
+    })
+    return options
+  }
 
   if (input.dogNeckDisplay) {
     options.push({ label: "Obwód szyi", values: [input.dogNeckDisplay] })
@@ -402,6 +549,14 @@ const rogalikOrderItemOptions = (
     rogalikColor: item.baseColor,
     rogalikMounting: item.rogalikMounting ?? "",
     dogNeckDisplay: item.dogNeck,
+    beadNecklaceColors: item.beadNecklaceColors,
+    wantExtraCharms: (item.extraCharms?.length ?? 0) > 0 ? "tak" : "nie",
+    extraCharms: item.extraCharms,
+    premiumStrings: item.stringPremium,
+    classicStrings: item.stringClassic,
+    glowStrings: item.stringGlow,
+    wantStopers: item.stoppers ? "tak" : "nie",
+    extraStopers: item.stoppers ? [item.stoppers] : [],
     rogalikCordColor: item.rogalikCordColor,
     rogalikBeads: item.rogalikBeads,
     rogalikCharms: item.rogalikCharms,

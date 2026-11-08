@@ -292,6 +292,15 @@ export const classicTagPriceBreakdown = (
 export const classicTagPriceBreakdownTotal = (lines: RogalikPriceLine[]) =>
   lines.reduce((sum, line) => sum + line.amountPln, 0)
 
+/** Tylko dopłaty (bez pozycji bazowej i oprawy kwiat). */
+export const classicTagAddonPriceLines = (
+  input: ClassicTagPricingInput,
+  ctx: ClassicTagPricingContext = {},
+): RogalikPriceLine[] =>
+  classicTagPriceBreakdown(input, ctx).filter(
+    (line) => !line.isBase && line.label !== "Oprawa kwiat",
+  )
+
 /** Rozbicie z wiersza koszyka (karabińczyki z ilości). */
 export const classicCartPriceBreakdown = (
   item: import("@/lib/order-from-cart").CartItemForOrder,

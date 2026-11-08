@@ -16,6 +16,7 @@ import {
   ROGALIK_MOUNTING_OPTIONS,
   ROGALIK_MOUNTING_TILE_IMAGES,
   ROGALIK_MOUNTING_TILE_LABELS,
+  type RogalikFlowStep,
 } from '@/lib/rogalik-options';
 import {
   DEFAULT_ROGALIK_MOUNTING_START_PRICES,
@@ -39,8 +40,7 @@ type Props = {
   onToggleCharm: (id: string) => void;
   showErrors: boolean;
   stringSizeText: string;
-  /** Model (mocowanie), kolor lub dodatki (obwód, sznureczek, koraliki, charmsy). */
-  step: 'kolor' | 'mocowanie' | 'dodatki';
+  step: Exclude<RogalikFlowStep, 'dane' | 'podsumowanie' | 'karabinier'>;
   warehouseStock: Record<string, number>;
   /** „Od X zł” na kafelach mocowania rogalika (panel admina). */
   rogalikMountingStartPrices?: RogalikMountingStartPrices;
@@ -230,7 +230,26 @@ export function RogalikConfiguratorStep({
   rogalikMountingStartPrices,
 }: Props) {
   const mountingStartPrices = rogalikMountingStartPrices ?? DEFAULT_ROGALIK_MOUNTING_START_PRICES;
-  if (step === 'dodatki') {
+  if (step === 'koraliki') {
+    return (
+      <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-beads">
+        <SectionTitle index={1}>Wybierz koraliki</SectionTitle>
+        <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
+        <OptionTiles
+          options={ROGALIK_BEADS_OPTIONS}
+          selectedId={formData.rogalikBeads}
+          onSelect={(id) => onChange({ rogalikBeads: id })}
+          columns={3}
+          tileArtworkInset={0.07}
+        />
+        {showErrors && !formData.rogalikBeads && (
+          <p className="text-sm text-red-500">Wybierz wariant koralików.</p>
+        )}
+      </section>
+    );
+  }
+
+  if (step === 'sznurek') {
     return (
       <div className="space-y-2">
         <NeckCircumferenceSection
@@ -240,7 +259,6 @@ export function RogalikConfiguratorStep({
           stringSizeText={stringSizeText}
           sectionIndex={1}
         />
-
         <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-cord">
           <SectionTitle index={2}>Wybierz kolor sznureczka</SectionTitle>
           <OptionTiles
@@ -254,28 +272,18 @@ export function RogalikConfiguratorStep({
             <p className="text-sm text-red-500">Wybierz kolor sznureczka.</p>
           )}
         </section>
+      </div>
+    );
+  }
 
-        <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-beads">
-          <SectionTitle index={3}>Wybierz koraliki</SectionTitle>
-          <p className={subtitleClass}>Wybierz interesujący Cię wariant:</p>
-          <OptionTiles
-            options={ROGALIK_BEADS_OPTIONS}
-            selectedId={formData.rogalikBeads}
-            onSelect={(id) => onChange({ rogalikBeads: id })}
-            columns={3}
-            tileArtworkInset={0.07}
-          />
-          {showErrors && !formData.rogalikBeads && (
-            <p className="text-sm text-red-500">Wybierz wariant koralików.</p>
-          )}
-        </section>
-
-        <section className={sectionClass}>
-          <SectionTitle index={4}>Dodaj charmsy</SectionTitle>
-          <p className={subtitleClass}>
-            Możesz dodać do {ROGALIK_MAX_CHARMS} charmsów i stworzyć własną, wyjątkową adresówkę
-          </p>
-          <UniformTwoLineFontScope titleTexts={ROGALIK_CHARM_OPTIONS.map((charm) => charm.label)}>
+  if (step === 'charms') {
+    return (
+      <section className={`${sectionClass} scroll-mt-28`} data-configurator-section="rogalik-charms">
+        <SectionTitle index={1}>Dodaj charmsy</SectionTitle>
+        <p className={subtitleClass}>
+          Możesz dodać do {ROGALIK_MAX_CHARMS} charmsów i stworzyć własną, wyjątkową adresówkę
+        </p>
+        <UniformTwoLineFontScope titleTexts={ROGALIK_CHARM_OPTIONS.map((charm) => charm.label)}>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-uniform-font-grid>
             {ROGALIK_CHARM_OPTIONS.map((charm) => {
               const isSelected = formData.rogalikCharms.includes(charm.id);
@@ -321,12 +329,11 @@ export function RogalikConfiguratorStep({
               );
             })}
           </div>
-          </UniformTwoLineFontScope>
-          <p className="text-xs text-[#7A736C]">
-            Wybrano: {formData.rogalikCharms.length} / {ROGALIK_MAX_CHARMS}
-          </p>
-        </section>
-      </div>
+        </UniformTwoLineFontScope>
+        <p className="text-xs text-[#7A736C]">
+          Wybrano: {formData.rogalikCharms.length} / {ROGALIK_MAX_CHARMS}
+        </p>
+      </section>
     );
   }
 

@@ -1,3 +1,8 @@
+import {
+  BEAD_NECKLACE_TAG_MODEL_ID,
+  STRING_WITHOUT_KARABINER_TAG_MODEL_ID,
+  TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID,
+} from "@/lib/catalog-options"
 import { ROGALIK_BASE_PRICE, ROGALIK_MOUNTING_IDS } from "@/lib/rogalik-mounting-ids"
 import {
   parseNeckCircumferenceCm,
@@ -122,34 +127,68 @@ export const rogalikMountingUsesBeads = (mounting: string) => mounting === "kora
 
 export const rogalikMountingUsesKarabinczyk = (mounting: string) => mounting === "karabinczyk"
 
-/** Krok KARABIŃCZYKI w konfiguratorze — tylko wybrane modele na sznurku. */
-export const rogalikMountingUsesKarabinerStep = (mounting: string) =>
-  mounting === "karabinczyk" || mounting === "sznureczek-karabinczyk"
+/** Odpowiednik modelu adresówki biżuteryjnej (reguły karabińczyków / sznurka). */
+export const rogalikMountingToTagModel = (mounting: string): string | null => {
+  switch (mounting) {
+    case "koraliki":
+      return BEAD_NECKLACE_TAG_MODEL_ID
+    case "karabinczyk":
+      return "sznurek-karabinier"
+    case "sznureczek":
+      return STRING_WITHOUT_KARABINER_TAG_MODEL_ID
+    case "sznureczek-karabinczyk":
+      return TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID
+    default:
+      return null
+  }
+}
+
+export type RogalikAddonFlowStep = "koraliki" | "sznurek" | "charms" | "karabinier"
 
 export type RogalikFlowStep =
   | "kolor"
   | "mocowanie"
-  | "dodatki"
-  | "karabinier"
+  | RogalikAddonFlowStep
   | "dane"
   | "podsumowanie"
 
+/** Kolejność kroków dodatków — jak w konfiguratorze biżuterii dla danego modelu. */
+export const rogalikAddonFlowSteps = (mounting: string): RogalikAddonFlowStep[] => {
+  switch (mounting) {
+    case "koraliki":
+      return ["koraliki", "sznurek", "charms", "karabinier"]
+    case "karabinczyk":
+      return ["karabinier", "charms", "sznurek"]
+    case "sznureczek":
+      return ["sznurek", "charms", "karabinier"]
+    case "sznureczek-karabinczyk":
+      return ["karabinier", "charms"]
+    default:
+      return []
+  }
+}
+
+export const rogalikFlowStepsForMounting = (mounting: string): RogalikFlowStep[] => {
+  const steps: RogalikFlowStep[] = ["mocowanie", "kolor"]
+  if (mounting.trim() !== "") {
+    steps.push(...rogalikAddonFlowSteps(mounting))
+  }
+  steps.push("dane", "podsumowanie")
+  return steps
+}
+
 /** Mapowanie numeru kroku w UI na ekran (zależy od mocowania). */
 export const rogalikFlowStepAt = (mounting: string, stepIndex: number): RogalikFlowStep => {
-  if (stepIndex <= 1) return "mocowanie"
-  if (stepIndex === 2) return "kolor"
-  if (stepIndex === 3) return "dodatki"
-
-  const hasKarabinerStep = rogalikMountingUsesKarabinerStep(mounting)
-  if (hasKarabinerStep) {
-    if (stepIndex === 4) return "karabinier"
-    if (stepIndex === 5) return "dane"
-    return "podsumowanie"
-  }
-
-  if (stepIndex === 4) return "dane"
-  return "podsumowanie"
+  const steps = rogalikFlowStepsForMounting(mounting)
+  const index = Math.max(1, Math.min(stepIndex, steps.length)) - 1
+  return steps[index] ?? "mocowanie"
 }
+
+export const rogalikMountingUsesKarabinerStep = (mounting: string) =>
+  rogalikAddonFlowSteps(mounting).includes("karabinier")
+
+export const rogalikMountingUsesCordStep = (mounting: string) =>
+  rogalikAddonFlowSteps(mounting).includes("sznurek")
 
 export const rogalikOptionLabel = (options: RogalikOption[], id: string) =>
   options.find((option) => option.id === id)?.label ?? id

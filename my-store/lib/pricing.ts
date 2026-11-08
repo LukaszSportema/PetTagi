@@ -1,7 +1,12 @@
 import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
 import { getCatalogProduct } from "@/lib/catalog"
 import { charmsTotalPln } from "@/lib/charm-pricing"
-import { tagModelKarabinersAllUnitsPaid, tagModelSkipsStringAndStopperAddonCharges } from "@/lib/catalog-options"
+import {
+  BEAD_NECKLACE_TAG_MODEL_ID,
+  tagModelKarabinersAllUnitsPaid,
+  tagModelSkipsStringAndStopperAddonCharges,
+} from "@/lib/catalog-options"
+import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
 import {
   inferGlowTextColorFromKarabiners,
   karabinerCatalogRingKey,
@@ -173,11 +178,12 @@ export const itemRevenueParts = (
   const size = stringSizeFromNeckCm(item.dogNeck)
   const premiumPrice = premiumStringUnitPrice(size) ?? 0
   const classicPrice = classicStringUnitPrice(size) ?? 0
-  const glowPrice = premiumPrice
+  const glowPrice = glowStringUnitPrice(size) ?? 0
   const productSlug = item.productSlug?.trim() ?? ""
+  const product = productSlug ? getCatalogProduct(productSlug) : null
   const ringColor = item.ringColor ?? "złoty"
   const baseUnit =
-    productSlug && getCatalogProduct(productSlug)?.configuratorId === "classic-tag"
+    product?.configuratorId === "classic-tag"
       ? classicTagBaseUnitPrice({
           tagModel: item.tagModel,
           ringColor,
@@ -193,6 +199,18 @@ export const itemRevenueParts = (
     ? { allUnitsPaid: true }
     : undefined
 
+  const beadNecklaceRevenue =
+    item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID
+      ? beadNecklaceCostPln(size, item.beadNecklaceColors?.length ?? 0)
+      : 0
+  const stringAddons = skipStringsStopers
+    ? 0
+    : item.stringPremium.length * premiumPrice +
+      item.stringClassic.length * classicPrice +
+      item.stringGlow.length * glowPrice
+
+  const skipsSticker = product?.configuratorId === "glow-tag" || ringColor === "kwiat"
+
   return {
     base: baseUnit * qty,
     charms: charmsTotalPln(item.extraCharms, ctx.charmPrices) * qty,
@@ -202,22 +220,21 @@ export const itemRevenueParts = (
           karabinerRing,
           karabinerOpts,
         ) * qty,
-    strings: skipStringsStopers
-      ? 0
-      : (item.stringPremium.length * premiumPrice +
-          item.stringClassic.length * classicPrice +
-          item.stringGlow.length * glowPrice) *
-        qty,
+    strings: (stringAddons + beadNecklaceRevenue) * qty,
     stoppers: skipStringsStopers ? 0 : item.stoppers ? STOPPER_PRICE * qty : 0,
-    stickers: item.sticker ? stickerUnitPricePln(item.sticker) * qty : 0,
+    stickers: !skipsSticker && item.sticker ? stickerUnitPricePln(item.sticker) * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
 }
 
 export const itemQuantityParts = (item: PricedOrderItem) => {
   const qty = item.quantity > 0 ? item.quantity : 1
+  const beadUnits =
+    item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID && (item.beadNecklaceColors?.length ?? 0) > 0
+      ? 1
+      : 0
   const stringCount =
-    item.stringPremium.length + item.stringClassic.length + item.stringGlow.length
+    item.stringPremium.length + item.stringClassic.length + item.stringGlow.length + beadUnits
   return {
     base: qty,
     charms: item.extraCharms.length * qty,

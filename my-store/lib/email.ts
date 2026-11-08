@@ -23,7 +23,6 @@ import { orderDiscountCodeSummary } from "@/lib/order-discount-display"
 import type { CreateOrderInput } from "@/lib/types/order"
 import { getCharmUnitPrices, getRogalikMountingBasePrices, getTagModelBasePrices } from "@/app/actions/settings"
 import {
-  classicTagShowsItemPriceBreakdown,
 } from "@/lib/catalog-options"
 import { getCatalogProduct } from "@/lib/catalog"
 import { buildDefaultCharmUnitPrices, type CharmUnitPrices } from "@/lib/charm-unit-pricing"
@@ -135,10 +134,10 @@ function renderOrderPlacedEmail(
       )
       .join("")
 
+    const configuratorId = getCatalogProduct(item.productSlug)?.configuratorId
     const priceLines = isRogalikOrderItem(item)
       ? rogalikOrderItemPriceLines(item, charmPrices, rogalikBaseFallbacks)
-      : getCatalogProduct(item.productSlug)?.configuratorId === "classic-tag" &&
-          classicTagShowsItemPriceBreakdown(item.tagModel, item.ringColor)
+      : configuratorId === "classic-tag" || configuratorId === "glow-tag"
         ? classicOrderItemPriceLines(item, { charmPrices, tagModelBasePrices })
         : []
     const priceLineLabel = (label: string, detail?: string) =>

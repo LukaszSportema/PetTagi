@@ -111,7 +111,12 @@ export const expectedOrderItemUnitPrice = (
     const qty = Math.max(1, item.quantity)
     const parts = rogalikItemRevenueParts(toPricedItem(item), ctx.charmPrices, ctx)
     const lineTotal =
-      parts.base + parts.charms + parts.karabiners + parts.strings + parts.dialCode
+      parts.base +
+      parts.charms +
+      parts.karabiners +
+      parts.strings +
+      parts.stoppers +
+      parts.dialCode
     return roundMoney(lineTotal / qty)
   }
 

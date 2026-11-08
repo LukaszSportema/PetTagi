@@ -20,8 +20,12 @@ import {
   rogalikConfiguratorOptions,
 } from '@/lib/order-display';
 import { beadNecklaceCostPln } from '@/lib/bead-necklace-pricing';
-import { appendBeadNecklaceOrderedOptions, appendJewelryConfiguratorAddonOptions, beadNecklacePaidAddonOrder, configuratorAddonKindContentStepId, isBeadNecklaceTagModel, jewelryConfiguratorAddonOrder, tagOnlyWithKarabinerPaidAddonOrder, type ConfiguratorSummaryAddonKind } from '@/lib/configurator-options-order';
-import { rogalikPriceBreakdown, type RogalikPriceLine } from '@/lib/rogalik-pricing';
+import { appendBeadNecklaceOrderedOptions, appendJewelryConfiguratorAddonOptions, beadNecklacePaidAddonOrder, classicConfiguratorSummaryAddonOrder, configuratorAddonKindContentStepId, isBeadNecklaceTagModel, jewelryConfiguratorAddonOrder, rogalikConfiguratorSummaryAddonOrder, tagOnlyWithKarabinerPaidAddonOrder, type ConfiguratorSummaryAddonKind } from '@/lib/configurator-options-order';
+import {
+  rogalikPriceBreakdown,
+  rogalikPricingInputFromCartItem,
+  type RogalikPriceLine,
+} from '@/lib/rogalik-pricing';
 import {
   cartItemBaseUnitPrice,
   discountAmountForLines,
@@ -80,10 +84,6 @@ import {
   type CatalogMedia,
 } from '@/lib/catalog';
 import {
-  rogalikBeadsUnitPrice,
-  rogalikCordUnitPrice,
-  rogalikStringSizeFromNeckCm,
-  isValidRogalikNeckCircumference,
   isValidRogalikPhoneNumber,
   ROGALIK_BEADS_OPTIONS,
   ROGALIK_CHARM_OPTIONS,
@@ -91,9 +91,12 @@ import {
   ROGALIK_CORD_COLOR_OPTIONS,
   ROGALIK_MAX_CHARMS,
   rogalikFlowStepAt,
+  rogalikFlowStepsForMounting,
   rogalikMountingTileLabel,
+  rogalikMountingToTagModel,
   rogalikMountingUsesKarabinerStep,
   rogalikOptionLabel,
+  type RogalikFlowStep,
 } from '@/lib/rogalik-options';
 import { RogalikConfiguratorStep } from './RogalikConfiguratorStep';
 import {
@@ -144,7 +147,6 @@ import {
   isTagOnlyWithKarabinerTagModel,
   tagModelSkipsStringAndStopperAddonCharges,
   tagModelKarabinersOptionalInConfigurator,
-  tagModelSkipsDefaultKarabinerSelection,
   tagModelUsesNecklaceStyleKarabinerStep,
   BEAD_NECKLACE_COLOR_OPTIONS,
   beadNecklaceColorLabels,
@@ -287,10 +289,10 @@ const initialFormData: FormDataState = {
   wantExtraCharms: 'tak',
   extraCharms: [],
   extraCharmMountings: {},
-  karabinerOption: 'klasyczny20g',
+  karabinerOption: '',
   wantExtraKarabiners: 'nie',
   extraKarabiners: [],
-  karabinerQuantities: { klasyczny20g: 1 },
+  karabinerQuantities: Object.fromEntries(KARABINER_CATALOG.map((item) => [item.id, 0])),
   wantString: 'tak',
   stringLength: '',
   premiumStrings: [],
@@ -339,6 +341,13 @@ const formDataForProduct = (slug: string): FormDataState => {
       includePhoneCode: 'nie',
       phoneCode: '+48',
       karabinerQuantities: Object.fromEntries(KARABINER_CATALOG.map((item) => [item.id, 0])),
+      ringColor: 'złoty',
+      wantExtraCharms: 'nie',
+      extraCharms: [],
+      beadNecklaceColors: [],
+      premiumStrings: [],
+      classicStrings: [],
+      glowStrings: [],
       rogalikColor: '',
       rogalikMounting: '',
       rogalikCordColor: '',
@@ -593,6 +602,7 @@ export default function Home() {
   const stopperFinishPreviewSrc =
     karabinerRingKey === 'srebrny' ? '/stopery/silver.jpg' : '/stopery/gold.jpg';
   const defaultStopperId = karabinerRingKey === 'srebrny' ? '2' : '1';
+  const rogalikEquivalentTagModel = rogalikMountingToTagModel(formData.rogalikMounting);
   const rogalikUsesKarabinerStep = rogalikMountingUsesKarabinerStep(formData.rogalikMounting);
   const rogalikKarabinersSelected =
     isRogalikTagConfigurator &&
@@ -615,8 +625,25 @@ export default function Home() {
   );
   const usesNecklaceStyleKarabinerStep =
     isClassicTagConfigurator && tagModelUsesNecklaceStyleKarabinerStep(formData.tagModel);
-  const necklaceLayoutKarabinerStep = usesNecklaceStyleKarabinerStep;
-  const karabinersOptionalForActiveConfigurator = karabinersOptionalInConfigurator;
+  const rogalikNecklaceStyleKarabinerStep =
+    isRogalikTagConfigurator &&
+    tagModelUsesNecklaceStyleKarabinerStep(rogalikEquivalentTagModel);
+  const necklaceLayoutKarabinerStep =
+    rogalikNecklaceStyleKarabinerStep || usesNecklaceStyleKarabinerStep;
+  const karabinersOptionalForActiveConfigurator =
+    (isRogalikTagConfigurator &&
+      tagModelKarabinersOptionalInConfigurator(rogalikEquivalentTagModel)) ||
+    karabinersOptionalInConfigurator;
+  const rogalikBeadNecklaceModel =
+    isRogalikTagConfigurator && formData.rogalikMounting === "koraliki";
+  const rogalikSkipsStringStopperCharges =
+    isRogalikTagConfigurator &&
+    tagModelSkipsStringAndStopperAddonCharges(rogalikEquivalentTagModel);
+  const rogalikTagOnlyModel =
+    isRogalikTagConfigurator &&
+    isTagOnlyWithKarabinerTagModel(rogalikEquivalentTagModel);
+  const beadNecklaceConfiguratorContext =
+    isBeadNecklaceModel || rogalikBeadNecklaceModel;
   const beadNecklaceKarabinerPricing = necklaceLayoutKarabinerStep
     ? ({ allUnitsPaid: true } as const)
     : undefined;
@@ -663,9 +690,7 @@ export default function Home() {
       : 0;
   const dialCodeCost = formData.includePhoneCode === 'tak' ? DIAL_CODE_PRICE : 0;
   
-  const stringSize = isRogalikTagConfigurator
-    ? rogalikStringSizeFromNeckCm(formData.stringLength)
-    : stringSizeFromNeckCm(formData.stringLength);
+  const stringSize = stringSizeFromNeckCm(formData.stringLength);
   const stringSizeText = stringSizeLabel(stringSize);
   const premiumStringPrice = premiumStringUnitPrice(stringSize);
   const classicStringPrice = classicStringUnitPrice(stringSize);
@@ -678,31 +703,27 @@ export default function Home() {
     : 0;
   const glowStringsCost = glowStringPrice ? formData.glowStrings.length * glowStringPrice : 0;
 
-  const rogalikCharmsCost = isRogalikTagConfigurator
-    ? charmsTotalPln(formData.rogalikCharms, charmUnitPrices)
-    : 0;
-  const rogalikCordPrice =
-    isRogalikTagConfigurator && formData.rogalikCordColor
-      ? rogalikCordUnitPrice(stringSize)
-      : null;
-  const rogalikCordCost = rogalikCordPrice ?? 0;
-  const rogalikBeadsPrice =
-    isRogalikTagConfigurator && formData.rogalikBeads
-      ? rogalikBeadsUnitPrice(stringSize)
-      : null;
-  const rogalikBeadsCost = rogalikBeadsPrice ?? 0;
   const beadNecklacePrice =
-    isBeadNecklaceModel && formData.beadNecklaceColors.length > 0
+    beadNecklaceConfiguratorContext && formData.beadNecklaceColors.length > 0
       ? beadNecklaceCostPln(stringSize, formData.beadNecklaceColors.length)
       : 0;
-  const rogalikExtraKarabinersCost =
-    isRogalikTagConfigurator && rogalikKarabinersSelected ? extraKarabinersCost : 0;
+  const rogalikAddonCharmsCost =
+    isRogalikTagConfigurator && formData.wantExtraCharms === "tak"
+      ? charmsTotalPln(formData.extraCharms, charmUnitPrices)
+      : 0;
+  const rogalikStringsStopersCost =
+    isRogalikTagConfigurator && !rogalikSkipsStringStopperCharges
+      ? premiumStringsCost +
+        classicStringsCost +
+        glowStringsCost +
+        (skipsStopersStep ? 0 : extraStopersCost)
+      : 0;
   const totalPrice = isRogalikTagConfigurator
     ? effectiveRogalikBaseUnitPricePln +
-      rogalikCordCost +
-      rogalikBeadsCost +
-      rogalikCharmsCost +
-      rogalikExtraKarabinersCost +
+      beadNecklacePrice +
+      rogalikAddonCharmsCost +
+      rogalikStringsStopersCost +
+      extraKarabinersCost +
       dialCodeCost
     : basePrice +
       extraCharmsCost +
@@ -783,34 +804,65 @@ export default function Home() {
     icon: '🛒',
     thumbnail: '/miniatury/koszyk.jpg',
   };
-  const rogalikStepDodatki = {
-    label: 'Dodatki',
-    shortLabel: 'DODATKI',
-    icon: '✨',
+  const rogalikStepKoraliki = {
+    label: 'Koraliki',
+    shortLabel: 'KORALIKI',
+    icon: '📿',
     thumbnail: '/miniatury/koraliki.jpg',
   };
-  const rogalikStepsInfo = (() => {
-    const steps: Array<{
-      id: number;
-      label: string;
-      shortLabel: string;
-      icon: string;
-      thumbnail: string;
-    }> = [
-      { ...rogalikStepModel, id: 1 },
-      { ...rogalikStepKolor, id: 2 },
-      { ...rogalikStepDodatki, id: 3 },
-    ];
-    let nextId = 4;
-    if (formData.rogalikMounting !== '' && rogalikUsesKarabinerStep) {
-      steps.push({ ...rogalikStepKarabiners, id: nextId });
-      nextId += 1;
+  const rogalikStepCharms = {
+    label: 'Dodaj charms (zawieszki)',
+    shortLabel: 'CHARMS (ZAWIESZKI)',
+    icon: '🦮',
+    thumbnail: '/miniatury/darmowycharms.jpg',
+  };
+  const rogalikStepSznurekKoraliki = {
+    label: 'Sznurek',
+    shortLabel: 'SZNUREK',
+    icon: '📏',
+    thumbnail: '/miniatury/sznurek.jpg',
+  };
+  const rogalikStepSznurekStopery = {
+    label: 'Sznurek i stopery',
+    shortLabel: 'SZNUREK I STOPERY',
+    icon: '📏',
+    thumbnail: '/miniatury/sznurek.jpg',
+  };
+  const rogalikFlowStepUiMeta = (
+    flowStep: RogalikFlowStep,
+    mounting: string,
+  ): { label: string; shortLabel: string; icon: string; thumbnail: string } => {
+    switch (flowStep) {
+      case 'mocowanie':
+        return rogalikStepModel;
+      case 'kolor':
+        return rogalikStepKolor;
+      case 'koraliki':
+        return rogalikStepKoraliki;
+      case 'sznurek':
+        return mounting === 'koraliki' ? rogalikStepSznurekKoraliki : rogalikStepSznurekStopery;
+      case 'charms':
+        return rogalikStepCharms;
+      case 'karabinier':
+        return rogalikStepKarabiners;
+      case 'dane':
+        return rogalikStepDane;
+      case 'podsumowanie':
+        return rogalikStepSummary;
     }
-    steps.push({ ...rogalikStepDane, id: nextId, shortLabel: rogalikStepDane.shortLabel });
-    nextId += 1;
-    steps.push({ ...rogalikStepSummary, id: nextId, shortLabel: rogalikStepSummary.shortLabel });
-    return steps;
-  })();
+  };
+  const rogalikStepsInfo = rogalikFlowStepsForMounting(formData.rogalikMounting).map(
+    (flowStep, index) => {
+      const meta = rogalikFlowStepUiMeta(flowStep, formData.rogalikMounting);
+      return {
+        id: index + 1,
+        label: meta.label,
+        shortLabel: meta.shortLabel,
+        icon: meta.icon,
+        thumbnail: meta.thumbnail,
+      };
+    },
+  );
 
   const allStepsInfo = [
     { id: 13, label: 'Model', icon: '📐', thumbnail: '/miniatury/model.jpg' },
@@ -1139,33 +1191,62 @@ export default function Home() {
         return;
       }
     }
-    if (isRogalikTagConfigurator && rogalikFlowStep === 'dodatki') {
-      setShowRogalikDodatkiErrors(true);
-      if (!isValidRogalikNeckCircumference(formData.stringLength)) {
-        scrollToConfiguratorSection('rogalik-neck');
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'koraliki') {
+      setShowStringErrors(true);
+      setShowBeadNecklaceErrors(true);
+      if (!isValidNeckCircumference(formData.stringLength)) {
+        scrollToConfiguratorSection('classic-bead-neck');
         return;
       }
-      if (!formData.rogalikCordColor) {
-        scrollToConfiguratorSection('rogalik-cord');
+      const beadCount = formData.beadNecklaceColors.length;
+      if (beadCount < 1 || beadCount > MAX_BEAD_NECKLACE_COLOR_SELECTIONS) {
+        scrollToConfiguratorSection('classic-bead-color');
         return;
       }
-      if (!formData.rogalikBeads) {
-        scrollToConfiguratorSection('rogalik-beads');
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'sznurek' && !rogalikTagOnlyModel) {
+      setShowStringErrors(true);
+      if (!beadNecklaceConfiguratorContext && !isValidNeckCircumference(formData.stringLength)) {
+        scrollToConfiguratorSection('classic-string-neck');
         return;
+      }
+      if (selectedStringsCount === 0) {
+        scrollToConfiguratorSection('classic-string-choice');
+        return;
+      }
+    }
+    if (isRogalikTagConfigurator && rogalikFlowStep === 'charms') {
+      setShowExtraCharmsErrors(true);
+      if (formData.wantExtraCharms === 'tak' && formData.extraCharms.length === 0) {
+        scrollToConfiguratorSection('classic-charms-choice');
+        return;
+      }
+      if (formData.wantExtraCharms === 'tak') {
+        const unavailableCharm = formData.extraCharms.find((id) => {
+          const charm = charmsList.find((item) => item.id === id);
+          return charmUnavailable(id, charm?.unavailable);
+        });
+        if (unavailableCharm) {
+          scrollToConfiguratorSection('classic-charms-choice');
+          return;
+        }
       }
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'karabinier') {
       setShowFreeKarabinerErrors(true);
-      if (!karabinersOptionalForActiveConfigurator) {
-        const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
-          (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
-          0,
-        );
-        const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
-        if (firstRowQty < 1 || totalQty < 1) {
-          scrollToConfiguratorSection('free-karabiner-choice');
-          return;
-        }
+      const firstRowQty = firstRowKarabinerIds(karabinerRingKey).reduce(
+        (sum, id) => sum + (formData.karabinerQuantities[id] ?? 0),
+        0,
+      );
+      const totalQty = karabinerQuantitiesTotal(formData.karabinerQuantities);
+      const karabinerStepInvalid = karabinersOptionalForActiveConfigurator
+        ? false
+        : necklaceLayoutKarabinerStep
+          ? totalQty < 1
+          : firstRowQty < 1 || totalQty < 1;
+      if (karabinerStepInvalid) {
+        scrollToConfiguratorSection('free-karabiner-choice');
+        return;
       }
     }
     if (isRogalikTagConfigurator && rogalikFlowStep === 'dane') {
@@ -1448,21 +1529,15 @@ export default function Home() {
       const zeroKarabinerQuantities = Object.fromEntries(
         Object.keys(prev.karabinerQuantities).map((id) => [id, 0]),
       );
-      let nextKarabinerQuantities = prev.karabinerQuantities;
-      if (tagModelSkipsDefaultKarabinerSelection(modelId)) {
-        nextKarabinerQuantities = zeroKarabinerQuantities;
-      } else if (karabinerQuantitiesTotal(prev.karabinerQuantities) === 0) {
-        const firstKarabiner = karabinersForConfigurator(karabinerRingKey)[0];
-        nextKarabinerQuantities = firstKarabiner
-          ? { ...zeroKarabinerQuantities, [firstKarabiner.id]: 1 }
-          : zeroKarabinerQuantities;
-      }
       return {
         ...prev,
         tagModel: modelId,
         beadNecklaceColors:
           modelId === BEAD_NECKLACE_TAG_MODEL_ID ? prev.beadNecklaceColors : [],
-        karabinerQuantities: nextKarabinerQuantities,
+        karabinerQuantities: zeroKarabinerQuantities,
+        karabinerOption: '',
+        wantExtraKarabiners: 'nie',
+        extraKarabiners: [],
         ...(modelId === TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID
           ? {
               premiumStrings: [],
@@ -1865,7 +1940,9 @@ export default function Home() {
             maxFontPx={16}
             minFontPx={13}
           />
-          {isBeadNecklaceModel && (
+          {(isBeadNecklaceModel ||
+            (isRogalikTagConfigurator && formData.rogalikMounting === 'koraliki') ||
+            (isRogalikTagConfigurator && formData.rogalikMounting === 'sznureczek')) && (
             <p className="text-sm font-normal italic text-[#7A736C] mt-1">Wybór jest opcjonalny</p>
           )}
           {karabinerErrorVisible && <p className="text-sm text-red-500">{karabinerErrorCopy}</p>}
@@ -1953,13 +2030,19 @@ export default function Home() {
           rogalikColor: formData.rogalikColor,
           rogalikMounting: formData.rogalikMounting,
           dogNeckDisplay,
-          rogalikCordColor: formData.rogalikCordColor,
-          rogalikBeads: formData.rogalikBeads,
-          rogalikCharms: formData.rogalikCharms,
+          beadNecklaceColors: formData.beadNecklaceColors,
+          wantExtraCharms: formData.wantExtraCharms,
+          extraCharms: formData.extraCharms,
+          premiumStrings: formData.premiumStrings,
+          classicStrings: formData.classicStrings,
+          glowStrings: formData.glowStrings,
+          wantStopers: formData.wantStopers,
+          extraStopers: formData.extraStopers,
           karabinerOption: formData.karabinerOption,
           extraKarabiners:
             formData.wantExtraKarabiners === 'tak' ? formData.extraKarabiners : [],
           karabinerQuantities: formData.karabinerQuantities,
+          karabinerSummaryValues: karabinerSummaryLineItems,
           petName: formData.petName,
           phoneNumber: formData.phoneNumber,
         },
@@ -2468,13 +2551,24 @@ export default function Home() {
   };
 
   const usesStepOrderedAddonSummary =
-    isBeadNecklaceModel || isStringWithoutKarabinerModel || isTagOnlyWithKarabinerModel;
-  const configuratorAddonSummaryOrder = isTagOnlyWithKarabinerModel
-    ? tagOnlyWithKarabinerPaidAddonOrder(formData.ringColor)
-    : beadNecklacePaidAddonOrder(formData.ringColor);
+    isRogalikTagConfigurator ||
+    isBeadNecklaceModel ||
+    isStringWithoutKarabinerModel ||
+    isTagOnlyWithKarabinerModel ||
+    ((isClassicTagConfigurator || isGlowTagConfigurator) && formData.tagModel.trim() !== '');
+  const configuratorAddonSummaryOrder = isRogalikTagConfigurator
+    ? rogalikConfiguratorSummaryAddonOrder(formData.rogalikMounting)
+    : isClassicTagConfigurator || isGlowTagConfigurator
+      ? classicConfiguratorSummaryAddonOrder({
+          tagModel: formData.tagModel,
+          configuratorId: activeProduct.configuratorId,
+        })
+      : isTagOnlyWithKarabinerModel
+        ? tagOnlyWithKarabinerPaidAddonOrder(formData.ringColor)
+        : beadNecklacePaidAddonOrder(formData.ringColor);
 
   const showConfiguratorSummaryPrices =
-    !isClassicTagConfigurator || formData.tagModel.trim() !== '';
+    isRogalikTagConfigurator || !isClassicTagConfigurator || formData.tagModel.trim() !== '';
 
   const reachedConfiguratorContentStep = (contentStepId: number) => {
     if (isRogalikTagConfigurator) return true;
@@ -2484,10 +2578,12 @@ export default function Home() {
     return currentStep > index;
   };
 
-  const summaryAddonKindVisible = (kind: ConfiguratorSummaryAddonKind) =>
-    reachedConfiguratorContentStep(
+  const summaryAddonKindVisible = (kind: ConfiguratorSummaryAddonKind) => {
+    if (isRogalikTagConfigurator) return true;
+    return reachedConfiguratorContentStep(
       configuratorAddonKindContentStepId(kind, { tagModel: formData.tagModel }),
     );
+  };
 
   const configuratorSummaryDisplayTotal = (() => {
     if (isRogalikTagConfigurator || !showConfiguratorSummaryPrices) return totalPrice;
@@ -2513,13 +2609,30 @@ export default function Home() {
           <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
           {showConfiguratorSummaryPrices && (
             <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">
-              {summaryCatalogBasePrice} zł
+              {isRogalikTagConfigurator ? effectiveRogalikBaseUnitPricePln : summaryCatalogBasePrice} zł
             </span>
           )}
         </div>
 
         {showConfiguratorSummaryPrices && (
           <>
+        {isRogalikTagConfigurator && formData.rogalikMounting && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Model</span>
+            <span className="shrink-0 text-right max-w-[55%]">
+              {rogalikMountingTileLabel(formData.rogalikMounting)}
+            </span>
+          </div>
+        )}
+        {isRogalikTagConfigurator && formData.rogalikColor && (
+          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
+            <span className="min-w-0 pl-3">Kolor rogalika</span>
+            <span className="shrink-0 text-right max-w-[55%]">
+              {rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, formData.rogalikColor)}
+            </span>
+          </div>
+        )}
+
         {isClassicTagConfigurator && formData.tagModel.trim() && (
           <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
             <span className="min-w-0 pl-3">Model</span>
@@ -2578,7 +2691,11 @@ export default function Home() {
                 );
               }
               if (kind === 'beadNecklace') {
-                if (!isBeadNecklaceModel || formData.beadNecklaceColors.length === 0 || beadNecklacePrice <= 0) {
+                if (
+                  !beadNecklaceConfiguratorContext ||
+                  formData.beadNecklaceColors.length === 0 ||
+                  beadNecklacePrice <= 0
+                ) {
                   return null;
                 }
                 return (
@@ -2616,7 +2733,11 @@ export default function Home() {
                   </div>
                 );
               }
-              if (kind === 'stringsPremium' && formData.premiumStrings.length > 0) {
+              if (
+                kind === 'stringsPremium' &&
+                formData.premiumStrings.length > 0 &&
+                !(isRogalikTagConfigurator && rogalikSkipsStringStopperCharges)
+              ) {
                 return (
                   <div key="addon-premium-strings">
                     <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -2635,7 +2756,11 @@ export default function Home() {
                   </div>
                 );
               }
-              if (kind === 'stringsClassic' && formData.classicStrings.length > 0) {
+              if (
+                kind === 'stringsClassic' &&
+                formData.classicStrings.length > 0 &&
+                !(isRogalikTagConfigurator && rogalikSkipsStringStopperCharges)
+              ) {
                 return (
                   <div key="addon-classic-strings">
                     <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
@@ -2721,7 +2846,12 @@ export default function Home() {
                 );
               }
               if (kind === 'stopers') {
-                if (formData.wantStopers !== 'tak') return null;
+                if (
+                  formData.wantStopers !== 'tak' ||
+                  (isRogalikTagConfigurator && rogalikSkipsStringStopperCharges)
+                ) {
+                  return null;
+                }
                 return (
                   <div
                     key="addon-stopers"
@@ -2928,121 +3058,17 @@ export default function Home() {
     </>
   );
 
-  const rogalikSummaryLines = (
-    <>
-      <div className="space-y-3 text-sm text-[#7A736C]">
-        <div className="flex justify-between items-start gap-4">
-          <span className="font-serif font-bold text-lg text-[#161616]">{activeProduct.name}</span>
-          <span className="font-bold text-lg text-[#161616] shrink-0 text-right tabular-nums">{effectiveRogalikBaseUnitPricePln} zł</span>
-        </div>
-        {formData.rogalikMounting && (
-          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
-            <span className="min-w-0 pl-3">Model</span>
-            <span className="shrink-0 text-right">{rogalikMountingTileLabel(formData.rogalikMounting)}</span>
-          </div>
-        )}
-        {formData.rogalikColor && (
-          <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
-            <span className="min-w-0 pl-3">Kolor rogalika</span>
-            <span className="shrink-0 text-right">{rogalikOptionLabel(ROGALIK_COLOR_OPTIONS, formData.rogalikColor)}</span>
-          </div>
-        )}
-        {formData.rogalikCordColor && rogalikCordPrice !== null && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">
-              Sznureczek
-              {stringSizeText ? ` (${stringSizeText})` : ''}
-            </span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{rogalikCordPrice} zł</span>
-          </div>
-        )}
-        {formData.rogalikBeads && rogalikBeadsPrice !== null && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">
-              Koraliki
-              {stringSizeText ? ` (${stringSizeText})` : ''}
-            </span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{rogalikBeadsPrice} zł</span>
-          </div>
-        )}
-        {formData.rogalikCharms.length > 0 && (
-          <>
-            <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-              <span className="min-w-0 pl-3">Charmsy ×{formData.rogalikCharms.length}</span>
-              <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-                +{charmsTotalPln(formData.rogalikCharms, charmUnitPrices)} zł
-              </span>
-            </div>
-            <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
-              {formData.rogalikCharms.map((id) => (
-                <li key={id}>
-                  {charmSummaryLine(id, rogalikOptionLabel(ROGALIK_CHARM_OPTIONS, id), charmUnitPrices)}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        {rogalikKarabinersSelected && (
-          <div className="space-y-0.5">
-            <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-              <span className="min-w-0 pl-3">
-                Karabińczyki ×{karabinerQuantitiesTotal(formData.karabinerQuantities)}
-                {karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey) > 0
-                  ? ` (płatne: ${karabinerPaidUnitsTotal(formData.karabinerQuantities, karabinerRingKey)})`
-                  : ' (1 szt. gratis)'}
-              </span>
-              {rogalikExtraKarabinersCost > 0 && (
-                <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-                  +{rogalikExtraKarabinersCost} zł
-                </span>
-              )}
-            </div>
-            <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
-              {karabinerSummaryLineItems.map((line, index) => (
-                <li key={`rogalik-karabiner-summary-${index}`}>{line}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {formData.includePhoneCode === 'tak' && (
-          <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
-            <span className="min-w-0 pl-3">Numer kierunkowy na adresówce</span>
-            <span className="shrink-0 text-right whitespace-nowrap tabular-nums">+{DIAL_CODE_PRICE} zł</span>
-          </div>
-        )}
-      </div>
-      <div className="border-t border-[#D6C7AE] pt-4">
-        <div className="flex justify-between items-baseline gap-4">
-          <span className="text-base font-serif font-bold text-[#161616]">Cena całkowita:</span>
-          <span className="text-2xl font-bold text-[#161616] shrink-0 text-right tabular-nums">{totalPrice} zł</span>
-        </div>
-      </div>
-    </>
-  );
-
-  const activeConfiguratorSummary = isRogalikTagConfigurator ? rogalikSummaryLines : summaryLines;
+  const activeConfiguratorSummary = summaryLines;
 
   const rogalikCartPriceLines = (item: CartItem) =>
-    rogalikPriceBreakdown({
-      rogalikMounting: item.config.rogalikMounting,
-      stringLength: item.config.stringLength,
-      rogalikCordColor: item.config.rogalikCordColor,
-      rogalikBeads: item.config.rogalikBeads,
-      rogalikCharms: item.config.rogalikCharms,
-      extraKarabiners:
-        item.config.wantExtraKarabiners === 'tak' ? item.config.extraKarabiners : [],
-      karabinerQuantities: item.config.karabinerQuantities,
-      karabinerCatalogRingKey: karabinerCatalogRingKey({
-        configuratorId: 'rogalik-tag',
-        ringColor: item.config.ringColor,
-        glowTextColor: item.config.glowTextColor,
+    rogalikPriceBreakdown(
+      rogalikPricingInputFromCartItem(item, {
+        charmUnitPrices,
+        baseUnitPricePln: isRogalikCartItem(item)
+          ? rogalikCartLegacyBasePln(item)
+          : undefined,
       }),
-      includeDialCode: item.config.includePhoneCode === 'tak',
-      charmUnitPrices,
-      baseUnitPricePln: isRogalikCartItem(item)
-        ? rogalikCartLegacyBasePln(item)
-        : undefined,
-    });
+    );
 
   const classicCartPriceLines = (item: CartItem) =>
     classicCartPriceBreakdown(
@@ -4258,7 +4284,11 @@ export default function Home() {
                     
                     <div
                       className={
-                        usesNecklaceStyleKarabinerStep && contentStep === 5 ? 'pt-0.5 md:pt-1' : 'pt-1 md:pt-2'
+                        (necklaceLayoutKarabinerStep &&
+                          ((isRogalikTagConfigurator && rogalikFlowStep === 'karabinier') ||
+                            contentStep === 5))
+                          ? 'pt-0.5 md:pt-1'
+                          : 'pt-1 md:pt-2'
                       }
                     >
                       {isRogalikTagConfigurator && rogalikFlowStep === 'mocowanie' && (
@@ -4266,23 +4296,49 @@ export default function Home() {
                           formData={formData}
                           onChange={(patch) =>
                             setFormData((prev) => {
-                              const next = { ...prev, ...patch };
-                              if (!('rogalikMounting' in patch)) return next;
+                              if (!('rogalikMounting' in patch)) {
+                                return { ...prev, ...patch };
+                              }
+                              const mountingId = patch.rogalikMounting ?? '';
+                              const tagModel = rogalikMountingToTagModel(mountingId);
                               const zeroKarabinerQuantities = Object.fromEntries(
                                 Object.keys(prev.karabinerQuantities).map((id) => [id, 0]),
                               );
-                              if (patch.rogalikMounting === 'koraliki') {
-                                return {
+                              let next: typeof prev = {
+                                ...prev,
+                                ...patch,
+                                karabinerQuantities: zeroKarabinerQuantities,
+                                karabinerOption: '',
+                                wantExtraKarabiners: 'nie',
+                                extraKarabiners: [],
+                              };
+                              if (tagModelSkipsStringAndStopperAddonCharges(tagModel)) {
+                                next = {
                                   ...next,
-                                  wantExtraKarabiners: 'nie',
-                                  extraKarabiners: [],
-                                  karabinerQuantities: zeroKarabinerQuantities,
+                                  stringLength: '',
+                                  rogalikCordColor: '',
+                                  premiumStrings: [],
+                                  classicStrings: [],
+                                  glowStrings: [],
+                                  wantStopers: 'nie',
+                                  extraStopers: [],
                                 };
                               }
-                              return {
+                              if (mountingId !== 'koraliki') {
+                                next = {
+                                  ...next,
+                                  rogalikBeads: '',
+                                  beadNecklaceColors: [],
+                                };
+                              }
+                              next = {
                                 ...next,
-                                karabinerQuantities: zeroKarabinerQuantities,
+                                wantExtraCharms: 'nie',
+                                extraCharms: [],
+                                rogalikCharms: [],
+                                rogalikCordColor: '',
                               };
+                              return next;
                             })
                           }
                           onToggleCharm={toggleRogalikCharm}
@@ -4302,19 +4358,6 @@ export default function Home() {
                           showErrors={showRogalikErrors}
                           stringSizeText={stringSizeText ?? ''}
                           step="kolor"
-                          warehouseStock={warehouseStock}
-                          rogalikMountingStartPrices={rogalikMountingStartPrices}
-                        />
-                      )}
-
-                      {isRogalikTagConfigurator && rogalikFlowStep === 'dodatki' && (
-                        <RogalikConfiguratorStep
-                          formData={formData}
-                          onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
-                          onToggleCharm={toggleRogalikCharm}
-                          showErrors={showRogalikDodatkiErrors}
-                          stringSizeText={stringSizeText ?? ''}
-                          step="dodatki"
                           warehouseStock={warehouseStock}
                           rogalikMountingStartPrices={rogalikMountingStartPrices}
                         />
@@ -4398,13 +4441,6 @@ export default function Home() {
                                     if (nextKarabinerIds.has(karabinerId) && qty > 0) {
                                       nextQuantities[karabinerId] = qty;
                                     }
-                                  }
-                                  if (
-                                    karabinerQuantitiesTotal(nextQuantities) === 0 &&
-                                    nextKarabiners[0] &&
-                                    !tagModelSkipsDefaultKarabinerSelection(formData.tagModel)
-                                  ) {
-                                    nextQuantities[nextKarabiners[0].id] = 1;
                                   }
                                   const legacy = orderKarabinersFromQuantities(nextQuantities, item.id);
                                   const allowedCharmIds = new Set(
@@ -4610,9 +4646,6 @@ export default function Home() {
                                       nextQuantities[karabinerId] = qty;
                                     }
                                   }
-                                  if (karabinerQuantitiesTotal(nextQuantities) === 0 && nextKarabiners[0]) {
-                                    nextQuantities[nextKarabiners[0].id] = 1;
-                                  }
                                   const legacy = orderKarabinersFromQuantities(nextQuantities, nextRingKey);
                                   setFormData({
                                     ...formData,
@@ -4642,7 +4675,8 @@ export default function Home() {
                         </div>
                       )}
 
-                      {(isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 3 && (
+                      {(((isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 3) ||
+                        (isRogalikTagConfigurator && rogalikFlowStep === 'charms')) && (
                         <div className="space-y-6 scroll-mt-28" data-configurator-section="classic-charms-choice">
                           <p className="font-bold text-base text-[#161616]">
                             Czy chcesz dodać charms (zawieszki)?
@@ -4721,7 +4755,8 @@ export default function Home() {
                         usesKarabinerQuantityStep &&
                         renderClassicKarabinerStep()}
 
-                      {isClassicTagConfigurator && contentStep === 14 && (
+                      {((isClassicTagConfigurator && contentStep === 14) ||
+                        (isRogalikTagConfigurator && rogalikFlowStep === 'koraliki')) && (
                         <div className="space-y-6">
                           {renderClassicNeckCircumferenceSection('classic-bead-neck')}
 
@@ -4754,12 +4789,17 @@ export default function Home() {
                       )}
 
                       {/* KROK 7: Sznurek / Sznurek i stopery */}
-                      {(isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 7 && (
+                      {(((isClassicTagConfigurator || isGlowTagConfigurator) && contentStep === 7) ||
+                        (isRogalikTagConfigurator && rogalikFlowStep === 'sznurek')) && (
                         <div className="space-y-6">
-                          {!isBeadNecklaceModel &&
+                          {!beadNecklaceConfiguratorContext &&
+                            !rogalikTagOnlyModel &&
                             renderClassicNeckCircumferenceSection('classic-string-neck')}
 
-                          {!isBeadNecklaceModel && !skipsStopersStep && (
+                          {!beadNecklaceConfiguratorContext &&
+                            !rogalikSkipsStringStopperCharges &&
+                            !rogalikTagOnlyModel &&
+                            !skipsStopersStep && (
                             <div
                               className="space-y-6 pt-6 border-t border-[#D6C7AE] scroll-mt-28"
                               data-configurator-section="classic-stopers-choice"
@@ -4839,7 +4879,7 @@ export default function Home() {
                           )}
 
                           <div
-                            className={`space-y-6 scroll-mt-28 ${!isBeadNecklaceModel ? 'pt-6 border-t border-[#D6C7AE]' : ''}`}
+                            className={`space-y-6 scroll-mt-28 ${!beadNecklaceConfiguratorContext ? 'pt-6 border-t border-[#D6C7AE]' : ''}`}
                             data-configurator-section="classic-string-choice"
                           >
                             {showStringErrors && selectedStringsCount === 0 && (
