@@ -343,7 +343,6 @@ const formDataForProduct = (slug: string): FormDataState => {
       karabinerQuantities: Object.fromEntries(KARABINER_CATALOG.map((item) => [item.id, 0])),
       ringColor: 'złoty',
       wantExtraCharms: 'nie',
-      extraCharms: [],
       beadNecklaceColors: [],
       premiumStrings: [],
       classicStrings: [],
