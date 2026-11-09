@@ -4,6 +4,8 @@ import { ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { rogalikBaseUnitPriceForMounting } from "@/lib/rogalik-admin-pricing"
 import {
   DIAL_CODE_PRICE,
+  type ItemQuantityParts,
+  type ItemRevenueParts,
   type ItemRevenuePricingContext,
   type PricedOrderItem,
 } from "@/lib/pricing"
@@ -15,7 +17,6 @@ import {
 import {
   rogalikBeadsUnitPrice,
   rogalikCordUnitPrice,
-  rogalikMountingUsesBeads,
   rogalikStringSizeFromNeckCm,
 } from "@/lib/rogalik-options"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
@@ -27,7 +28,7 @@ export const rogalikItemRevenueParts = (
   item: PricedOrderItem,
   charmPrices?: CharmUnitPrices,
   ctx?: Pick<ItemRevenuePricingContext, "rogalikBaseUnitPricePln" | "rogalikMountingBasePrices">,
-) => {
+): ItemRevenueParts => {
   const qty = item.quantity > 0 ? item.quantity : 1
   const rogalikMountingBasePrices = ctx?.rogalikMountingBasePrices
   const legacySingleBase = ctx?.rogalikBaseUnitPricePln
@@ -49,12 +50,12 @@ export const rogalikItemRevenueParts = (
       charms: jewelry.charms * qty,
       karabiners: jewelry.karabiners * qty,
       strings: jewelry.strings * qty,
+      beads: jewelry.beads * qty,
       stoppers: jewelry.stoppers * qty,
       stickers: 0,
       dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
     }
   }
-  const usesBeads = rogalikMountingUsesBeads(item.rogalikMounting ?? "")
   const size = rogalikStringSizeFromNeckCm(item.dogNeck)
   const cordPrice = item.rogalikCordColor ? rogalikCordUnitPrice(size) ?? 0 : 0
   const beadsPrice = item.rogalikBeads ? rogalikBeadsUnitPrice(size) ?? 0 : 0
@@ -70,20 +71,21 @@ export const rogalikItemRevenueParts = (
     base: baseUnit * qty,
     charms: charmsRevenue * qty,
     karabiners: karabinersRevenue * qty,
-    strings: (cordPrice + beadsPrice) * qty,
+    strings: cordPrice * qty,
+    beads: beadsPrice * qty,
     stoppers: 0,
     stickers: 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
 }
 
-export const rogalikItemQuantityParts = (item: PricedOrderItem) => {
+export const rogalikItemQuantityParts = (item: PricedOrderItem): ItemQuantityParts => {
   const qty = item.quantity > 0 ? item.quantity : 1
   if (!rogalikOrderUsesLegacyRogalikAddons(item)) {
     const premium = item.stringPremium?.length ?? 0
     const classic = item.stringClassic?.length ?? 0
     const glow = item.stringGlow?.length ?? 0
-    const bead = (item.beadNecklaceColors?.length ?? 0) > 0 ? 1 : 0
+    const beadUnits = (item.beadNecklaceColors?.length ?? 0) > 0 ? 1 : 0
     const charmsCount = item.extraCharms?.length ?? 0
     const hasRogalikKarabinerSelection =
       item.extraCarabiner.length > 0 ||
@@ -96,14 +98,15 @@ export const rogalikItemQuantityParts = (item: PricedOrderItem) => {
             (item.baseCarabiner?.trim() && item.baseCarabiner !== "-" ? 1 : 0)) *
           qty
         : 0,
-      strings: (premium + classic + glow + bead) * qty,
+      strings: (premium + classic + glow) * qty,
+      beads: beadUnits * qty,
       stoppers: item.stoppers ? qty : 0,
       stickers: 0,
       dialCode: 0,
     }
   }
-  const usesBeads = rogalikMountingUsesBeads(item.rogalikMounting ?? "")
-  const stringUnits = (item.rogalikCordColor ? 1 : 0) + (item.rogalikBeads ? 1 : 0)
+  const cordUnits = item.rogalikCordColor ? 1 : 0
+  const legacyBeadUnits = item.rogalikBeads ? 1 : 0
   const hasRogalikKarabinerSelection =
     item.extraCarabiner.length > 0 ||
     Boolean(item.baseCarabiner?.trim() && item.baseCarabiner !== "-")
@@ -116,7 +119,8 @@ export const rogalikItemQuantityParts = (item: PricedOrderItem) => {
           (item.baseCarabiner?.trim() && item.baseCarabiner !== "-" ? 1 : 0)) *
         qty
       : 0,
-    strings: stringUnits * qty,
+    strings: cordUnits * qty,
+    beads: legacyBeadUnits * qty,
     stoppers: 0,
     stickers: 0,
     dialCode: 0,

@@ -1,3 +1,6 @@
+import { addDaysToYmd, isPolishBusinessDayYmd } from "@/lib/polish-public-holidays"
+import { warsawYmd } from "@/lib/report-periods"
+
 const WARSAW_TIME_ZONE = "Europe/Warsaw"
 
 export const STANDARD_FULFILLMENT_START_DAYS = 6
@@ -5,17 +8,24 @@ export const STANDARD_FULFILLMENT_END_DAYS = 10
 export const EXPRESS_FULFILLMENT_START_DAYS = 3
 export const EXPRESS_FULFILLMENT_END_DAYS = 4
 
+const warsawYmdFromDate = (date: Date) => warsawYmd(date.toISOString())
+
+/** Data kalendarzowa (południe UTC) — stabilne formatowanie w strefie Warszawa. */
+const dateFromYmd = (ymd: string) => {
+  const [y, m, d] = ymd.split("-").map(Number)
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
+}
+
 export const addBusinessDays = (start: Date, businessDays: number) => {
-  const result = new Date(start)
+  let ymd = warsawYmdFromDate(start)
   let added = 0
 
   while (added < businessDays) {
-    result.setDate(result.getDate() + 1)
-    const weekday = result.getDay()
-    if (weekday !== 0 && weekday !== 6) added += 1
+    ymd = addDaysToYmd(ymd, 1)
+    if (isPolishBusinessDayYmd(ymd)) added += 1
   }
 
-  return result
+  return dateFromYmd(ymd)
 }
 
 export const nextBusinessDay = (from = new Date()) => addBusinessDays(from, 1)

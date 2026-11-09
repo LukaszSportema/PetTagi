@@ -1009,6 +1009,7 @@ function RevenueTable({
     { key: 'charms', label: 'Charms' },
     { key: 'karabiners', label: 'Karabińczyki' },
     { key: 'strings', label: 'Sznurki' },
+    { key: 'beads', label: 'Koraliki' },
     { key: 'stoppers', label: 'Stopery' },
     { key: 'stickers', label: 'Naklejki' },
     { key: 'dialCode', label: 'Kierunkowy' },

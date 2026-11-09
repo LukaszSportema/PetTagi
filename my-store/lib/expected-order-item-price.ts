@@ -115,6 +115,7 @@ export const expectedOrderItemUnitPrice = (
       parts.charms +
       parts.karabiners +
       parts.strings +
+      parts.beads +
       parts.stoppers +
       parts.dialCode
     return roundMoney(lineTotal / qty)

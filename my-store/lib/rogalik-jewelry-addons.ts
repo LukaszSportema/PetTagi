@@ -107,7 +107,8 @@ export const rogalikJewelryAddonRevenueParts = (
   return {
     charms,
     karabiners,
-    strings: strings + beads,
+    strings,
+    beads,
     stoppers: stopperRevenue,
   }
 }

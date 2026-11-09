@@ -34,6 +34,7 @@ export type RevenueTotals = {
   charms: number
   karabiners: number
   strings: number
+  beads: number
   stoppers: number
   stickers: number
   dialCode: number
@@ -52,6 +53,7 @@ const emptyTotals = (): RevenueTotals => ({
   charms: 0,
   karabiners: 0,
   strings: 0,
+  beads: 0,
   stoppers: 0,
   stickers: 0,
   dialCode: 0,
@@ -67,6 +69,7 @@ const roundTotals = (totals: RevenueTotals): RevenueTotals => ({
   charms: roundMoney(totals.charms),
   karabiners: roundMoney(totals.karabiners),
   strings: roundMoney(totals.strings),
+  beads: roundMoney(totals.beads),
   stoppers: roundMoney(totals.stoppers),
   stickers: roundMoney(totals.stickers),
   dialCode: roundMoney(totals.dialCode),
@@ -84,6 +87,7 @@ const addOrder = (totals: RevenueTotals, order: RevenueOrder, ctx: RevenuePricin
     totals.charms += parts.charms
     totals.karabiners += parts.karabiners
     totals.strings += parts.strings
+    totals.beads += parts.beads
     totals.stoppers += parts.stoppers
     totals.stickers += parts.stickers
     totals.dialCode += parts.dialCode
@@ -111,6 +115,7 @@ const addOrderQuantity = (totals: RevenueTotals, order: RevenueOrder) => {
     totals.charms += parts.charms
     totals.karabiners += parts.karabiners
     totals.strings += parts.strings
+    totals.beads += parts.beads
     totals.stoppers += parts.stoppers
     totals.stickers += parts.stickers
     totals.dialCode += parts.dialCode
@@ -129,6 +134,7 @@ const totalsForQuantityPeriod = (period: ReportPeriod, orders: RevenueOrder[]) =
     totals.charms +
     totals.karabiners +
     totals.strings +
+    totals.beads +
     totals.stoppers +
     totals.stickers +
     totals.dialCode +

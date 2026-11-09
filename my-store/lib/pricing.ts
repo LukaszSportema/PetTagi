@@ -149,6 +149,28 @@ export type PricedOrderItem = {
   rogalikBaseUnitPln?: number | null
 }
 
+export type ItemRevenueParts = {
+  base: number
+  charms: number
+  karabiners: number
+  strings: number
+  beads: number
+  stoppers: number
+  stickers: number
+  dialCode: number
+}
+
+export type ItemQuantityParts = {
+  base: number
+  charms: number
+  karabiners: number
+  strings: number
+  beads: number
+  stoppers: number
+  stickers: number
+  dialCode: number
+}
+
 export type ItemRevenuePricingContext = {
   charmPrices?: CharmUnitPrices
   tagModelBasePrices?: TagModelBasePrices
@@ -173,7 +195,7 @@ const jewelryKarabinerRingForRevenue = (item: PricedOrderItem) => {
 export const itemRevenueParts = (
   item: PricedOrderItem,
   ctx: ItemRevenuePricingContext = {},
-) => {
+): ItemRevenueParts => {
   const qty = item.quantity > 0 ? item.quantity : 1
   const size = stringSizeFromNeckCm(item.dogNeck)
   const premiumPrice = premiumStringUnitPrice(size) ?? 0
@@ -220,21 +242,22 @@ export const itemRevenueParts = (
           karabinerRing,
           karabinerOpts,
         ) * qty,
-    strings: (stringAddons + beadNecklaceRevenue) * qty,
+    strings: stringAddons * qty,
+    beads: beadNecklaceRevenue * qty,
     stoppers: skipStringsStopers ? 0 : item.stoppers ? STOPPER_PRICE * qty : 0,
     stickers: !skipsSticker && item.sticker ? stickerUnitPricePln(item.sticker) * qty : 0,
     dialCode: item.dialCodeInfo ? DIAL_CODE_PRICE * qty : 0,
   }
 }
 
-export const itemQuantityParts = (item: PricedOrderItem) => {
+export const itemQuantityParts = (item: PricedOrderItem): ItemQuantityParts => {
   const qty = item.quantity > 0 ? item.quantity : 1
   const beadUnits =
     item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID && (item.beadNecklaceColors?.length ?? 0) > 0
       ? 1
       : 0
   const stringCount =
-    item.stringPremium.length + item.stringClassic.length + item.stringGlow.length + beadUnits
+    item.stringPremium.length + item.stringClassic.length + item.stringGlow.length
   return {
     base: qty,
     charms: item.extraCharms.length * qty,
@@ -243,6 +266,7 @@ export const itemQuantityParts = (item: PricedOrderItem) => {
         karabinerQuantitiesFromOrder(item.baseCarabiner ?? "-", item.extraCarabiner),
       ) * qty,
     strings: stringCount * qty,
+    beads: beadUnits * qty,
     stoppers: item.stoppers ? qty : 0,
     stickers: item.sticker ? qty : 0,
     dialCode: item.dialCodeInfo ? qty : 0,
