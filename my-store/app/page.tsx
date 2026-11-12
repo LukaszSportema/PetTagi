@@ -64,6 +64,7 @@ import {
   TwoLineFitText,
   UniformTwoLineFontScope,
 } from './components/TwoLineFitText';
+import { ConfiguratorChristmasCharmSectionFrame } from './components/ConfiguratorChristmasCharmSectionFrame';
 import { ConfiguratorTileFillImage, warmupConfiguratorTileFillBounds } from './components/ConfiguratorTileFillImage';
 import {
   fulfillmentMessage,
@@ -149,8 +150,15 @@ import {
   tagModelKarabinersOptionalInConfigurator,
   tagModelUsesNecklaceStyleKarabinerStep,
   BEAD_NECKLACE_COLOR_OPTIONS,
+  BEAD_NECKLACE_CHRISTMAS_COLOR_OPTIONS,
+  BEAD_NECKLACE_GOLD_PAIR_COLOR_OPTIONS,
+  type BeadNecklaceColorOption,
   beadNecklaceColorLabels,
+  beadNecklaceDecorativeColorSummaryValues,
+  BEAD_NECKLACE_DECORATIVE_GRATIS_LINE,
+  isBeadNecklaceDecorativeColorId,
   MAX_BEAD_NECKLACE_COLOR_SELECTIONS,
+  CHARM_CHRISTMAS_SECTION_TITLE,
   charmConfiguratorSectionsForRing,
   charmMountingTileLabel,
   configuratorCharmCatalogForRing,
@@ -159,11 +167,14 @@ import {
   GLOW_STRING_CATALOG,
   GLOW_TEXT_OPTIONS,
   GOLD_BASE_CATALOG,
+  GOLD_BASE_JEWELRY_CHRISTMAS_IDS,
   karabinersForRingColor,
   KARABINER_CATALOG,
   nameLayoutLabel,
   oprawaDisplayAdjective,
   PREMIUM_STRING_CATALOG,
+  PREMIUM_STRING_CHRISTMAS_CATALOG,
+  tagModelShowsJewelryChristmasPremiumStrings,
   SILVER_BASE_CATALOG,
   stickerLabel,
   stopperSelectionLabel,
@@ -186,6 +197,8 @@ import {
 type FormDataState = {
   tagModel: string;
   beadNecklaceColors: string[];
+  /** Max 1 darmowy koralik dekoracyjny (osobno od płatnych koralików). */
+  beadNecklaceDecorativeColor: string;
   ringColor: string;
   glowTextColor: string;
   baseOption: string;
@@ -281,6 +294,7 @@ const shippingOptions = [
 const initialFormData: FormDataState = {
   tagModel: '',
   beadNecklaceColors: [],
+  beadNecklaceDecorativeColor: '',
   ringColor: 'złoty',
   glowTextColor: 'zloty',
   baseOption: '1',
@@ -344,6 +358,7 @@ const formDataForProduct = (slug: string): FormDataState => {
       ringColor: 'złoty',
       wantExtraCharms: 'nie',
       beadNecklaceColors: [],
+      beadNecklaceDecorativeColor: '',
       premiumStrings: [],
       classicStrings: [],
       glowStrings: [],
@@ -643,6 +658,12 @@ export default function Home() {
     isTagOnlyWithKarabinerTagModel(rogalikEquivalentTagModel);
   const beadNecklaceConfiguratorContext =
     isBeadNecklaceModel || rogalikBeadNecklaceModel;
+  const paidBeadNecklaceColorIds = formData.beadNecklaceColors.filter(
+    (id) => !isBeadNecklaceDecorativeColorId(id),
+  );
+  const jewelryChristmasPremiumStringContext =
+    isClassicTagConfigurator &&
+    tagModelShowsJewelryChristmasPremiumStrings(formData.tagModel);
   const beadNecklaceKarabinerPricing = necklaceLayoutKarabinerStep
     ? ({ allUnitsPaid: true } as const)
     : undefined;
@@ -703,8 +724,8 @@ export default function Home() {
   const glowStringsCost = glowStringPrice ? formData.glowStrings.length * glowStringPrice : 0;
 
   const beadNecklacePrice =
-    beadNecklaceConfiguratorContext && formData.beadNecklaceColors.length > 0
-      ? beadNecklaceCostPln(stringSize, formData.beadNecklaceColors.length)
+    beadNecklaceConfiguratorContext && paidBeadNecklaceColorIds.length > 0
+      ? beadNecklaceCostPln(stringSize, paidBeadNecklaceColorIds.length)
       : 0;
   const rogalikAddonCharmsCost =
     isRogalikTagConfigurator && formData.wantExtraCharms === "tak"
@@ -999,6 +1020,11 @@ export default function Home() {
   };
 
   const baseColorGridClass = 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-10';
+  const beadNecklaceColorGridClass =
+    'grid grid-cols-3 gap-4 md:gap-6 items-stretch';
+  /** Szerokość 2 kafli jak w siatce 3× — do wyśrodkowanej pary na dole kroku KORALIKI. */
+  const beadNecklaceTwoCenteredTilesRowClass =
+    'mx-auto grid w-[calc((100%-2*1rem)/3*2+1rem)] grid-cols-2 gap-4 md:w-[calc((100%-2*1.5rem)/3*2+1.5rem)] md:gap-6';
 
   /** Większy prostokąt z grafiką w kaflach (mniej paddingu karty, wyższy aspect). */
   const configuratorTileCardPaddingClass = 'p-2 md:p-4';
@@ -1197,7 +1223,7 @@ export default function Home() {
         scrollToConfiguratorSection('classic-bead-neck');
         return;
       }
-      const beadCount = formData.beadNecklaceColors.length;
+      const beadCount = paidBeadNecklaceColorIds.length;
       if (beadCount < 1 || beadCount > MAX_BEAD_NECKLACE_COLOR_SELECTIONS) {
         scrollToConfiguratorSection('classic-bead-color');
         return;
@@ -1349,7 +1375,7 @@ export default function Home() {
         scrollToConfiguratorSection('classic-bead-neck');
         return;
       }
-      const count = formData.beadNecklaceColors.length;
+      const count = paidBeadNecklaceColorIds.length;
       if (count < 1 || count > MAX_BEAD_NECKLACE_COLOR_SELECTIONS) {
         scrollToConfiguratorSection('classic-bead-color');
         return;
@@ -1504,7 +1530,9 @@ export default function Home() {
 
   const charmsList =
     isClassicTagConfigurator || isGlowTagConfigurator
-      ? configuratorCharmCatalogForRing(formData.ringColor).map(mapCharmItem)
+      ? configuratorCharmCatalogForRing(formData.ringColor, {
+          includeJewelryChristmasSection: isClassicTagConfigurator,
+        }).map(mapCharmItem)
       : [];
 
   const charmUnavailable = (id: string, catalogUnavailable?: boolean) =>
@@ -1532,7 +1560,11 @@ export default function Home() {
         ...prev,
         tagModel: modelId,
         beadNecklaceColors:
-          modelId === BEAD_NECKLACE_TAG_MODEL_ID ? prev.beadNecklaceColors : [],
+          modelId === BEAD_NECKLACE_TAG_MODEL_ID
+            ? prev.beadNecklaceColors.filter((id) => !isBeadNecklaceDecorativeColorId(id))
+            : [],
+        beadNecklaceDecorativeColor:
+          modelId === BEAD_NECKLACE_TAG_MODEL_ID ? prev.beadNecklaceDecorativeColor : '',
         karabinerQuantities: zeroKarabinerQuantities,
         karabinerOption: '',
         wantExtraKarabiners: 'nie',
@@ -1551,11 +1583,19 @@ export default function Home() {
     });
   };
   const connectingRingKarabinerIds = new Set<string>(CONNECTING_RING_KARABINER_IDS);
+  const premiumChristmasStringsList = PREMIUM_STRING_CHRISTMAS_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    images: item.images,
+  }));
+
   const premiumStringsList = PREMIUM_STRING_CATALOG.map((item) => ({
     id: item.id,
     title: item.label,
     images: item.images,
   }));
+
+  const premiumStringsLookupList = [...premiumChristmasStringsList, ...premiumStringsList];
 
   const classicStringsList = CLASSIC_STRING_CATALOG.map((item) => ({
     id: item.id,
@@ -1615,14 +1655,24 @@ export default function Home() {
   };
 
   const toggleBeadNecklaceColor = (colorId: string) => {
+    if (isBeadNecklaceDecorativeColorId(colorId)) return;
     setFormData((prev) => {
-      const selected = prev.beadNecklaceColors;
+      const selected = prev.beadNecklaceColors.filter((id) => !isBeadNecklaceDecorativeColorId(id));
       if (selected.includes(colorId)) {
         return { ...prev, beadNecklaceColors: selected.filter((id) => id !== colorId) };
       }
       if (selected.length >= MAX_BEAD_NECKLACE_COLOR_SELECTIONS) return prev;
       return { ...prev, beadNecklaceColors: [...selected, colorId] };
     });
+  };
+
+  const toggleBeadNecklaceDecorativeColor = (colorId: string) => {
+    if (!isBeadNecklaceDecorativeColorId(colorId)) return;
+    setFormData((prev) => ({
+      ...prev,
+      beadNecklaceDecorativeColor:
+        prev.beadNecklaceDecorativeColor === colorId ? '' : colorId,
+    }));
   };
 
   const modalSelectedMounting = (): CharmMountingId => formData.charmMounting;
@@ -1641,7 +1691,7 @@ export default function Home() {
     charmSummaryLine(id, findTitle(charmsList, id, id), charmUnitPrices);
 
   const premiumStringDisplayValue = (id: string) =>
-    stringSummaryLine(findTitle(premiumStringsList, id, id), premiumStringPrice);
+    stringSummaryLine(findTitle(premiumStringsLookupList, id, id), premiumStringPrice);
 
   const classicStringDisplayValue = (id: string) =>
     stringSummaryLine(findTitle(classicStringsList, id, id), classicStringPrice);
@@ -1705,11 +1755,59 @@ export default function Home() {
     );
   };
 
-  const renderBeadNecklaceColorCard = (option: (typeof BEAD_NECKLACE_COLOR_OPTIONS)[number]) => {
-    const isSelected = formData.beadNecklaceColors.includes(option.id);
-    const atMax =
-      !isSelected && formData.beadNecklaceColors.length >= MAX_BEAD_NECKLACE_COLOR_SELECTIONS;
+  const renderBeadNecklaceDecorativeColorCard = (option: BeadNecklaceColorOption) => {
+    const isSelected = formData.beadNecklaceDecorativeColor === option.id;
 
+    return (
+      <div
+        key={option.id}
+        data-uniform-font-cell
+        onClick={() => toggleBeadNecklaceDecorativeColor(option.id)}
+        className={`rounded-none h-full ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-stretch text-center ${
+          isSelected
+            ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md cursor-pointer'
+            : 'border-[#D6C7AE] bg-white hover:border-[#C4A574] cursor-pointer'
+        }`}
+      >
+        <div className={beadNecklaceTileMediaClass}>
+          <div className={beadNecklaceTileMediaInnerClass}>
+            <div className={beadNecklaceTileMediaCircleClass}>
+              <ConfiguratorTileFillImage src={option.image} alt={option.label} />
+            </div>
+          </div>
+        </div>
+        <ConfiguratorTileTitle text={option.label} className="w-full shrink-0" reserveTwoLines={false} />
+        <p className="mt-0.5 text-[10px] font-medium text-[#3A5A40] md:text-xs">
+          {BEAD_NECKLACE_DECORATIVE_GRATIS_LINE}
+        </p>
+        <div className="mt-auto shrink-0 self-center pt-2">
+          <div
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleBeadNecklaceDecorativeColor(option.id);
+            }}
+            className={`grid size-5 place-items-center rounded-md border transition-all cursor-pointer ${
+              isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+            }`}
+          >
+            {isSelected && (
+              <span className="text-xs font-bold leading-none text-white" aria-hidden>
+                ✓
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBeadNecklaceColorCard = (
+    option: BeadNecklaceColorOption,
+    gridCellClassName = '',
+  ) => {
+    const isSelected = paidBeadNecklaceColorIds.includes(option.id);
+    const atMax =
+      !isSelected && paidBeadNecklaceColorIds.length >= MAX_BEAD_NECKLACE_COLOR_SELECTIONS;
     return (
       <div
         key={option.id}
@@ -1718,7 +1816,7 @@ export default function Home() {
           if (atMax) return;
           toggleBeadNecklaceColor(option.id);
         }}
-        className={`rounded-none h-full ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-stretch text-center ${
+        className={`rounded-none h-full ${gridCellClassName} ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col items-stretch text-center ${
           atMax
             ? 'opacity-50 cursor-not-allowed border-[#D6C7AE] bg-white'
             : isSelected
@@ -1756,28 +1854,115 @@ export default function Home() {
     );
   };
 
+  const renderClassicBaseColorCard = (base: ConfiguratorBaseOption) => (
+    <div
+      key={base.id}
+      data-uniform-font-cell
+      onClick={() => setFormData({ ...formData, baseOption: base.id })}
+      className={`cursor-pointer rounded-none ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col ${
+        base.details ? 'items-stretch' : 'items-center text-center'
+      } ${
+        formData.baseOption === base.id
+          ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
+          : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+      }`}
+    >
+      <div className={configuratorTileMediaClass}>
+        {base.images && base.images.length > 1 ? (
+          <ImageGallery items={base.images} alt={base.title} stopPropagation />
+        ) : (
+          <img src={basePreviewImage(base)} alt={base.title} className={configuratorTileImageClass} />
+        )}
+      </div>
+      <ConfiguratorTileTitle text={base.title} reserveTwoLines={false} />
+      {base.details && (
+        <ul className="mt-0.5 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
+          {base.details.map((detail, detailIndex) => (
+            <li key={`${base.id}-${detailIndex}`} className="whitespace-nowrap">
+              {detail.label ? (
+                <>
+                  <span className="text-[#161616]">{detail.label}:</span> {detail.value}
+                </>
+              ) : (
+                <span className="text-[#161616]">{detail.value}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div
+        className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${
+          formData.baseOption === base.id ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'
+        }`}
+      >
+        {formData.baseOption === base.id && <div className="w-2 h-2 rounded-full bg-white" />}
+      </div>
+    </div>
+  );
+
   const renderCharmSection = (
     title: string,
     items: CharmCardItem[],
     renderCard: (charm: CharmCardItem) => React.ReactNode,
     subtitle?: string,
-  ) => (
-    <section key={title} className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
-      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#2E4833] bg-section-header">
-        <h3 className="font-serif font-bold text-lg text-[#F4EFE6]">{title}</h3>
+  ) => {
+    const isChristmasSection = title === CHARM_CHRISTMAS_SECTION_TITLE;
+    const sectionHeader = (
+      <div
+        className={
+          isChristmasSection
+            ? 'pb-3 pt-0 md:pb-4'
+            : 'border-b border-[#2E4833] bg-section-header px-4 py-3 md:px-6 md:py-4'
+        }
+      >
+        <h3
+          className={
+            isChristmasSection
+              ? 'text-center font-serif text-lg font-bold text-[#7E2E2E] md:text-xl'
+              : 'font-serif text-lg font-bold text-[#F4EFE6]'
+          }
+        >
+          {title}
+        </h3>
         {subtitle && (
-          <p className="mt-1 text-sm font-normal italic text-[#F4EFE6]/85 leading-snug">{subtitle}</p>
+          <p
+            className={
+              isChristmasSection
+                ? 'mt-1 text-center text-sm italic leading-snug text-[#3A5A40]'
+                : 'mt-1 text-sm font-normal italic leading-snug text-[#F4EFE6]/85'
+            }
+          >
+            {subtitle}
+          </p>
         )}
       </div>
-      <div className="p-4 md:p-6">
-        <UniformTwoLineFontScope titleTexts={items.map((item) => item.sizeLabel ?? '—')}>
-          <div className={charmsGridClass} data-uniform-font-grid>
-            {items.map(renderCard)}
-          </div>
-        </UniformTwoLineFontScope>
-      </div>
-    </section>
-  );
+    );
+    const sectionGrid = (
+      <UniformTwoLineFontScope titleTexts={items.map((item) => item.sizeLabel ?? '—')}>
+        <div className={charmsGridClass} data-uniform-font-grid>
+          {items.map(renderCard)}
+        </div>
+      </UniformTwoLineFontScope>
+    );
+
+    if (isChristmasSection) {
+      return (
+        <section key={title} className="w-full overflow-visible">
+          <ConfiguratorChristmasCharmSectionFrame>
+            {sectionHeader}
+            <div className="pt-1 md:pt-2">{sectionGrid}</div>
+          </ConfiguratorChristmasCharmSectionFrame>
+        </section>
+      );
+    }
+
+    return (
+      <section key={title} className="overflow-hidden rounded-xl border border-[#D6C7AE] bg-white">
+        {sectionHeader}
+        <div className="p-4 md:p-6">{sectionGrid}</div>
+      </section>
+    );
+  };
 
   const syncKarabinerLegacyFields = (
     quantities: Record<string, number>,
@@ -1994,7 +2179,9 @@ export default function Home() {
 
   const renderExtraCharmSections = () => (
     <div className="space-y-6">
-      {charmConfiguratorSectionsForRing(formData.ringColor).map((section) =>
+      {charmConfiguratorSectionsForRing(formData.ringColor, {
+        includeJewelryChristmasSection: isClassicTagConfigurator,
+      }).map((section) =>
         renderCharmSection(
           section.title,
           section.items.map(mapCharmItem),
@@ -2096,9 +2283,15 @@ export default function Home() {
         ? { label: 'Karabińczyki', values: karabinerSummaryLineItems }
         : null;
     const beadNecklaceOptionBlock =
-      formData.beadNecklaceColors.length > 0
-        ? { label: 'Koraliki', values: beadNecklaceColorLabels(formData.beadNecklaceColors) }
+      paidBeadNecklaceColorIds.length > 0
+        ? { label: 'Koraliki', values: beadNecklaceColorLabels(paidBeadNecklaceColorIds) }
         : null;
+    const beadNecklaceDecorativeOptionBlock = formData.beadNecklaceDecorativeColor
+      ? {
+          label: 'Koraliki dekoracyjne',
+          values: beadNecklaceDecorativeColorSummaryValues(formData.beadNecklaceDecorativeColor),
+        }
+      : null;
     const neckCircumferenceOptionBlock = formData.stringLength
       ? {
           label: 'Obwód szyi',
@@ -2163,6 +2356,9 @@ export default function Home() {
         stopers: stopersOptionBlock,
         dialCode: dialCodeOptionBlock,
       });
+      if (beadNecklaceDecorativeOptionBlock) {
+        options.push(beadNecklaceDecorativeOptionBlock);
+      }
     } else if (isTagOnlyWithKarabinerModel) {
       appendBeadNecklaceOrderedOptions(options, {
         ringColor: formData.ringColor,
@@ -2523,6 +2719,49 @@ export default function Home() {
     });
   };
 
+  const renderPremiumStringTile = (item: {
+    id: string;
+    title: string;
+    images: string[];
+  }) => {
+    const isSelected = formData.premiumStrings.includes(item.id);
+    return (
+      <div
+        key={item.id}
+        data-uniform-font-cell
+        onClick={() => togglePremiumString(item.id)}
+        className={`cursor-pointer rounded-none ${
+          isClassicTagConfigurator ? jewelryStringTilePaddingClass : glowStringTilePaddingClass
+        } border transition-colors duration-300 flex flex-col items-center text-center ${
+          isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
+        }`}
+      >
+        {isClassicTagConfigurator ? (
+          <div className={configuratorTileMediaClass}>
+            <img src={item.images[0]} alt={item.title} className={configuratorTileImageClass} />
+          </div>
+        ) : (
+          <div className="w-full mb-3 md:mb-5">
+            <ImageGallery items={item.images} alt={item.title} stopPropagation />
+          </div>
+        )}
+        <ConfiguratorTileTitle
+          text={item.title}
+          reserveTwoLines={!isClassicTagConfigurator}
+        />
+        <div
+          className={`${
+            isClassicTagConfigurator
+              ? jewelryStringCheckClass
+              : 'w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all'
+          } ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
+        >
+          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+        </div>
+      </div>
+    );
+  };
+
   const toggleClassicString = (id: string) => {
     setFormData((prev) => {
       const exists = prev.classicStrings.includes(id);
@@ -2692,7 +2931,7 @@ export default function Home() {
               if (kind === 'beadNecklace') {
                 if (
                   !beadNecklaceConfiguratorContext ||
-                  formData.beadNecklaceColors.length === 0 ||
+                  paidBeadNecklaceColorIds.length === 0 ||
                   beadNecklacePrice <= 0
                 ) {
                   return null;
@@ -2709,9 +2948,26 @@ export default function Home() {
                       </span>
                     </div>
                     <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
-                      {beadNecklaceColorLabels(formData.beadNecklaceColors).map((label) => (
+                      {beadNecklaceColorLabels(paidBeadNecklaceColorIds).map((label) => (
                         <li key={label}>{label}</li>
                       ))}
+                    </ul>
+                  </div>
+                );
+              }
+              if (kind === 'beadNecklaceDecorative') {
+                if (!beadNecklaceConfiguratorContext || !formData.beadNecklaceDecorativeColor) {
+                  return null;
+                }
+                return (
+                  <div key="addon-bead-necklace-decorative">
+                    <p className="text-xs italic text-[#7E746C] pl-3">Koraliki dekoracyjne</p>
+                    <ul className="pl-6 text-xs text-[#7E746C] space-y-0.5 list-disc list-inside">
+                      {beadNecklaceDecorativeColorSummaryValues(formData.beadNecklaceDecorativeColor).map(
+                        (line) => (
+                          <li key={line}>{line}</li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 );
@@ -3089,6 +3345,7 @@ export default function Home() {
     const configOptionLabels = new Set([
       'Model',
       'Koraliki',
+      'Koraliki dekoracyjne',
       'Oprawa',
       'Kolor',
       'Napis',
@@ -3101,6 +3358,7 @@ export default function Home() {
     ]);
     const listStyleOptionLabels = new Set([
       'Koraliki',
+      'Koraliki dekoracyjne',
       'Charms (zawieszki)',
       'Karabińczyki',
       'Sznurek Premium',
@@ -4328,6 +4586,7 @@ export default function Home() {
                                   ...next,
                                   rogalikBeads: '',
                                   beadNecklaceColors: [],
+                                  beadNecklaceDecorativeColor: '',
                                 };
                               }
                               next = {
@@ -4443,7 +4702,9 @@ export default function Home() {
                                   }
                                   const legacy = orderKarabinersFromQuantities(nextQuantities, item.id);
                                   const allowedCharmIds = new Set(
-                                    configuratorCharmCatalogForRing(item.id).map((charm) => charm.id),
+                                    configuratorCharmCatalogForRing(item.id, {
+                                      includeJewelryChristmasSection: isClassicTagConfigurator,
+                                    }).map((charm) => charm.id),
                                   );
                                   setFormData({
                                     ...formData,
@@ -4496,66 +4757,44 @@ export default function Home() {
                               {!formData.ringColor.trim() && (
                                 <p className="text-sm text-[#7A736C]">Najpierw wybierz rodzaj oprawy powyżej.</p>
                               )}
-                              {formData.ringColor.trim() && (
-                                <UniformTwoLineFontScope titleTexts={selectedBases.map((base) => base.title)}>
-                                  <div className={baseColorGridClass} data-uniform-font-grid>
-                                    {selectedBases.map((base) => (
-                                      <div
-                                        key={base.id}
-                                        data-uniform-font-cell
-                                        onClick={() => setFormData({ ...formData, baseOption: base.id })}
-                                        className={`cursor-pointer rounded-none ${configuratorTileCardPaddingClass} border transition-colors duration-300 flex flex-col ${
-                                          base.details ? 'items-stretch' : 'items-center text-center'
-                                        } ${
-                                          formData.baseOption === base.id
-                                            ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md'
-                                            : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                        }`}
-                                      >
-                                        <div className={configuratorTileMediaClass}>
-                                          {base.images && base.images.length > 1 ? (
-                                            <ImageGallery items={base.images} alt={base.title} stopPropagation />
-                                          ) : (
-                                            <img
-                                              src={basePreviewImage(base)}
-                                              alt={base.title}
-                                              className={configuratorTileImageClass}
-                                            />
-                                          )}
-                                        </div>
-                                        <ConfiguratorTileTitle text={base.title} reserveTwoLines={false} />
-                                        {base.details && (
-                                          <ul className="mt-0.5 w-full -ml-1 md:-ml-1.5 text-left text-[7px] md:text-[8px] text-[#7A736C] space-y-0.5 leading-tight">
-                                            {base.details.map((detail, detailIndex) => (
-                                              <li key={`${base.id}-${detailIndex}`} className="whitespace-nowrap">
-                                                {detail.label ? (
-                                                  <>
-                                                    <span className="text-[#161616]">{detail.label}:</span>{' '}
-                                                    {detail.value}
-                                                  </>
-                                                ) : (
-                                                  <span className="text-[#161616]">{detail.value}</span>
-                                                )}
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        )}
+                              {formData.ringColor.trim() && (() => {
+                                const goldChristmasIdSet = new Set(GOLD_BASE_JEWELRY_CHRISTMAS_IDS);
+                                const useJewelryChristmasBaseFrame =
+                                  isClassicTagConfigurator && formData.ringColor === 'złoty';
+                                const christmasGoldBases = useJewelryChristmasBaseFrame
+                                  ? selectedBases.filter((base) => goldChristmasIdSet.has(base.id))
+                                  : [];
+                                const otherBases = useJewelryChristmasBaseFrame
+                                  ? selectedBases.filter((base) => !goldChristmasIdSet.has(base.id))
+                                  : selectedBases;
+
+                                return (
+                                  <UniformTwoLineFontScope
+                                    titleTexts={selectedBases.map((base) => base.title)}
+                                  >
+                                    {christmasGoldBases.length > 0 && (
+                                      <ConfiguratorChristmasCharmSectionFrame>
                                         <div
-                                          className={`w-5 h-5 rounded-full border mt-3 self-center flex items-center justify-center transition-all ${
-                                            formData.baseOption === base.id
-                                              ? 'border-[#3A5A40] bg-[#3A5A40]'
-                                              : 'border-zinc-300'
-                                          }`}
+                                          className={`${baseColorGridClass} items-stretch`}
+                                          data-uniform-font-grid
                                         >
-                                          {formData.baseOption === base.id && (
-                                            <div className="w-2 h-2 rounded-full bg-white" />
+                                          {christmasGoldBases.map((base) =>
+                                            renderClassicBaseColorCard(base),
                                           )}
                                         </div>
+                                      </ConfiguratorChristmasCharmSectionFrame>
+                                    )}
+                                    {otherBases.length > 0 && (
+                                      <div
+                                        className={`${baseColorGridClass} items-stretch ${christmasGoldBases.length > 0 ? 'mt-6' : ''}`}
+                                        data-uniform-font-grid
+                                      >
+                                        {otherBases.map((base) => renderClassicBaseColorCard(base))}
                                       </div>
-                                    ))}
-                                  </div>
-                                </UniformTwoLineFontScope>
-                              )}
+                                    )}
+                                  </UniformTwoLineFontScope>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -4767,22 +5006,87 @@ export default function Home() {
                               Wybierz 1 kolor dla jednolitej zawieszki lub 2 kolory, jeśli wolisz miks!
                             </p>
                             {showBeadNecklaceErrors &&
-                              (formData.beadNecklaceColors.length < 1 ||
-                                formData.beadNecklaceColors.length >
+                              (paidBeadNecklaceColorIds.length < 1 ||
+                                paidBeadNecklaceColorIds.length >
                                   MAX_BEAD_NECKLACE_COLOR_SELECTIONS) && (
                               <p className="text-sm text-red-500">
                                 Wybierz 1 lub 2 kolory koralików.
                               </p>
                             )}
-                            <UniformTwoLineFontScope
-                              titleTexts={BEAD_NECKLACE_COLOR_OPTIONS.map((option) => option.label)}
-                            >
-                              <div className={`${baseColorGridClass} items-stretch`} data-uniform-font-grid>
-                                {BEAD_NECKLACE_COLOR_OPTIONS.map((option) =>
-                                  renderBeadNecklaceColorCard(option),
-                                )}
-                              </div>
-                            </UniformTwoLineFontScope>
+                            {beadNecklaceConfiguratorContext ? (
+                              <>
+                                <UniformTwoLineFontScope
+                                  titleTexts={BEAD_NECKLACE_CHRISTMAS_COLOR_OPTIONS.map(
+                                    (option) => option.label,
+                                  )}
+                                >
+                                  <ConfiguratorChristmasCharmSectionFrame>
+                                    <div
+                                      className={beadNecklaceColorGridClass}
+                                      data-uniform-font-grid
+                                    >
+                                      {BEAD_NECKLACE_CHRISTMAS_COLOR_OPTIONS.map((option) =>
+                                        renderBeadNecklaceColorCard(option),
+                                      )}
+                                    </div>
+                                  </ConfiguratorChristmasCharmSectionFrame>
+                                </UniformTwoLineFontScope>
+                                <UniformTwoLineFontScope
+                                  titleTexts={BEAD_NECKLACE_COLOR_OPTIONS.map(
+                                    (option) => option.label,
+                                  )}
+                                >
+                                  <div
+                                    className={`${beadNecklaceColorGridClass} mt-6`}
+                                    data-uniform-font-grid
+                                  >
+                                    {BEAD_NECKLACE_COLOR_OPTIONS.map((option) =>
+                                      renderBeadNecklaceColorCard(option),
+                                    )}
+                                  </div>
+                                </UniformTwoLineFontScope>
+                                <div className="mt-6 w-full">
+                                  <div className="w-full border-y border-[#2E4833] bg-section-header px-4 py-2 md:px-6 md:py-2.5">
+                                    <h3 className="text-center font-serif text-sm font-bold leading-tight text-[#F4EFE6] md:text-base">
+                                      Koraliki dekoracyjne
+                                    </h3>
+                                    <p className="mt-1 text-center text-xs font-normal italic leading-snug text-[#F4EFE6]/90 md:text-sm">
+                                      Dwa darmowe koraliki po bokach adresówki dla kolorowego akcentu!
+                                      (opcjonalne)
+                                    </p>
+                                  </div>
+                                  <div className="pt-6">
+                                    <UniformTwoLineFontScope
+                                      titleTexts={BEAD_NECKLACE_GOLD_PAIR_COLOR_OPTIONS.map(
+                                        (option) => option.label,
+                                      )}
+                                    >
+                                      <div
+                                        className={`${beadNecklaceTwoCenteredTilesRowClass} items-stretch`}
+                                        data-uniform-font-grid
+                                      >
+                                        {BEAD_NECKLACE_GOLD_PAIR_COLOR_OPTIONS.map((option) =>
+                                          renderBeadNecklaceDecorativeColorCard(option),
+                                        )}
+                                      </div>
+                                    </UniformTwoLineFontScope>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <UniformTwoLineFontScope
+                                titleTexts={BEAD_NECKLACE_COLOR_OPTIONS.map((option) => option.label)}
+                              >
+                                <div
+                                  className={`${baseColorGridClass} items-stretch`}
+                                  data-uniform-font-grid
+                                >
+                                  {BEAD_NECKLACE_COLOR_OPTIONS.map((option) =>
+                                    renderBeadNecklaceColorCard(option),
+                                  )}
+                                </div>
+                              </UniformTwoLineFontScope>
+                            )}
                           </div>
                         </div>
                       )}
@@ -4924,6 +5228,34 @@ export default function Home() {
                                 </section>
                               )}
 
+                              {jewelryChristmasPremiumStringContext && (
+                                <section className="w-full overflow-visible">
+                                  <ConfiguratorChristmasCharmSectionFrame>
+                                    <div className="pb-3 pt-0 md:pb-4">
+                                      <h3 className="text-center font-serif text-lg font-bold text-[#7E2E2E] md:text-xl">
+                                        {CHARM_CHRISTMAS_SECTION_TITLE}
+                                      </h3>
+                                      {premiumStringPrice != null && (
+                                        <p className="mt-1 text-center text-sm italic leading-snug text-[#3A5A40]">
+                                          Sznurek Premium (możesz wybrać wiele) — od {premiumStringPrice} zł/szt
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="pt-1 md:pt-2 px-4 pb-4 md:px-6 md:pb-6">
+                                      <UniformTwoLineFontScope
+                                        titleTexts={premiumChristmasStringsList.map((item) => item.title)}
+                                      >
+                                        <div className={stringCatalogGridClass} data-uniform-font-grid>
+                                          {premiumChristmasStringsList.map((item) =>
+                                            renderPremiumStringTile(item),
+                                          )}
+                                        </div>
+                                      </UniformTwoLineFontScope>
+                                    </div>
+                                  </ConfiguratorChristmasCharmSectionFrame>
+                                </section>
+                              )}
+
                               <section className="rounded-xl border border-[#D6C7AE] bg-white overflow-hidden">
                                 <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#2E4833] bg-section-header">
                                   <h3 className="font-bold text-lg text-[#F4EFE6]">
@@ -4941,50 +5273,7 @@ export default function Home() {
                                     }
                                     data-uniform-font-grid
                                   >
-                                    {premiumStringsList.map((item) => {
-                                      const isSelected = formData.premiumStrings.includes(item.id);
-                                      return (
-                                        <div
-                                          key={item.id}
-                                          data-uniform-font-cell
-                                          onClick={() => togglePremiumString(item.id)}
-                                          className={`cursor-pointer rounded-none ${
-                                            isClassicTagConfigurator
-                                              ? jewelryStringTilePaddingClass
-                                              : glowStringTilePaddingClass
-                                          } border transition-colors duration-300 flex flex-col items-center text-center ${
-                                            isSelected ? 'border-[#3A5A40] bg-[#F4EFE6] shadow-md' : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
-                                          }`}
-                                        >
-                                          {isClassicTagConfigurator ? (
-                                            <div className={configuratorTileMediaClass}>
-                                              <img
-                                                src={item.images[0]}
-                                                alt={item.title}
-                                                className={configuratorTileImageClass}
-                                              />
-                                            </div>
-                                          ) : (
-                                            <div className="w-full mb-3 md:mb-5">
-                                              <ImageGallery items={item.images} alt={item.title} stopPropagation />
-                                            </div>
-                                          )}
-                                          <ConfiguratorTileTitle
-                                            text={item.title}
-                                            reserveTwoLines={!isClassicTagConfigurator}
-                                          />
-                                          <div
-                                            className={`${
-                                              isClassicTagConfigurator
-                                                ? jewelryStringCheckClass
-                                                : 'w-5 h-5 rounded-md border mt-3 flex items-center justify-center transition-all'
-                                            } ${isSelected ? 'border-[#3A5A40] bg-[#3A5A40]' : 'border-zinc-300'}`}
-                                          >
-                                            {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                                    {premiumStringsList.map((item) => renderPremiumStringTile(item))}
                                   </div>
                                   </UniformTwoLineFontScope>
                                 </div>

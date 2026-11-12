@@ -8,6 +8,7 @@ import {
   tagModelLabel,
   tagModelSkipsStringAndStopperAddonCharges,
 } from "@/lib/catalog-options"
+import { isBeadNecklaceDecorativeColorId } from "@/lib/catalog-options"
 import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
 import { charmsTotalPln } from "@/lib/charm-pricing"
 import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
@@ -114,7 +115,8 @@ export const classicTagPriceBreakdown = (
       ? { label: "Naklejka", amountPln: stickerUnitPricePln(input.sticker) }
       : null
 
-  const colorCount = input.beadNecklaceColors?.length ?? 0
+  const colorCount =
+    input.beadNecklaceColors?.filter((id) => !isBeadNecklaceDecorativeColorId(id)).length ?? 0
   const beadLine: RogalikPriceLine | null =
     isBead && colorCount > 0
       ? (() => {

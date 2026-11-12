@@ -257,6 +257,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     rogalik_beads: item.rogalikBeads,
     rogalik_charms: item.rogalikCharms,
     bead_necklace_colors: item.beadNecklaceColors,
+    bead_necklace_decorative_color: item.beadNecklaceDecorativeColor,
     base_unit_price: roundMoney(item.baseUnitPrice),
   }))
 
@@ -372,6 +373,7 @@ type OrderItemRow = {
   rogalik_beads?: string | null
   rogalik_charms?: unknown
   bead_necklace_colors?: unknown
+  bead_necklace_decorative_color?: string | null
   base_unit_price?: number | string | null
 }
 
@@ -467,6 +469,7 @@ const mapItem = (row: OrderItemRow): OrderItemRecord => ({
   rogalikBeads: row.rogalik_beads ?? null,
   rogalikCharms: toStringArray(row.rogalik_charms),
   beadNecklaceColors: toStringArray(row.bead_necklace_colors),
+  beadNecklaceDecorativeColor: row.bead_necklace_decorative_color?.trim() || null,
   baseUnitPricePln:
     row.base_unit_price === null || row.base_unit_price === undefined || row.base_unit_price === ""
       ? null

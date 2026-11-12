@@ -1,6 +1,6 @@
 import { CLASSIC_TAG_PRODUCT, getCatalogProduct, productLineTitle, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { charmSummaryLine } from "@/lib/charm-pricing"
-import { BASE_OPTIONS, beadNecklaceColorLabels, BEAD_NECKLACE_TAG_MODEL_ID, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, oprawaDisplayAdjective, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel, stickerLabel, tagModelKarabinersAllUnitsPaid, tagModelLabel, isStringWithoutKarabinerTagModel, isTagOnlyWithKarabinerTagModel } from "@/lib/catalog-options"
+import { BASE_OPTIONS, beadNecklaceColorLabels, beadNecklaceDecorativeColorSummaryValues, BEAD_NECKLACE_TAG_MODEL_ID, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, oprawaDisplayAdjective, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel, stickerLabel, tagModelKarabinersAllUnitsPaid, tagModelLabel, isStringWithoutKarabinerTagModel, isTagOnlyWithKarabinerTagModel } from "@/lib/catalog-options"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
 import {
   ROGALIK_BEADS_OPTIONS,
@@ -718,6 +718,13 @@ export const orderItemOptions = (
       }
     : null
 
+  const beadNecklaceDecorativeBlock: OrderOption | null = item.beadNecklaceDecorativeColor
+    ? {
+        label: "Koraliki dekoracyjne",
+        values: beadNecklaceDecorativeColorSummaryValues(item.beadNecklaceDecorativeColor),
+      }
+    : null
+
   const neckCircumferenceBlock: OrderOption | null = item.dogNeck
     ? { label: "Obwód szyi", values: [item.dogNeck] }
     : null
@@ -751,6 +758,7 @@ export const orderItemOptions = (
       stopers: stopersBlock,
       dialCode: dialCodeBlock,
     })
+    if (beadNecklaceDecorativeBlock) options.push(beadNecklaceDecorativeBlock)
   } else if (stringWithoutKarabiner) {
     appendBeadNecklaceOrderedOptions(options, {
       ringColor: item.ringColor ?? "",

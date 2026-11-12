@@ -27,6 +27,7 @@ import {
 } from "@/lib/pricing"
 import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
 import { BEAD_NECKLACE_TAG_MODEL_ID, tagModelKarabinersAllUnitsPaid, tagModelSkipsStringAndStopperAddonCharges } from "@/lib/catalog-options"
+import { isBeadNecklaceDecorativeColorId } from "@/lib/catalog-options"
 import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
 import type { CreateOrderItemInput } from "@/lib/types/order"
 
@@ -149,9 +150,11 @@ export const expectedOrderItemUnitPrice = (
   const skipsSticker = product?.configuratorId === "glow-tag" || item.ringColor === "kwiat"
   const stickers = !skipsSticker && item.sticker ? stickerUnitPricePln(item.sticker) : 0
   const dialCode = item.dialCodeInfo ? DIAL_CODE_PRICE : 0
+  const paidBeadColorCount =
+    item.beadNecklaceColors?.filter((id) => !isBeadNecklaceDecorativeColorId(id)).length ?? 0
   const beadNecklace =
     item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID
-      ? beadNecklaceCostPln(size, item.beadNecklaceColors?.length ?? 0)
+      ? beadNecklaceCostPln(size, paidBeadColorCount)
       : 0
 
   return roundMoney(

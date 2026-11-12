@@ -1,5 +1,5 @@
 import {
-  CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS,
+  CHARM_GOLD_KWIAT_WAREHOUSE_SECTIONS,
   CHARM_SILVER_CONFIGURATOR_SECTIONS,
   GOLD_RING_KARABINERS,
   SILVER_RING_KARABINERS,
@@ -43,7 +43,7 @@ export const warehouseCatalogItems = (): WarehouseCatalogItem[] => {
     })
   }
 
-  for (const section of CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS) {
+  for (const section of CHARM_GOLD_KWIAT_WAREHOUSE_SECTIONS) {
     for (const charm of section.items) {
       pushUnique(items, seen, {
         id: charm.id,

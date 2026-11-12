@@ -1,5 +1,5 @@
 import {
-  CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS,
+  CHARM_GOLD_KWIAT_WAREHOUSE_SECTIONS,
   CHARM_SILVER_CONFIGURATOR_SECTIONS,
   CONFIGURATOR_CHARM_CATALOG,
 } from "@/lib/catalog-options"
@@ -17,7 +17,7 @@ export type CharmPriceAdminRow = {
 const catalogDefaultPrice = (item: { pricePln?: number }) => item.pricePln ?? EXTRA_CHARM_PRICE
 
 export const CHARM_PRICE_ADMIN_ROWS: CharmPriceAdminRow[] = [
-  ...CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS.flatMap((section) =>
+  ...CHARM_GOLD_KWIAT_WAREHOUSE_SECTIONS.flatMap((section) =>
     section.items.map((item) => ({
       id: item.id,
       label: item.label.replace(/\s*\(chwilowo niedostępny\)\s*$/i, "").trim(),

@@ -18,6 +18,7 @@ export const isBeadNecklaceTagModel = (tagModel?: string | null) =>
 export type BeadNecklacePaidAddonKind =
   | "sticker"
   | "beadNecklace"
+  | "beadNecklaceDecorative"
   | "neckCircumference"
   | "stringsPremium"
   | "stringsClassic"
@@ -31,6 +32,7 @@ export const beadNecklacePaidAddonOrder = (ringColor?: string): BeadNecklacePaid
   const order: BeadNecklacePaidAddonKind[] = [
     "sticker",
     "beadNecklace",
+    "beadNecklaceDecorative",
     "neckCircumference",
     "stringsPremium",
     "stringsClassic",
@@ -79,6 +81,7 @@ export const configuratorAddonKindContentStepId = (
   > = {
     sticker: 9,
     beadNecklace: 14,
+    beadNecklaceDecorative: 14,
     stringsPremium: 7,
     stringsClassic: 7,
     stringsGlow: 7,
@@ -178,7 +181,7 @@ const classicContentStepAddonKinds = (
     case 9:
       return ["sticker"]
     case 14:
-      return ["neckCircumference", "beadNecklace"]
+      return ["neckCircumference", "beadNecklace", "beadNecklaceDecorative"]
     case 7: {
       const kinds: ConfiguratorSummaryAddonKind[] = [
         "stringsPremium",

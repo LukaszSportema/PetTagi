@@ -60,3 +60,73 @@ body {
   background: var(--gold-line);
   color: var(--ink);
 }
+
+/* Świąteczne charms — ramka + kokarda na górnym pasku (jak na grafice). */
+.christmas-charm-frame-wrap {
+  --christmas-frame-bar: clamp(16px, 3.1vw, 20px);
+  --christmas-bow-lift: clamp(2.35rem, 6vw, 3.15rem);
+  --christmas-header-gap: clamp(2.45rem, 6.5vw, 3.15rem);
+  position: relative;
+  margin-top: var(--christmas-bow-lift);
+  overflow: visible;
+  transform: translateY(-10px);
+}
+
+.christmas-charm-frame {
+  --christmas-fill: #fffbf7;
+  --christmas-candy: repeating-linear-gradient(
+    -45deg,
+    #c41e3a 0 9px,
+    #ffffff 9px 18px,
+    #0a7a3e 18px 27px,
+    #ffffff 27px 36px
+  );
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border-radius: 3px;
+}
+
+.christmas-charm-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: var(--christmas-frame-bar) solid transparent;
+  border-radius: inherit;
+  background:
+    linear-gradient(var(--christmas-fill), var(--christmas-fill)) padding-box,
+    var(--christmas-candy) border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 1px 0 rgba(58, 42, 32, 0.06);
+  pointer-events: none;
+}
+
+.christmas-charm-frame__bow-layer {
+  position: absolute;
+  /* oś górnego paska = środek węzła kokardy */
+  top: calc(var(--christmas-frame-bar) * 0.5);
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.christmas-charm-frame-wrap .christmas-charm-frame__bow {
+  width: clamp(5.75rem, 15vw, 8.25rem);
+  height: auto;
+  /* węzeł na osi paska (dopasowanie do środkowego kwadratu PNG) */
+  transform: translateY(-47.8%);
+}
+
+.christmas-charm-frame__body {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  padding:
+    var(--christmas-header-gap)
+    calc(var(--christmas-frame-bar) + 0.55rem)
+    calc(var(--christmas-frame-bar) + 0.65rem);
+}

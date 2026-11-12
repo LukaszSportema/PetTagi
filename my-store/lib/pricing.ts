@@ -6,6 +6,7 @@ import {
   tagModelKarabinersAllUnitsPaid,
   tagModelSkipsStringAndStopperAddonCharges,
 } from "@/lib/catalog-options"
+import { isBeadNecklaceDecorativeColorId } from "@/lib/catalog-options"
 import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
 import {
   inferGlowTextColorFromKarabiners,
@@ -221,9 +222,11 @@ export const itemRevenueParts = (
     ? { allUnitsPaid: true }
     : undefined
 
+  const paidBeadColorCount =
+    item.beadNecklaceColors?.filter((id) => !isBeadNecklaceDecorativeColorId(id)).length ?? 0
   const beadNecklaceRevenue =
     item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID
-      ? beadNecklaceCostPln(size, item.beadNecklaceColors?.length ?? 0)
+      ? beadNecklaceCostPln(size, paidBeadColorCount)
       : 0
   const stringAddons = skipStringsStopers
     ? 0
@@ -252,10 +255,10 @@ export const itemRevenueParts = (
 
 export const itemQuantityParts = (item: PricedOrderItem): ItemQuantityParts => {
   const qty = item.quantity > 0 ? item.quantity : 1
+  const paidBeadColors =
+    item.beadNecklaceColors?.filter((id) => !isBeadNecklaceDecorativeColorId(id)).length ?? 0
   const beadUnits =
-    item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID && (item.beadNecklaceColors?.length ?? 0) > 0
-      ? 1
-      : 0
+    item.tagModel === BEAD_NECKLACE_TAG_MODEL_ID && paidBeadColors > 0 ? 1 : 0
   const stringCount =
     item.stringPremium.length + item.stringClassic.length + item.stringGlow.length
   return {

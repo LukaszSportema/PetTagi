@@ -33,6 +33,8 @@ export type CreateOrderItemInput = {
   rogalikCharms: string[]
   /** Kolory koralików (naszyjnik z koralikami). */
   beadNecklaceColors: string[]
+  /** Opcjonalny darmowy koralik dekoracyjny (id z BEAD_NECKLACE_GOLD_PAIR). */
+  beadNecklaceDecorativeColor: string | null
   /** Cena bazowa adresówki (walidacja rabatu). */
   baseUnitPrice: number
 }
@@ -139,6 +141,7 @@ export type OrderItemRecord = {
   rogalikBeads: string | null
   rogalikCharms: string[]
   beadNecklaceColors: string[]
+  beadNecklaceDecorativeColor: string | null
   /** Zapisana przy składaniu zamówienia (rabat od bazy). */
   baseUnitPricePln?: number | null
 }

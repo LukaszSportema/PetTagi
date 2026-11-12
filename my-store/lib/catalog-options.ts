@@ -116,7 +116,31 @@ export const tagModelLabel = (id: string) =>
 
 export type BeadNecklaceColorOption = CatalogOption & { image: string }
 
-/** Kolory koralików — model „Naszyjnik z koralikami i adresówką”. */
+/** Świąteczne koraliki — tylko adresówka biżuteryjna (naszyjnik z koralikami). */
+export const BEAD_NECKLACE_CHRISTMAS_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
+  {
+    id: "christmas-bordowe",
+    label: "Bordowe",
+    image: "/koraliki/christmas_koraliki_bordowe.jpg",
+  },
+  {
+    id: "christmas-ciemnozielone",
+    label: "Ciemnozielone",
+    image: "/koraliki/christmas_koraliki_ciemnozielone.jpg",
+  },
+  {
+    id: "christmas-czerwone",
+    label: "Czerwone",
+    image: "/koraliki/christmas_koraliki_czerwone.jpg",
+  },
+  {
+    id: "christmas-przezroczysto-biale",
+    label: "Przezroczysto-białe",
+    image: "/koraliki/christmas_koraliki_przezroczysto_biale.jpg",
+  },
+]
+
+/** Stała paleta koralików (m.in. rogalik — bez świątecznych). */
 export const BEAD_NECKLACE_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
   {
     id: "czekoladowy-braz",
@@ -140,13 +164,59 @@ export const BEAD_NECKLACE_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
   },
 ]
 
+/** Koraliki z akcentem złota (para) — tylko biżuteria, pod drugim rzędem palety. */
+export const BEAD_NECKLACE_DECORATIVE_GRATIS_LINE = "2 szt. gratis" as const
+
+export const BEAD_NECKLACE_GOLD_PAIR_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
+  {
+    id: "brazowo-zlote-2",
+    label: "Brązowo - złote",
+    image: "/koraliki/koraliki_brazowo_zlote.jpg",
+  },
+  {
+    id: "czerwono-zlote-2",
+    label: "Czerwono - złote",
+    image: "/koraliki/koraliki_czerwono_zlote.jpg",
+  },
+]
+
+/** Główne koraliki naszyjnika (płatne) — bez dekoracyjnych. */
+export const BEAD_NECKLACE_MAIN_JEWELRY_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
+  ...BEAD_NECKLACE_CHRISTMAS_COLOR_OPTIONS,
+  ...BEAD_NECKLACE_COLOR_OPTIONS,
+]
+
+/** Koraliki w krokie KORALIKI — adresówka biżuteryjna, model naszyjnik z koralikami. */
+export const BEAD_NECKLACE_JEWELRY_COLOR_OPTIONS: BeadNecklaceColorOption[] = [
+  ...BEAD_NECKLACE_MAIN_JEWELRY_COLOR_OPTIONS,
+  ...BEAD_NECKLACE_GOLD_PAIR_COLOR_OPTIONS,
+]
+
+export const BEAD_NECKLACE_DECORATIVE_COLOR_IDS = new Set(
+  BEAD_NECKLACE_GOLD_PAIR_COLOR_OPTIONS.map((option) => option.id),
+)
+
+export const isBeadNecklaceDecorativeColorId = (id: string) =>
+  BEAD_NECKLACE_DECORATIVE_COLOR_IDS.has(id)
+
+const BEAD_NECKLACE_COLOR_LOOKUP: BeadNecklaceColorOption[] = [
+  ...BEAD_NECKLACE_JEWELRY_COLOR_OPTIONS,
+]
+
 export const beadNecklaceColorLabel = (id: string) =>
-  BEAD_NECKLACE_COLOR_OPTIONS.find((option) => option.id === id)?.label ?? id
+  BEAD_NECKLACE_COLOR_LOOKUP.find((option) => option.id === id)?.label ?? id
 
 export const MAX_BEAD_NECKLACE_COLOR_SELECTIONS = 2
 
 export const beadNecklaceColorLabels = (ids: readonly string[]) =>
   ids.map((id) => beadNecklaceColorLabel(id)).filter(Boolean)
+
+export const beadNecklaceDecorativeColorSummaryLine = (id: string): string =>
+  `${beadNecklaceColorLabel(id)} ${BEAD_NECKLACE_DECORATIVE_GRATIS_LINE}`
+
+export const beadNecklaceDecorativeColorSummaryValues = (id: string): string[] => [
+  beadNecklaceDecorativeColorSummaryLine(id),
+]
 
 export const GLOW_BASE_CATALOG: BaseOption[] = [
   {
@@ -198,8 +268,23 @@ export const GLOW_TEXT_OPTIONS: GlowTextOption[] = [
   },
 ]
 
+/** Kolory bazy złotej w ramce świątecznej (krok Kształt i kolor — tylko classic-tag, oprawa złota). */
+export const GOLD_BASE_JEWELRY_CHRISTMAS_IDS: readonly string[] = [
+  "33",
+  "7",
+  "34",
+  "29",
+  "35",
+  "36",
+]
+
 export const GOLD_BASE_CATALOG: SingleBaseOption[] = [
+  { id: "33", label: "Perła szampan", image: "/baza/goldperlaszampan.jpg" },
+  { id: "7", label: "Czerwony", image: "/baza/goldczerwony.jpg" },
+  { id: "34", label: "Perła winna", image: "/baza/goldperlawinna.jpg" },
   { id: "29", label: "Perła biała", image: "/baza/goldperlabiala.jpg" },
+  { id: "35", label: "Butelkowy", image: "/baza/goldbutelkowy.jpg" },
+  { id: "36", label: "Perła butelkowa", image: "/baza/goldperlabutelkowa.jpg" },
   { id: "30", label: "Perła brązowa", image: "/baza/goldperlabraz.jpg" },
   { id: "31", label: "Jasny brąz", image: "/baza/goldjasnybraz.jpg" },
   { id: "8", label: "Ecru", image: "/baza/goldecru.jpg" },
@@ -210,7 +295,6 @@ export const GOLD_BASE_CATALOG: SingleBaseOption[] = [
   { id: "16", label: "Zielony", image: "/baza/goldzielony.jpg" },
   { id: "14", label: "Pastelowy róż", image: "/baza/goldpastelowyroz.jpg" },
   { id: "28", label: "Jasnoróżowy", image: "/baza/goldjasnorozowy.jpg" },
-  { id: "7", label: "Czerwony", image: "/baza/goldczerwony.jpg" },
   { id: "15", label: "Winny", image: "/baza/goldwinny.jpg" },
   { id: "3", label: "Bordowy", image: "/baza/goldbordowy.jpg" },
   { id: "6", label: "Czarny", image: "/baza/goldczarny.jpg" },
@@ -261,6 +345,86 @@ export type CharmCatalogItem = SingleBaseOption & {
   /** Cena w konfiguratorze (PLN). Domyślnie — EXTRA_CHARM_PRICE z lib/pricing. */
   pricePln?: number
 }
+
+export const CHARM_CHRISTMAS_CATALOG: CharmCatalogItem[] = [
+  {
+    id: "swiateczne_sniezynka_z_cyrkoniami",
+    label: "Śnieżynka z cyrkoniami",
+    image: "/charms/christmassniezynkazcyrkoniami.jpg",
+    sizeLabel: "10×10 mm",
+    pricePln: 9,
+  },
+  {
+    id: "swiateczne_choinka",
+    label: "Choinka",
+    image: "/charms/christmaschoinka.jpg",
+    sizeLabel: "8×12 mm",
+    pricePln: 8,
+  },
+  {
+    id: "swiateczne_dzwoneczki_z_kokardka",
+    label: "Dzwoneczki z kokardką",
+    image: "/charms/christmasdzwoneczkizkokardka.jpg",
+    sizeLabel: "11×10 mm",
+    pricePln: 8,
+  },
+  {
+    id: "swiateczne_reniferek",
+    label: "Reniferek",
+    image: "/charms/christmasreniferek.jpg",
+    sizeLabel: "17×22 mm",
+    pricePln: 5,
+  },
+  {
+    id: "swiateczne_wieniec",
+    label: "Wieniec świąteczny",
+    image: "/charms/christmaswieniec.jpg",
+    sizeLabel: "24×23 mm",
+    pricePln: 5,
+  },
+  {
+    id: "swiateczne_czerwone_dzwoneczki",
+    label: "Czerwone dzwoneczki",
+    image: "/charms/christmasczerwonedzwoneczki.jpg",
+    sizeLabel: "18×16 mm",
+    pricePln: 5,
+  },
+  {
+    id: "swiateczne_cukierek",
+    label: "Cukierek",
+    image: "/charms/christmascukierek.jpg",
+    sizeLabel: "10×18 mm",
+    pricePln: 5,
+  },
+  {
+    id: "swiateczne_srednia_sniezynka",
+    label: "Średnia śnieżynka",
+    image: "/charms/christmassredniasniezynka.jpg",
+    sizeLabel: "16×16 mm",
+    pricePln: 5,
+  },
+  {
+    id: "swiateczne_duza_sniezynka",
+    label: "Duża śnieżynka",
+    image: "/charms/christmasduzasniezynka.jpg",
+    sizeLabel: "19×19 mm",
+    pricePln: 5,
+  },
+  {
+    id: "swiateczne_rekawiczki",
+    label: "Rękawiczki",
+    image: "/charms/christmasrekawiczki.jpg",
+    sizeLabel: "14×17 mm",
+    pricePln: 4,
+  },
+  {
+    id: "swiateczne_czapeczka",
+    label: "Czapeczka",
+    image: "/charms/christmasczapeczka.jpg",
+    sizeLabel: "16×16 mm",
+    pricePln: 4,
+  },
+]
 
 export const CHARM_STEEL_CATALOG: CharmCatalogItem[] = [
   { id: "stal_serce", label: "Serce", image: "/charms/Stal_Serce.jpg", sizeLabel: "8×8 mm" },
@@ -515,6 +679,13 @@ export type CharmConfiguratorSection = {
   items: CharmCatalogItem[]
 }
 
+export const CHARM_CHRISTMAS_SECTION_TITLE = "Świąteczne" as const
+
+export const CHARM_JEWELRY_CHRISTMAS_SECTION: CharmConfiguratorSection = {
+  title: CHARM_CHRISTMAS_SECTION_TITLE,
+  items: CHARM_CHRISTMAS_CATALOG,
+}
+
 export const CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS: CharmConfiguratorSection[] = [
   { title: "Stal nierdzewna", items: CHARM_STEEL_CATALOG },
   { title: "Delikatne akcenty", items: CHARM_DELICATE_CATALOG },
@@ -533,25 +704,48 @@ export const CHARM_SILVER_CONFIGURATOR_SECTIONS: CharmConfiguratorSection[] = [
 
 /** Pełny katalog charmsów w magazynie (wszystkie oprawy). */
 export const CHARM_CONFIGURATOR_SECTIONS_ALL: CharmConfiguratorSection[] = [
+  CHARM_JEWELRY_CHRISTMAS_SECTION,
   ...CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS,
   ...CHARM_SILVER_CONFIGURATOR_SECTIONS,
 ]
 
-/** Sekcje widoczne w konfiguratorze dla wybranej oprawy (classic-tag, glow-tag). */
-export function charmConfiguratorSectionsForRing(ringColor: string): CharmConfiguratorSection[] {
-  if (ringColor === "srebrny") return CHARM_SILVER_CONFIGURATOR_SECTIONS
-  return CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS
+/** Magazyn / cennik — sekcje złote ze świątecznymi. */
+export const CHARM_GOLD_KWIAT_WAREHOUSE_SECTIONS: CharmConfiguratorSection[] = [
+  CHARM_JEWELRY_CHRISTMAS_SECTION,
+  ...CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS,
+]
+
+export type CharmConfiguratorSectionsOptions = {
+  /** Sekcja „Świąteczne” — tylko adresówka biżuteryjna (classic-tag). */
+  includeJewelryChristmasSection?: boolean
 }
 
-/** Katalog charmsów w konfiguratorze (classic-tag, glow-tag) — zależnie od oprawy / bazy. */
-export function configuratorCharmCatalogForRing(ringColor: string): CharmCatalogItem[] {
-  return charmConfiguratorSectionsForRing(ringColor).flatMap((section) => section.items)
+/** Sekcje widoczne w konfiguratorze dla wybranej oprawy. */
+export function charmConfiguratorSectionsForRing(
+  ringColor: string,
+  options?: CharmConfiguratorSectionsOptions,
+): CharmConfiguratorSection[] {
+  const base =
+    ringColor === "srebrny" ? CHARM_SILVER_CONFIGURATOR_SECTIONS : CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS
+  if (options?.includeJewelryChristmasSection) {
+    return [CHARM_JEWELRY_CHRISTMAS_SECTION, ...base]
+  }
+  return base
+}
+
+/** Katalog charmsów w konfiguratorze — zależnie od oprawy / bazy. */
+export function configuratorCharmCatalogForRing(
+  ringColor: string,
+  options?: CharmConfiguratorSectionsOptions,
+): CharmCatalogItem[] {
+  return charmConfiguratorSectionsForRing(ringColor, options).flatMap((section) => section.items)
 }
 
 /** @deprecated Użyj charmConfiguratorSectionsForRing — złoto/kwiat bez srebra. */
 export const CHARM_CONFIGURATOR_SECTIONS = CHARM_GOLD_KWIAT_CONFIGURATOR_SECTIONS
 
 export const CONFIGURATOR_CHARM_CATALOG: CharmCatalogItem[] = [
+  ...CHARM_CHRISTMAS_CATALOG,
   ...CHARM_STEEL_CATALOG,
   ...CHARM_DELICATE_CATALOG,
   ...CHARM_BOLD_CATALOG,
@@ -955,6 +1149,25 @@ export const LEGACY_KARABINER_ID_TO_CONFIGURATOR: Record<string, string> = {
 
 export const KARABINER_OPTIONS: CatalogOption[] = KARABINER_CATALOG.map(({ id, label }) => ({ id, label }))
 
+/** Sznurki Premium świąteczne — krok Sznurek, wybrane modele biżuterii. */
+export const PREMIUM_STRING_CHRISTMAS_CATALOG: StringOption[] = [
+  { id: "premium-butelkowy", label: "Butelkowy", images: ["/sznurek/premium_butelkowy.jpg"] },
+  { id: "premium-czerwony", label: "Czerwony", images: ["/sznurek/premium_czerwony.jpg"] },
+  { id: "premium-zloty", label: "Złoty", images: ["/sznurek/premium_zloty.jpg"] },
+]
+
+export const STRING_WITH_KARABINER_TAG_MODEL_ID = "sznurek-karabinier"
+
+/** Świąteczne sznurki Premium — Na sznurku (z/bez karabińczyka) i naszyjnik z koralikami. */
+export const tagModelShowsJewelryChristmasPremiumStrings = (tagModel?: string | null) => {
+  const id = tagModel?.trim()
+  return (
+    id === STRING_WITH_KARABINER_TAG_MODEL_ID ||
+    id === STRING_WITHOUT_KARABINER_TAG_MODEL_ID ||
+    id === BEAD_NECKLACE_TAG_MODEL_ID
+  )
+}
+
 export const PREMIUM_STRING_CATALOG: StringOption[] = [
   { id: "cappuccino", label: "Cappuccino", images: ["/sznurek/premiumcappuccino.jpg"] },
   { id: "czekoladowy", label: "Czekoladowy", images: ["/sznurek/premiumczekoladowy.jpg"] },
@@ -966,7 +1179,10 @@ export const PREMIUM_STRING_CATALOG: StringOption[] = [
   { id: "winny", label: "Winny", images: ["/sznurek/premiumwinny.jpg"] },
 ]
 
-export const PREMIUM_STRING_OPTIONS: CatalogOption[] = PREMIUM_STRING_CATALOG.map(({ id, label }) => ({
+export const PREMIUM_STRING_OPTIONS: CatalogOption[] = [
+  ...PREMIUM_STRING_CHRISTMAS_CATALOG,
+  ...PREMIUM_STRING_CATALOG,
+].map(({ id, label }) => ({
   id,
   label,
 }))

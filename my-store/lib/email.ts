@@ -122,14 +122,14 @@ function renderOrderPlacedEmail(
     const qty = item.quantity > 1 ? ` × ${item.quantity}` : ""
     const options = orderItemOptions(item, charmPrices)
     const optionLines = options
-      .map((option) => `${option.label}: ${option.values.join(", ")}`)
+      .map((option) => `${option.label}: ${option.values.join("\n")}`)
       .join("\n")
     const optionHtml = options
       .map(
         (option) => `
           <tr>
             <td style="padding:2px 0;color:#9A9288;font-size:13px;vertical-align:top;width:46%">${escapeHtml(option.label)}</td>
-            <td style="padding:2px 0;color:#161616;font-size:13px">${escapeHtml(option.values.join(", "))}</td>
+            <td style="padding:2px 0;color:#161616;font-size:13px">${option.values.map((value) => escapeHtml(value)).join("<br>")}</td>
           </tr>`,
       )
       .join("")

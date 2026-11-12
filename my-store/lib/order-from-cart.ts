@@ -10,7 +10,7 @@ import {
   karabinerQuantitiesTotal,
   orderKarabinersFromQuantities,
 } from "@/lib/karabiner-pricing"
-import { TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID } from "@/lib/catalog-options"
+import { isBeadNecklaceDecorativeColorId, TAG_ONLY_WITH_KARABINER_TAG_MODEL_ID } from "@/lib/catalog-options"
 import type { CreateOrderItemInput } from "@/lib/types/order"
 
 /** Wiersz order_items — rogalik vs klasyczna biżuteria. */
@@ -27,6 +27,7 @@ export type CartItemForOrder = {
   config: {
     tagModel?: string
     beadNecklaceColors?: string[]
+    beadNecklaceDecorativeColor?: string
     ringColor: string
     glowTextColor?: string
     baseOption: string
@@ -143,7 +144,13 @@ export const mapRogalikCartItemToOrderItem = (
     rogalikCordColor: null,
     rogalikBeads: null,
     rogalikCharms: [],
-    beadNecklaceColors: config.beadNecklaceColors ?? [],
+    beadNecklaceColors: (config.beadNecklaceColors ?? []).filter(
+      (id) => !isBeadNecklaceDecorativeColorId(id),
+    ),
+    beadNecklaceDecorativeColor:
+      config.beadNecklaceDecorativeColor?.trim() ||
+      (config.beadNecklaceColors ?? []).find((id) => isBeadNecklaceDecorativeColorId(id)) ||
+      null,
   }
 }
 
@@ -229,7 +236,13 @@ export const mapClassicCartItemToOrderItem = (
     rogalikCordColor: null,
     rogalikBeads: null,
     rogalikCharms: [],
-    beadNecklaceColors: config.beadNecklaceColors ?? [],
+    beadNecklaceColors: (config.beadNecklaceColors ?? []).filter(
+      (id) => !isBeadNecklaceDecorativeColorId(id),
+    ),
+    beadNecklaceDecorativeColor:
+      config.beadNecklaceDecorativeColor?.trim() ||
+      (config.beadNecklaceColors ?? []).find((id) => isBeadNecklaceDecorativeColorId(id)) ||
+      null,
   }
 }
 
