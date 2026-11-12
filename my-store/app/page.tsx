@@ -1021,10 +1021,10 @@ export default function Home() {
 
   const baseColorGridClass = 'grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-10';
   const beadNecklaceColorGridClass =
-    'grid grid-cols-3 gap-4 md:gap-6 items-stretch';
+    'grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 items-stretch';
   /** Szerokość 2 kafli jak w siatce 3× — do wyśrodkowanej pary na dole kroku KORALIKI. */
   const beadNecklaceTwoCenteredTilesRowClass =
-    'mx-auto grid w-[calc((100%-2*1rem)/3*2+1rem)] grid-cols-2 gap-4 md:w-[calc((100%-2*1.5rem)/3*2+1.5rem)] md:gap-6';
+    'mx-auto grid w-[calc((100%-2*0.5rem)/3*2+0.5rem)] grid-cols-2 gap-2 sm:w-[calc((100%-2*1rem)/3*2+1rem)] sm:gap-4 md:w-[calc((100%-2*1.5rem)/3*2+1.5rem)] md:gap-6';
 
   /** Większy prostokąt z grafiką w kaflach (mniej paddingu karty, wyższy aspect). */
   const configuratorTileCardPaddingClass = 'p-2 md:p-4';

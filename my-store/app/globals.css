@@ -130,3 +130,8 @@ body {
     calc(var(--christmas-frame-bar) + 0.55rem)
     calc(var(--christmas-frame-bar) + 0.65rem);
 }
+
+/* Grid: domyślne min-width:auto blokowało kurczenie etykiet w kafelkach. */
+[data-uniform-font-cell] {
+  min-width: 0;
+}

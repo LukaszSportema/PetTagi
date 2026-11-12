@@ -35,13 +35,18 @@ const LINE_HEIGHT = 1.35;
 /** px-0.5 po obu stronach etykiety w kafelku */
 const TILE_TEXT_HORIZONTAL_PAD_PX = 2;
 
+const applyProbeWordWrap = (probe: HTMLSpanElement) => {
+  probe.style.overflowWrap = 'break-word';
+  probe.style.wordBreak = 'break-word';
+  probe.style.hyphens = 'auto';
+};
+
 const syncProbeTypography = (probe: HTMLSpanElement, container: HTMLElement) => {
   const cs = getComputedStyle(container);
   probe.style.fontFamily = cs.fontFamily;
   probe.style.display = 'block';
   probe.style.boxSizing = 'border-box';
-  probe.style.wordBreak = 'normal';
-  probe.style.overflowWrap = 'break-word';
+  applyProbeWordWrap(probe);
   probe.style.fontWeight = '500';
 };
 
@@ -65,7 +70,9 @@ const textFitsTwoLines = (
   probe.style.fontWeight = String(fontWeight);
   probe.textContent = text;
   const lh = parseFloat(getComputedStyle(probe).lineHeight) || fontSizePx * lineHeight;
-  return probe.scrollHeight <= lh * 2 + 1;
+  const fitsHeight = probe.scrollHeight <= lh * 2 + 1;
+  const fitsWidth = probe.scrollWidth <= widthPx + 1;
+  return fitsHeight && fitsWidth;
 };
 
 const uniformFontSizeForTexts = (
@@ -92,9 +99,10 @@ const gridTextAreaWidth = (container: HTMLElement) => {
   const grids = container.querySelectorAll('[data-uniform-font-grid]');
   let minWidth = 0;
   grids.forEach((grid) => {
-    if (grid.children.length === 0) return;
-    const width = textAreaWidthForCell(grid.children[0] as HTMLElement);
-    if (width > 0 && (minWidth === 0 || width < minWidth)) minWidth = width;
+    for (const child of grid.children) {
+      const width = textAreaWidthForCell(child as HTMLElement);
+      if (width > 0 && (minWidth === 0 || width < minWidth)) minWidth = width;
+    }
   });
   return minWidth;
 };
@@ -251,6 +259,9 @@ export function TwoLineFitText({
 
     const fit = () => {
       el.style.lineHeight = String(lineHeight);
+      el.style.overflowWrap = 'break-word';
+      el.style.wordBreak = 'break-word';
+      el.style.hyphens = 'auto';
       const absoluteMin = Math.min(minFontPx, 8);
       let chosen = absoluteMin;
 
@@ -258,7 +269,10 @@ export function TwoLineFitText({
         el.style.fontSize = `${size}px`;
         const lh = parseFloat(getComputedStyle(el).lineHeight) || size * lineHeight;
         const maxHeight = lh * 2 + 1;
-        if (el.scrollHeight <= maxHeight) {
+        const maxWidth = el.clientWidth > 0 ? el.clientWidth : el.parentElement?.clientWidth ?? 0;
+        const fitsHeight = el.scrollHeight <= maxHeight;
+        const fitsWidth = maxWidth <= 0 || el.scrollWidth <= maxWidth + 1;
+        if (fitsHeight && fitsWidth) {
           chosen = size;
           break;
         }
@@ -279,7 +293,7 @@ export function TwoLineFitText({
   return (
     <span
       ref={ref}
-      className={`block w-full px-0.5 ${className}`}
+      className={`block w-full max-w-full overflow-x-clip px-0.5 break-words ${className}`}
       style={{
         fontSize: fontPx,
         lineHeight,
@@ -312,10 +326,11 @@ function UniformOrFitText({
   if (uniformPx != null) {
     return (
       <span
-        className={`block w-full px-0.5 ${className}`}
+        className={`block w-full max-w-full overflow-x-clip px-0.5 break-words ${className}`}
         style={{
           fontSize: uniformPx,
           lineHeight: LINE_HEIGHT,
+          wordBreak: 'break-word',
           ...(reserveTwoLines ? { minHeight: twoLineBlockMinHeight(uniformPx) } : {}),
         }}
       >
