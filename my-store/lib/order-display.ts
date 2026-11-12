@@ -207,6 +207,7 @@ export type OrderItemOptionsSource = Pick<
   | "productSlug"
   | "tagModel"
   | "beadNecklaceColors"
+  | "beadNecklaceDecorativeColor"
   | "ringColor"
   | "baseColor"
   | "baseCharms"
