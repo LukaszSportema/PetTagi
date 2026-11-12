@@ -1,4 +1,10 @@
-import { CLASSIC_TAG_PRODUCT, getCatalogProduct, productLineTitle, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
+import {
+  CHRISTMAS_BOW_PRODUCT,
+  CLASSIC_TAG_PRODUCT,
+  getCatalogProduct,
+  productLineTitle,
+  ROGALIK_TAG_PRODUCT,
+} from "@/lib/catalog"
 import { charmSummaryLine } from "@/lib/charm-pricing"
 import { BASE_OPTIONS, beadNecklaceColorLabels, beadNecklaceDecorativeColorSummaryValues, BEAD_NECKLACE_TAG_MODEL_ID, CHARM_LABEL_OPTIONS, charmMountingLabel, CLASSIC_STRING_OPTIONS, GLOW_STRING_OPTIONS, KARABINER_OPTIONS, nameLayoutLabel, optionLabel, oprawaDisplayAdjective, PREMIUM_STRING_OPTIONS, stopperIdsFromStored, stopperSelectionLabel, stickerLabel, tagModelKarabinersAllUnitsPaid, tagModelLabel, isStringWithoutKarabinerTagModel, isTagOnlyWithKarabinerTagModel } from "@/lib/catalog-options"
 import { ROGALIK_ORDER_RING_COLOR } from "@/lib/order-from-cart"
@@ -587,7 +593,11 @@ export const orderItemOptions = (
     })
   }
 
-  if (item.ringColor && item.ringColor !== "glow") {
+  if (
+    item.ringColor &&
+    item.ringColor !== "glow" &&
+    item.productSlug !== CHRISTMAS_BOW_PRODUCT.slug
+  ) {
     options.push({
       label: "Oprawa",
       values: [oprawaDisplayAdjective(item.ringColor)],

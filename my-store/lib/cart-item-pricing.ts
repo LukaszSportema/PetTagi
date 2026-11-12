@@ -6,7 +6,11 @@ import {
   rogalikBaseUnitPriceForMounting,
   type RogalikMountingBasePrices,
 } from "@/lib/rogalik-admin-pricing"
-import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
+import {
+  classicTagBaseUnitPrice,
+  tagModelBasePricesForProduct,
+  type TagModelBasePrices,
+} from "@/lib/tag-model-pricing"
 
 export const roundMoney = (value: number) => Math.round(value * 100) / 100
 
@@ -16,6 +20,7 @@ export const orderItemBaseUnitPriceFromOrder = (item: {
   ringColor: string
   tagModel?: string | null
   tagModelBasePrices?: TagModelBasePrices
+  christmasBowBasePrices?: TagModelBasePrices
   rogalikMounting?: string | null
   /** Zapis w order_items (od 2026-11). */
   baseUnitPricePln?: number | null
@@ -36,10 +41,18 @@ export const orderItemBaseUnitPriceFromOrder = (item: {
     return baseTagPrice("glow")
   }
   if (product?.configuratorId === "classic-tag") {
+    const stored = item.baseUnitPricePln
+    if (typeof stored === "number" && Number.isFinite(stored) && stored >= 0) {
+      return roundMoney(stored)
+    }
     return classicTagBaseUnitPrice({
       tagModel: item.tagModel,
       ringColor: item.ringColor,
-      tagModelBasePrices: item.tagModelBasePrices,
+      tagModelBasePrices: tagModelBasePricesForProduct(
+        item.productSlug,
+        item.tagModelBasePrices,
+        item.christmasBowBasePrices,
+      ),
     })
   }
   return baseTagPrice(item.ringColor)
@@ -51,6 +64,7 @@ export const cartItemBaseUnitPrice = (
   tagModelBasePrices?: TagModelBasePrices,
   rogalikMountingBasePrices?: RogalikMountingBasePrices,
   legacyRogalikSingleBasePln?: number,
+  christmasBowBasePrices?: TagModelBasePrices,
 ): number => {
   const product = getCatalogProduct(item.productSlug)
   if (product?.configuratorId === "rogalik-tag" || item.productSlug === ROGALIK_TAG_PRODUCT.slug) {
@@ -75,7 +89,11 @@ export const cartItemBaseUnitPrice = (
     return classicTagBaseUnitPrice({
       tagModel: item.config.tagModel,
       ringColor: item.config.ringColor ?? "złoty",
-      tagModelBasePrices,
+      tagModelBasePrices: tagModelBasePricesForProduct(
+        item.productSlug,
+        tagModelBasePrices,
+        christmasBowBasePrices,
+      ),
     })
   }
   return baseTagPrice(item.config.ringColor)

@@ -1,3 +1,4 @@
+import { CHRISTMAS_BOW_PRODUCT } from "@/lib/catalog"
 import { TAG_MODEL_OPTIONS } from "@/lib/catalog-options"
 import { baseTagPrice } from "@/lib/pricing"
 
@@ -100,6 +101,14 @@ export const tagModelStartPricesToJson = (prices: TagModelStartPrices): Record<s
   }
   return payload
 }
+
+/** Cennik modeli kokardki jest osobny od biżuterii; brak mapy kokardki = cennik biżuterii. */
+export const tagModelBasePricesForProduct = (
+  productSlug: string | null | undefined,
+  jewelry?: TagModelBasePrices,
+  christmasBow?: TagModelBasePrices,
+): TagModelBasePrices | undefined =>
+  productSlug === CHRISTMAS_BOW_PRODUCT.slug ? (christmasBow ?? jewelry) : jewelry
 
 export const tagModelBasePricesToJson = (prices: TagModelBasePrices): Record<string, number> => {
   const payload: Record<string, number> = {}

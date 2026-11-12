@@ -29,6 +29,16 @@ export const CLASSIC_TAG_PRODUCT: CatalogProduct = {
   ],
 }
 
+export const CHRISTMAS_BOW_PRODUCT: CatalogProduct = {
+  slug: "kokardka-swiateczna",
+  name: "Kokardka świąteczna",
+  description: "Świąteczna adresówka w kształcie kokardki.",
+  emoji: "🎀",
+  cta: "Skonfiguruj własną",
+  configuratorId: "classic-tag",
+  gallery: [{ type: "image", src: "/produkty/glowne_kokarda.jpg" }],
+}
+
 export const LEGACY_CLASSIC_TAG_SLUG = "adresowka-klasyczna"
 export const LEGACY_CLASSIC_TAG_NAME = "Adresówka klasyczna"
 
@@ -65,6 +75,7 @@ export const ROGALIK_TAG_PRODUCT: CatalogProduct = {
 
 export const CATALOG_PRODUCTS: CatalogProduct[] = [
   CLASSIC_TAG_PRODUCT,
+  CHRISTMAS_BOW_PRODUCT,
   ROGALIK_TAG_PRODUCT,
   GLOW_TAG_PRODUCT,
 ]

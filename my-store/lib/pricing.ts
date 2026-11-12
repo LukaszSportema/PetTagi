@@ -17,7 +17,11 @@ import {
   type KarabinerPricingOptions,
 } from "@/lib/karabiner-pricing"
 import type { RogalikMountingBasePrices } from "@/lib/rogalik-mounting-ids"
-import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
+import {
+  classicTagBaseUnitPrice,
+  tagModelBasePricesForProduct,
+  type TagModelBasePrices,
+} from "@/lib/tag-model-pricing"
 export { EXTRA_CHARM_PRICE } from "@/lib/pricing-constants"
 
 export const BASE_TAG_PRICES = {
@@ -175,6 +179,7 @@ export type ItemQuantityParts = {
 export type ItemRevenuePricingContext = {
   charmPrices?: CharmUnitPrices
   tagModelBasePrices?: TagModelBasePrices
+  christmasBowBasePrices?: TagModelBasePrices
   /** Fallback gdy brak snapshotu w wierszu zamówienia (jedna wartość — starsze zamówienia). */
   rogalikBaseUnitPricePln?: number
   /** Fallback per wariant mocowania (nowsze ustawienia). */
@@ -210,7 +215,11 @@ export const itemRevenueParts = (
       ? classicTagBaseUnitPrice({
           tagModel: item.tagModel,
           ringColor,
-          tagModelBasePrices: ctx.tagModelBasePrices,
+          tagModelBasePrices: tagModelBasePricesForProduct(
+            productSlug,
+            ctx.tagModelBasePrices,
+            ctx.christmasBowBasePrices,
+          ),
         })
       : baseTagPrice(ringColor === "glow" ? "glow" : ringColor)
 

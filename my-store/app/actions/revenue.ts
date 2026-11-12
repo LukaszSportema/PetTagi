@@ -4,7 +4,12 @@ import { buildQuantityRows, buildRevenueRows, type RevenueOrder, type RevenueRow
 import { buildDefaultCharmUnitPrices } from "@/lib/charm-unit-pricing"
 import { DEFAULT_ROGALIK_MOUNTING_BASE_PRICES } from "@/lib/rogalik-admin-pricing"
 import { DEFAULT_TAG_MODEL_BASE_PRICES } from "@/lib/tag-model-pricing"
-import { getCharmUnitPrices, getRogalikMountingBasePrices, getTagModelBasePrices } from "@/app/actions/settings"
+import {
+  getCharmUnitPrices,
+  getChristmasBowBasePrices,
+  getRogalikMountingBasePrices,
+  getTagModelBasePrices,
+} from "@/app/actions/settings"
 import {
   DEFAULT_PAYMENT_RECIPIENT,
   parsePaymentRecipientId,
@@ -149,9 +154,10 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
       : []
   const orders = rows.map(mapOrder)
 
-  const [charmPricesResult, tagModelBasePricesResult, rogalikMountingBaseResult] = await Promise.all([
+  const [charmPricesResult, tagModelBasePricesResult, christmasBowBaseResult, rogalikMountingBaseResult] = await Promise.all([
     getCharmUnitPrices(),
     getTagModelBasePrices(),
+    getChristmasBowBasePrices(),
     getRogalikMountingBasePrices(),
   ])
   const revenuePricing = {
@@ -160,6 +166,9 @@ export async function getRevenueReport(): Promise<RevenueReportResult> {
       : buildDefaultCharmUnitPrices(),
     tagModelBasePrices: tagModelBasePricesResult.ok
       ? tagModelBasePricesResult.prices
+      : DEFAULT_TAG_MODEL_BASE_PRICES,
+    christmasBowBasePrices: christmasBowBaseResult.ok
+      ? christmasBowBaseResult.prices
       : DEFAULT_TAG_MODEL_BASE_PRICES,
     rogalikMountingBasePrices: rogalikMountingBaseResult.ok
       ? rogalikMountingBaseResult.prices

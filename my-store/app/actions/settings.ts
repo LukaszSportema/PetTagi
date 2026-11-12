@@ -248,6 +248,103 @@ export async function setTagModelBasePrices(
   }
 }
 
+const christmasBowPriceMissing =
+  "Brak cennika kokardki w Supabase. Uruchom migrację christmas_bow_model_prices."
+
+export async function getChristmasBowStartPrices(): Promise<GetTagModelStartPricesResult> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("get_christmas_bow_start_prices")
+    if (error) {
+      console.error("get_christmas_bow_start_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("get_christmas_bow_start_prices")
+          ? christmasBowPriceMissing
+          : "Nie udało się pobrać cennika kokardki.",
+      }
+    }
+    return { ok: true, prices: parseTagModelStartPrices(data) }
+  } catch (error) {
+    console.error("get_christmas_bow_start_prices failed", error)
+    return { ok: false, message: "Nie udało się pobrać cennika kokardki." }
+  }
+}
+
+export async function setChristmasBowStartPrices(
+  prices: TagModelStartPrices,
+): Promise<SetTagModelStartPricesResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+  const payload = tagModelStartPricesToJson(parseTagModelStartPrices(prices))
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("admin_set_christmas_bow_start_prices", {
+      p_prices: payload,
+    })
+    if (error) {
+      console.error("admin_set_christmas_bow_start_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("christmas_bow")
+          ? christmasBowPriceMissing
+          : "Nie udało się zapisać cennika kokardki.",
+      }
+    }
+    return { ok: true, prices: parseTagModelStartPrices(data) }
+  } catch (error) {
+    console.error("admin_set_christmas_bow_start_prices failed", error)
+    return { ok: false, message: "Nie udało się zapisać cennika kokardki." }
+  }
+}
+
+export async function getChristmasBowBasePrices(): Promise<GetTagModelBasePricesResult> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("get_christmas_bow_base_prices")
+    if (error) {
+      console.error("get_christmas_bow_base_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("get_christmas_bow_base_prices")
+          ? christmasBowPriceMissing
+          : "Nie udało się pobrać cennika bazowego kokardki.",
+      }
+    }
+    return { ok: true, prices: parseTagModelBasePrices(data) }
+  } catch (error) {
+    console.error("get_christmas_bow_base_prices failed", error)
+    return { ok: false, message: "Nie udało się pobrać cennika bazowego kokardki." }
+  }
+}
+
+export async function setChristmasBowBasePrices(
+  prices: TagModelBasePrices,
+): Promise<SetTagModelBasePricesResult> {
+  const auth = await requireAdmin()
+  if (!auth.ok) return { ok: false, message: auth.message }
+  const payload = tagModelBasePricesToJson(parseTagModelBasePrices(prices))
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("admin_set_christmas_bow_base_prices", {
+      p_prices: payload,
+    })
+    if (error) {
+      console.error("admin_set_christmas_bow_base_prices failed", error)
+      return {
+        ok: false,
+        message: error.message.includes("christmas_bow")
+          ? christmasBowPriceMissing
+          : "Nie udało się zapisać cennika bazowego kokardki.",
+      }
+    }
+    return { ok: true, prices: parseTagModelBasePrices(data) }
+  } catch (error) {
+    console.error("admin_set_christmas_bow_base_prices failed", error)
+    return { ok: false, message: "Nie udało się zapisać cennika bazowego kokardki." }
+  }
+}
+
 export type GetRogalikMountingStartPricesResult =
   | { ok: true; prices: RogalikMountingStartPrices }
   | { ok: false; message: string }

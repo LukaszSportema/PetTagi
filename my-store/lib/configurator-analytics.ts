@@ -1,4 +1,4 @@
-import { CLASSIC_TAG_PRODUCT, LEGACY_CLASSIC_TAG_SLUG } from "@/lib/catalog"
+import { CHRISTMAS_BOW_PRODUCT, getCatalogProduct } from "@/lib/catalog"
 import type { CharmMountingId } from "@/lib/catalog-options"
 import { tagModelLabel, stickerLabel } from "@/lib/catalog-options"
 
@@ -56,6 +56,7 @@ export type ConfiguratorFormSnapshot = {
 }
 
 export const stepLabelForProduct = (stepKey: string, productSlug: string) => {
+  if (productSlug === CHRISTMAS_BOW_PRODUCT.slug && stepKey === "1") return "KOLOR"
   if (isClassicJewelrySlug(productSlug) && stepKey === "1") return "KSZTAŁT I KOLOR"
   if (isClassicJewelrySlug(productSlug) && stepKey === "9") return "GRAFIKI I DODATKI"
   if ((isClassicJewelrySlug(productSlug) || productSlug.includes("glow")) && stepKey === "3") {
@@ -69,7 +70,7 @@ export const stepLabelForProduct = (stepKey: string, productSlug: string) => {
 }
 
 const isClassicJewelrySlug = (productSlug: string) =>
-  productSlug === CLASSIC_TAG_PRODUCT.slug || productSlug === LEGACY_CLASSIC_TAG_SLUG
+  getCatalogProduct(productSlug)?.configuratorId === "classic-tag"
 
 const CLASSIC_JEWELRY_STEP_KEY_ORDER = [
   "13",

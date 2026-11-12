@@ -21,7 +21,12 @@ import {
 } from "@/lib/payment"
 import { orderDiscountCodeSummary } from "@/lib/order-discount-display"
 import type { CreateOrderInput } from "@/lib/types/order"
-import { getCharmUnitPrices, getRogalikMountingBasePrices, getTagModelBasePrices } from "@/app/actions/settings"
+import {
+  getCharmUnitPrices,
+  getChristmasBowBasePrices,
+  getRogalikMountingBasePrices,
+  getTagModelBasePrices,
+} from "@/app/actions/settings"
 import {
 } from "@/lib/catalog-options"
 import { getCatalogProduct } from "@/lib/catalog"
@@ -69,9 +74,10 @@ export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput): Promis
     return false
   }
 
-  const [charmPricesResult, tagModelBasePricesResult, rogalikMountingBaseResult] = await Promise.all([
+  const [charmPricesResult, tagModelBasePricesResult, christmasBowBaseResult, rogalikMountingBaseResult] = await Promise.all([
     getCharmUnitPrices(),
     getTagModelBasePrices(),
+    getChristmasBowBasePrices(),
     getRogalikMountingBasePrices(),
   ])
   const charmPrices: CharmUnitPrices = charmPricesResult.ok
@@ -80,10 +86,13 @@ export async function sendOrderPlacedEmail(input: OrderPlacedEmailInput): Promis
   const tagModelBasePrices = tagModelBasePricesResult.ok
     ? tagModelBasePricesResult.prices
     : DEFAULT_TAG_MODEL_BASE_PRICES
+  const christmasBowBasePrices = christmasBowBaseResult.ok
+    ? christmasBowBaseResult.prices
+    : DEFAULT_TAG_MODEL_BASE_PRICES
   const rogalikMountingBaseFallback = rogalikMountingBaseResult.ok
     ? rogalikMountingBaseResult.prices
     : DEFAULT_ROGALIK_MOUNTING_BASE_PRICES
-  const { html, text } = renderOrderPlacedEmail(input, charmPrices, tagModelBasePrices, {
+  const { html, text } = renderOrderPlacedEmail(input, charmPrices, tagModelBasePrices, christmasBowBasePrices, {
     mountingBasePrices: rogalikMountingBaseFallback,
   })
   const resend = new Resend(apiKey)
@@ -107,6 +116,7 @@ function renderOrderPlacedEmail(
   input: OrderPlacedEmailInput,
   charmPrices: CharmUnitPrices,
   tagModelBasePrices: import("@/lib/tag-model-pricing").TagModelBasePrices,
+  christmasBowBasePrices: import("@/lib/tag-model-pricing").TagModelBasePrices,
   rogalikBaseFallbacks: RogalikOrderPriceFallbacks,
 ) {
   const recipient = PAYMENT_RECIPIENTS[input.paymentRecipient]
@@ -138,7 +148,7 @@ function renderOrderPlacedEmail(
     const priceLines = isRogalikOrderItem(item)
       ? rogalikOrderItemPriceLines(item, charmPrices, rogalikBaseFallbacks)
       : configuratorId === "classic-tag" || configuratorId === "glow-tag"
-        ? classicOrderItemPriceLines(item, { charmPrices, tagModelBasePrices })
+        ? classicOrderItemPriceLines(item, { charmPrices, tagModelBasePrices, christmasBowBasePrices })
         : []
     const priceLineLabel = (label: string, detail?: string) =>
       detail ? `${label} (${detail})` : label

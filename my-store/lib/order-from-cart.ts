@@ -157,6 +157,7 @@ export const mapRogalikCartItemToOrderItem = (
 export const mapClassicCartItemToOrderItem = (
   item: CartItemForOrder,
   tagModelBasePrices?: TagModelBasePrices,
+  christmasBowBasePrices?: TagModelBasePrices,
 ): CreateOrderItemInput => {
   const config = item.config
   const product = getCatalogProduct(item.productSlug)
@@ -199,7 +200,13 @@ export const mapClassicCartItemToOrderItem = (
   return {
     quantity: item.quantity,
     unitPrice: item.price,
-    baseUnitPrice: cartItemBaseUnitPrice(item, tagModelBasePrices),
+    baseUnitPrice: cartItemBaseUnitPrice(
+      item,
+      tagModelBasePrices,
+      undefined,
+      undefined,
+      christmasBowBasePrices,
+    ),
     imageUrl: item.image,
     productSlug: item.productSlug,
     productName: item.productName,
@@ -251,6 +258,7 @@ export const cartItemToCreateOrderItem = (
   tagModelBasePrices?: TagModelBasePrices,
   rogalikMountingBasePrices?: RogalikMountingBasePrices,
   legacyRogalikSingleBasePln?: number,
+  christmasBowBasePrices?: TagModelBasePrices,
 ): CreateOrderItemInput => {
   const mapped = isRogalikCartItem(item)
     ? mapRogalikCartItemToOrderItem(
@@ -259,7 +267,7 @@ export const cartItemToCreateOrderItem = (
         rogalikMountingBasePrices,
         legacyRogalikSingleBasePln,
       )
-    : mapClassicCartItemToOrderItem(item, tagModelBasePrices)
+    : mapClassicCartItemToOrderItem(item, tagModelBasePrices, christmasBowBasePrices)
   return {
     ...mapped,
     baseUnitPrice: cartItemBaseUnitPrice(
@@ -267,6 +275,7 @@ export const cartItemToCreateOrderItem = (
       tagModelBasePrices,
       rogalikMountingBasePrices,
       legacyRogalikSingleBasePln,
+      christmasBowBasePrices,
     ),
   }
 }

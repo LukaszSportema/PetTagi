@@ -11,11 +11,15 @@ import {
 import { ROGALIK_MOUNTING_TILE_LABELS, ROGALIK_MOUNTING_OPTIONS } from '@/lib/rogalik-options';
 import {
   getCharmUnitPrices,
+  getChristmasBowBasePrices,
+  getChristmasBowStartPrices,
   getRogalikMountingBasePrices,
   getRogalikMountingStartPrices,
   getTagModelBasePrices,
   getTagModelStartPrices,
   setCharmUnitPrices,
+  setChristmasBowBasePrices,
+  setChristmasBowStartPrices,
   setRogalikMountingBasePrices,
   setRogalikMountingStartPrices,
   setTagModelBasePrices,
@@ -89,6 +93,7 @@ const charmDraftFromPrices = (prices: CharmUnitPrices): Record<string, string> =
 
 const priceListTabs = [
   { id: 'tag-models' as const, label: 'Biżuteryjna' },
+  { id: 'christmas-bow' as const, label: 'Kokardka' },
   { id: 'rogalik' as const, label: 'Rogalik' },
   { id: 'charms' as const, label: 'Charms' },
 ];
@@ -164,16 +169,34 @@ export function PriceListsPanel() {
     return initial as Record<RogalikMountingId, string>;
   });
 
+  const [bowDraft, setBowDraft] = useState<Record<TagModelId, string>>(() => {
+    const initial: Partial<Record<TagModelId, string>> = {};
+    for (const id of Object.keys(DEFAULT_TAG_MODEL_START_PRICES) as TagModelId[]) {
+      initial[id] = String(DEFAULT_TAG_MODEL_START_PRICES[id]);
+    }
+    return initial as Record<TagModelId, string>;
+  });
+  const [bowBaseDraft, setBowBaseDraft] = useState<Record<TagModelId, string>>(() => {
+    const initial: Partial<Record<TagModelId, string>> = {};
+    for (const id of Object.keys(DEFAULT_TAG_MODEL_BASE_PRICES) as TagModelId[]) {
+      initial[id] = String(DEFAULT_TAG_MODEL_BASE_PRICES[id]);
+    }
+    return initial as Record<TagModelId, string>;
+  });
   const [isLoadingTags, setIsLoadingTags] = useState(true);
+  const [isLoadingBow, setIsLoadingBow] = useState(true);
   const [isLoadingCharms, setIsLoadingCharms] = useState(true);
   const [isLoadingRogalik, setIsLoadingRogalik] = useState(true);
   const [isSavingTags, setIsSavingTags] = useState(false);
+  const [isSavingBow, setIsSavingBow] = useState(false);
   const [isSavingCharms, setIsSavingCharms] = useState(false);
   const [isSavingRogalik, setIsSavingRogalik] = useState(false);
   const [tagError, setTagError] = useState('');
+  const [bowError, setBowError] = useState('');
   const [charmError, setCharmError] = useState('');
   const [rogalikError, setRogalikError] = useState('');
   const [tagSavedMessage, setTagSavedMessage] = useState('');
+  const [bowSavedMessage, setBowSavedMessage] = useState('');
   const [charmSavedMessage, setCharmSavedMessage] = useState('');
   const [rogalikSavedMessage, setRogalikSavedMessage] = useState('');
 
@@ -200,6 +223,37 @@ export function PriceListsPanel() {
             nextBase[option.id] = String(baseResult.prices[option.id]);
           }
           setTagBaseDraft(nextBase as Record<TagModelId, string>);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getChristmasBowStartPrices(), getChristmasBowBasePrices()]).then(
+      ([startResult, baseResult]) => {
+        if (cancelled) return;
+        setIsLoadingBow(false);
+        if (!startResult.ok) {
+          setBowError(startResult.message);
+        } else {
+          const next: Partial<Record<TagModelId, string>> = {};
+          for (const option of TAG_MODEL_OPTIONS) {
+            next[option.id] = String(startResult.prices[option.id]);
+          }
+          setBowDraft(next as Record<TagModelId, string>);
+        }
+        if (!baseResult.ok) {
+          setBowError((prev) => prev || baseResult.message);
+        } else {
+          const nextBase: Partial<Record<TagModelId, string>> = {};
+          for (const option of TAG_MODEL_OPTIONS) {
+            nextBase[option.id] = String(baseResult.prices[option.id]);
+          }
+          setBowBaseDraft(nextBase as Record<TagModelId, string>);
         }
       },
     );
@@ -313,6 +367,40 @@ export function PriceListsPanel() {
     setTagDraft(next as Record<TagModelId, string>);
     setTagBaseDraft(nextBase as Record<TagModelId, string>);
     setTagSavedMessage('Zapisano cennik modeli.');
+  };
+
+  const handleSaveBow = async () => {
+    setBowSavedMessage('');
+    const startPrices = parseTagModelPriceDraft(bowDraft);
+    const basePrices = parseTagModelPriceDraft(bowBaseDraft) as TagModelBasePrices | null;
+    if (!startPrices || !basePrices) {
+      setBowError('Podaj poprawne ceny (liczba ≥ 0) dla wszystkich modeli w obu sekcjach.');
+      return;
+    }
+    setBowError('');
+    setIsSavingBow(true);
+    const [startResult, baseResult] = await Promise.all([
+      setChristmasBowStartPrices(startPrices),
+      setChristmasBowBasePrices(basePrices),
+    ]);
+    setIsSavingBow(false);
+    if (!startResult.ok) {
+      setBowError(startResult.message);
+      return;
+    }
+    if (!baseResult.ok) {
+      setBowError(baseResult.message);
+      return;
+    }
+    const next: Partial<Record<TagModelId, string>> = {};
+    const nextBase: Partial<Record<TagModelId, string>> = {};
+    for (const option of TAG_MODEL_OPTIONS) {
+      next[option.id] = String(startResult.prices[option.id]);
+      nextBase[option.id] = String(baseResult.prices[option.id]);
+    }
+    setBowDraft(next as Record<TagModelId, string>);
+    setBowBaseDraft(nextBase as Record<TagModelId, string>);
+    setBowSavedMessage('Zapisano cennik kokardki.');
   };
 
   const handleSaveRogalik = async () => {
@@ -488,6 +576,96 @@ export function PriceListsPanel() {
               className="px-6 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors disabled:opacity-60"
             >
               {isSavingTags ? 'Zapisywanie…' : 'Zapisz cennik modeli'}
+            </button>
+          </div>
+        </section>
+      ) : activeTab === 'christmas-bow' ? (
+        <section className="space-y-8">
+          <div className="space-y-4">
+            <p className="text-sm text-[#7A736C] max-w-2xl">
+              Ceny startowe na kaflach kroku <strong className="font-medium text-[#161616]">Model</strong>{' '}
+              w konfiguratorze <strong className="font-medium text-[#161616]">Kokardki świątecznej</strong>{' '}
+              (format „od X zł”). Nie zmieniają cennika adresówki biżuteryjnej.
+            </p>
+            {isLoadingBow ? (
+              <p className="text-sm text-[#7A736C]">Ładowanie…</p>
+            ) : (
+              <div className="border border-[#D6C7AE] bg-white divide-y divide-[#EBE4D6]">
+                {TAG_MODEL_OPTIONS.map((option) => (
+                  <label
+                    key={option.id}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 px-4 py-4 md:px-6"
+                  >
+                    <span className="text-sm text-[#161616] sm:flex-1">{option.label}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs uppercase tracking-wider text-[#9A9288]">od</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="decimal"
+                        disabled={isSavingBow}
+                        value={bowDraft[option.id]}
+                        onChange={(event) => {
+                          setBowDraft((current) => ({ ...current, [option.id]: event.target.value }));
+                          setBowSavedMessage('');
+                        }}
+                        className="w-24 rounded-none border border-[#D6C7AE] bg-[#F9F5ED] px-3 py-2 text-sm text-[#161616] tabular-nums focus:outline-none focus:border-[#C4A574] disabled:opacity-60"
+                      />
+                      <span className="text-sm text-[#7A736C]">zł</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-4">
+            <p className="text-sm text-[#7A736C] max-w-2xl">
+              <strong className="font-medium text-[#161616]">Cena bazowa</strong> konfiguracji kokardki po
+              wyborze modelu — punkt wyjścia w podsumowaniu, koszyku i zamówieniu (bez dopłat za dodatki).
+            </p>
+            {isLoadingBow ? null : (
+              <div className="border border-[#D6C7AE] bg-white divide-y divide-[#EBE4D6]">
+                {TAG_MODEL_OPTIONS.map((option) => (
+                  <label
+                    key={`bow-base-${option.id}`}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 px-4 py-4 md:px-6"
+                  >
+                    <span className="text-sm text-[#161616] sm:flex-1">{option.label}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="decimal"
+                        disabled={isSavingBow}
+                        value={bowBaseDraft[option.id]}
+                        onChange={(event) => {
+                          setBowBaseDraft((current) => ({
+                            ...current,
+                            [option.id]: event.target.value,
+                          }));
+                          setBowSavedMessage('');
+                        }}
+                        className="w-24 rounded-none border border-[#D6C7AE] bg-[#F9F5ED] px-3 py-2 text-sm text-[#161616] tabular-nums focus:outline-none focus:border-[#C4A574] disabled:opacity-60"
+                      />
+                      <span className="text-sm text-[#7A736C]">zł</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          {bowError ? <p className="text-sm text-red-500">{bowError}</p> : null}
+          {bowSavedMessage ? <p className="text-sm text-[#3A5A40]">{bowSavedMessage}</p> : null}
+          <div>
+            <button
+              type="button"
+              disabled={isLoadingBow || isSavingBow}
+              onClick={() => void handleSaveBow()}
+              className="px-6 py-2.5 rounded-none bg-[#3A5A40] text-[#F4EFE6] text-sm hover:bg-[#2E4833] transition-colors disabled:opacity-60"
+            >
+              {isSavingBow ? 'Zapisywanie…' : 'Zapisz cennik kokardki'}
             </button>
           </div>
         </section>

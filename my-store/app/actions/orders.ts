@@ -6,6 +6,7 @@ import {
   getExpressShippingEnabled,
   getPaymentRecipient,
   getCharmUnitPrices,
+  getChristmasBowBasePrices,
   getTagModelBasePrices,
   getRogalikMountingBasePrices,
 } from "@/app/actions/settings"
@@ -124,9 +125,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     discountLabel = discountCheck.label
   }
 
-  const [charmPricesResult, tagModelBasePricesResult, rogalikMountingBaseResult] = await Promise.all([
+  const [charmPricesResult, tagModelBasePricesResult, christmasBowBaseResult, rogalikMountingBaseResult] = await Promise.all([
     getCharmUnitPrices(),
     getTagModelBasePrices(),
+    getChristmasBowBasePrices(),
     getRogalikMountingBasePrices(),
   ])
   const orderPricing = {
@@ -135,6 +137,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       : buildDefaultCharmUnitPrices(),
     tagModelBasePrices: tagModelBasePricesResult.ok
       ? tagModelBasePricesResult.prices
+      : DEFAULT_TAG_MODEL_BASE_PRICES,
+    christmasBowBasePrices: christmasBowBaseResult.ok
+      ? christmasBowBaseResult.prices
       : DEFAULT_TAG_MODEL_BASE_PRICES,
     rogalikMountingBasePrices: rogalikMountingBaseResult.ok
       ? rogalikMountingBaseResult.prices

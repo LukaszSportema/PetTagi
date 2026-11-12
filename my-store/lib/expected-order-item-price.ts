@@ -25,7 +25,11 @@ import {
   stringSizeFromNeckCm,
   type PricedOrderItem,
 } from "@/lib/pricing"
-import { classicTagBaseUnitPrice, type TagModelBasePrices } from "@/lib/tag-model-pricing"
+import {
+  classicTagBaseUnitPrice,
+  tagModelBasePricesForProduct,
+  type TagModelBasePrices,
+} from "@/lib/tag-model-pricing"
 import { BEAD_NECKLACE_TAG_MODEL_ID, tagModelKarabinersAllUnitsPaid, tagModelSkipsStringAndStopperAddonCharges } from "@/lib/catalog-options"
 import { isBeadNecklaceDecorativeColorId } from "@/lib/catalog-options"
 import { beadNecklaceCostPln } from "@/lib/bead-necklace-pricing"
@@ -34,6 +38,7 @@ import type { CreateOrderItemInput } from "@/lib/types/order"
 export type OrderPricingContext = {
   charmPrices?: CharmUnitPrices
   tagModelBasePrices?: TagModelBasePrices
+  christmasBowBasePrices?: TagModelBasePrices
   rogalikBaseUnitPricePln?: number
   rogalikMountingBasePrices?: RogalikMountingBasePrices
 }
@@ -75,7 +80,11 @@ export const expectedOrderItemBaseUnitPrice = (
     return classicTagBaseUnitPrice({
       tagModel: item.tagModel,
       ringColor: item.ringColor,
-      tagModelBasePrices: ctx.tagModelBasePrices,
+      tagModelBasePrices: tagModelBasePricesForProduct(
+        item.productSlug,
+        ctx.tagModelBasePrices,
+        ctx.christmasBowBasePrices,
+      ),
     })
   }
   return baseTagPrice(item.ringColor)

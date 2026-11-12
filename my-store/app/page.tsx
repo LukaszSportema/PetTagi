@@ -8,6 +8,8 @@ import { createOrder } from './actions/orders';
 import {
   getExpressShippingEnabled,
   getCharmUnitPrices,
+  getChristmasBowBasePrices,
+  getChristmasBowStartPrices,
   getRogalikMountingBasePrices,
   getRogalikMountingStartPrices,
   getTagModelBasePrices,
@@ -77,6 +79,7 @@ import {
 } from '@/lib/payment';
 import {
   CATALOG_PRODUCTS,
+  CHRISTMAS_BOW_PRODUCT,
   CLASSIC_TAG_PRODUCT,
   GLOW_TAG_PRODUCT,
   ROGALIK_TAG_PRODUCT,
@@ -166,6 +169,7 @@ import {
   GLOW_BASE_CATALOG,
   GLOW_STRING_CATALOG,
   GLOW_TEXT_OPTIONS,
+  CHRISTMAS_BOW_COLOR_CATALOG,
   GOLD_BASE_CATALOG,
   GOLD_BASE_JEWELRY_CHRISTMAS_IDS,
   karabinersForRingColor,
@@ -339,6 +343,15 @@ const formDataForProduct = (slug: string): FormDataState => {
       charmOption: '',
       wantSticker: 'nie',
       stickerOption: '',
+    };
+  }
+  if (slug === CHRISTMAS_BOW_PRODUCT.slug) {
+    return {
+      ...initialFormData,
+      tagModel: '',
+      ringColor: 'złoty',
+      baseOption: '',
+      charmOption: '',
     };
   }
   if (slug === ROGALIK_TAG_PRODUCT.slug) {
@@ -591,6 +604,12 @@ export default function Home() {
   const [tagModelBasePrices, setTagModelBasePrices] = useState<TagModelBasePrices>(
     DEFAULT_TAG_MODEL_BASE_PRICES,
   );
+  const [christmasBowStartPrices, setChristmasBowStartPrices] = useState<TagModelStartPrices>(
+    DEFAULT_TAG_MODEL_START_PRICES,
+  );
+  const [christmasBowBasePrices, setChristmasBowBasePrices] = useState<TagModelBasePrices>(
+    DEFAULT_TAG_MODEL_BASE_PRICES,
+  );
   const [rogalikMountingStartPrices, setRogalikMountingStartPrices] =
     useState<RogalikMountingStartPrices>(DEFAULT_ROGALIK_MOUNTING_START_PRICES);
   const [rogalikMountingBasePrices, setRogalikMountingBasePrices] =
@@ -606,6 +625,7 @@ export default function Home() {
 
   const activeProduct = getCatalogProduct(activeProductSlug) ?? CLASSIC_TAG_PRODUCT;
   const isClassicTagConfigurator = activeProduct.configuratorId === 'classic-tag';
+  const isChristmasBowConfigurator = activeProduct.slug === CHRISTMAS_BOW_PRODUCT.slug;
   const isGlowTagConfigurator = activeProduct.configuratorId === 'glow-tag';
   const isRogalikTagConfigurator = activeProduct.configuratorId === 'rogalik-tag';
   const karabinerRingKey = karabinerCatalogRingKey({
@@ -685,7 +705,9 @@ export default function Home() {
       ? classicTagBaseUnitPrice({
           tagModel: formData.tagModel,
           ringColor: formData.ringColor,
-          tagModelBasePrices,
+          tagModelBasePrices: isChristmasBowConfigurator
+            ? christmasBowBasePrices
+            : tagModelBasePrices,
         })
       : baseTagPrice('glow');
   const oprawaKwiatSurcharge = isClassicTagConfigurator
@@ -936,6 +958,9 @@ export default function Home() {
   ).filter((step) => step && !skippedStepIds.includes(step.id));
   const classicStepsInfo = visibleClassicSteps.map((step, index) => {
     const normalizedStep = { ...step, id: index + 1 };
+    if (isChristmasBowConfigurator && step.id === 1) {
+      return { ...normalizedStep, label: 'KOLOR', shortLabel: 'KOLOR' };
+    }
     if (isClassicTagConfigurator && step.id === 1) {
       return { ...normalizedStep, label: 'KSZTAŁT I KOLOR', shortLabel: 'KSZTAŁT I KOLOR' };
     }
@@ -1296,7 +1321,17 @@ export default function Home() {
         return;
       }
     }
-    if (isClassicTagConfigurator && contentStep === 1) {
+    if (isChristmasBowConfigurator && contentStep === 1) {
+      setShowBaseErrors(true);
+      const baseValid =
+        formData.baseOption.trim() !== '' &&
+        selectedBases.some((base) => base.id === formData.baseOption);
+      if (!baseValid) {
+        scrollToConfiguratorSection('classic-base-choice');
+        return;
+      }
+    }
+    if (isClassicTagConfigurator && !isChristmasBowConfigurator && contentStep === 1) {
       setShowRingErrors(true);
       setShowBaseErrors(true);
       if (!formData.ringColor.trim()) {
@@ -1512,7 +1547,17 @@ export default function Home() {
     return goldBases;
   };
 
-  const selectedBases = isGlowTagConfigurator ? glowBases : basesForRing(formData.ringColor);
+  const christmasBowBases: ConfiguratorBaseOption[] = CHRISTMAS_BOW_COLOR_CATALOG.map((item) => ({
+    id: item.id,
+    title: item.label,
+    image: item.image,
+  }));
+
+  const selectedBases = isChristmasBowConfigurator
+    ? christmasBowBases
+    : isGlowTagConfigurator
+      ? glowBases
+      : basesForRing(formData.ringColor);
 
   const basePreviewImage = (base: ConfiguratorBaseOption) =>
     base.images?.[0] ?? base.image;
@@ -2252,7 +2297,7 @@ export default function Home() {
     if (formData.tagModel.trim()) {
       options.push({ label: 'Model', values: [tagModelLabel(formData.tagModel)] });
     }
-    if (!isGlowTagConfigurator) {
+    if (!isGlowTagConfigurator && !isChristmasBowConfigurator) {
       options.push({ label: 'Oprawa', values: [oprawaLabel(formData.ringColor)] });
     }
     options.push({
@@ -2506,6 +2551,7 @@ export default function Home() {
       tagModelBasePrices,
       undefined,
       isRogalikCartItem(item) ? rogalikCartLegacyBasePln(item) : undefined,
+      christmasBowBasePrices,
     ),
   }));
   const cartProductsValueBeforeDiscount = cartDiscountLines.reduce(
@@ -2677,6 +2723,7 @@ export default function Home() {
           tagModelBasePrices,
           undefined,
           isRogalikCartItem(item) ? rogalikCartLegacyBasePln(item) : undefined,
+          christmasBowBasePrices,
         ),
       ),
     });
@@ -2878,7 +2925,10 @@ export default function Home() {
           </div>
         )}
 
-        {isClassicTagConfigurator && formData.ringColor.trim() && formData.ringColor !== 'glow' && (
+        {isClassicTagConfigurator &&
+          !isChristmasBowConfigurator &&
+          formData.ringColor.trim() &&
+          formData.ringColor !== 'glow' && (
           <div className="flex justify-between items-start gap-4 text-xs text-[#7E746C]">
             <span className="min-w-0 pl-3">Oprawa</span>
             <span className="shrink-0 text-right max-w-[55%] text-[#161616]">
@@ -2887,7 +2937,10 @@ export default function Home() {
           </div>
         )}
 
-        {showConfiguratorSummaryPrices && isClassicTagConfigurator && formData.ringColor === 'kwiat' && (
+        {showConfiguratorSummaryPrices &&
+          isClassicTagConfigurator &&
+          !isChristmasBowConfigurator &&
+          formData.ringColor === 'kwiat' && (
           <div className="flex justify-between items-start gap-4 text-xs italic text-[#7E746C]">
             <span className="min-w-0 pl-3">Oprawa kwiat</span>
             <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
@@ -3335,7 +3388,7 @@ export default function Home() {
         productName: item.productName,
         config: item.config,
       },
-      { charmPrices: charmUnitPrices, tagModelBasePrices },
+      { charmPrices: charmUnitPrices, tagModelBasePrices, christmasBowBasePrices },
     );
 
   const classicCartShowsPriceBreakdown = (item: CartItem) =>
@@ -3487,12 +3540,16 @@ export default function Home() {
     void Promise.all([
       getTagModelStartPrices(),
       getTagModelBasePrices(),
+      getChristmasBowStartPrices(),
+      getChristmasBowBasePrices(),
       getRogalikMountingStartPrices(),
       getRogalikMountingBasePrices(),
-    ]).then(([startResult, baseResult, rogalikMountingResult, rogalikMountingBaseResult]) => {
+    ]).then(([startResult, baseResult, bowStartResult, bowBaseResult, rogalikMountingResult, rogalikMountingBaseResult]) => {
       if (cancelled) return;
       if (startResult.ok) setTagModelStartPrices(startResult.prices);
       if (baseResult.ok) setTagModelBasePrices(baseResult.prices);
+      if (bowStartResult.ok) setChristmasBowStartPrices(bowStartResult.prices);
+      if (bowBaseResult.ok) setChristmasBowBasePrices(bowBaseResult.prices);
       if (rogalikMountingResult.ok) setRogalikMountingStartPrices(rogalikMountingResult.prices);
       if (rogalikMountingBaseResult.ok) setRogalikMountingBasePrices(rogalikMountingBaseResult.prices);
     });
@@ -3870,12 +3927,7 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20">
               {CATALOG_PRODUCTS.map((product) => (
-                <div
-                  key={product.slug}
-                  className={`space-y-6 text-center ${
-                    product.slug === GLOW_TAG_PRODUCT.slug ? 'md:col-span-2 md:max-w-md md:mx-auto md:w-full' : ''
-                  }`}
-                >
+                <div key={product.slug} className="space-y-6 text-center">
                   <ProductGallery items={product.gallery} alt={product.name} />
                   <h3 className="text-2xl md:text-3xl font-serif font-light">{product.name}</h3>
                   <p className="text-sm text-[#7A736C] font-light leading-relaxed">{product.description}</p>
@@ -4650,7 +4702,11 @@ export default function Home() {
                                 <div className="relative w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] flex items-center justify-center">
                                   <img src={item.image} alt={item.label} className="w-full h-full object-cover" />
                                   <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[#9AAD92] px-4 py-1.5 font-serif text-sm md:text-base text-white whitespace-nowrap shadow-sm">
-                                    {tagModelStartPriceLabel(tagModelStartPrices[item.id])}
+                                    {tagModelStartPriceLabel(
+                                      (isChristmasBowConfigurator
+                                        ? christmasBowStartPrices
+                                        : tagModelStartPrices)[item.id],
+                                    )}
                                   </span>
                                 </div>
                                 <p className="text-center text-xs md:text-sm font-medium text-[#161616] leading-snug px-1">
@@ -4678,7 +4734,28 @@ export default function Home() {
                         </div>
                       )}
 
-                      {isClassicTagConfigurator && contentStep === 1 && (
+                      {isChristmasBowConfigurator && contentStep === 1 && (
+                        <div
+                          className="space-y-4 scroll-mt-28"
+                          data-configurator-section="classic-base-choice"
+                        >
+                          <p className="font-bold text-base text-[#161616]">Wybierz kolor kokardki</p>
+                          {showBaseErrors &&
+                            (!formData.baseOption.trim() ||
+                              !selectedBases.some((base) => base.id === formData.baseOption)) && (
+                              <p className="text-sm text-red-500">Wybierz kolor.</p>
+                            )}
+                          <UniformTwoLineFontScope
+                            titleTexts={selectedBases.map((base) => base.title)}
+                          >
+                            <div className={`${baseColorGridClass} items-stretch`} data-uniform-font-grid>
+                              {selectedBases.map((base) => renderClassicBaseColorCard(base))}
+                            </div>
+                          </UniformTwoLineFontScope>
+                        </div>
+                      )}
+
+                      {isClassicTagConfigurator && !isChristmasBowConfigurator && contentStep === 1 && (
                         <div className="space-y-8 scroll-mt-28" data-configurator-section="classic-ring-choice">
                           <div className="space-y-4">
                           <p className="font-bold text-base text-[#161616]">Wybierz rodzaj oprawy, który najlepiej podkreśli styl Twojego pupila:</p>
@@ -4743,7 +4820,7 @@ export default function Home() {
                           </UniformTwoLineFontScope>
                           </div>
 
-                          {isClassicTagConfigurator && (
+                          {isClassicTagConfigurator && !isChristmasBowConfigurator && (
                             <div
                               className="space-y-4 pt-6 border-t border-[#D6C7AE] scroll-mt-28"
                               data-configurator-section="classic-base-choice"

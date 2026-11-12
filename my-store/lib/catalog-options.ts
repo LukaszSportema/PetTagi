@@ -320,6 +320,16 @@ export const SILVER_BASE_CATALOG: SingleBaseOption[] = [
   { id: "19", label: "Czarny", image: "/baza/silverczarny.jpg" },
 ]
 
+/** Kolory kokardki świątecznej (konfigurator kokardka-swiateczna). */
+export const CHRISTMAS_BOW_COLOR_CATALOG: SingleBaseOption[] = [
+  { id: "kokarda_butelkowy", label: "Butelkowy", image: "/kokardki/kokarda_butelkowy.jpg" },
+  { id: "kokarda_czerwony", label: "Czerwony", image: "/kokardki/kokarda_czerwony.jpg" },
+  { id: "kokarda_perla_biala", label: "Perła biała", image: "/kokardki/kokarda_perla_biala.jpg" },
+  { id: "kokarda_perla_butelkowa", label: "Perła butelkowa", image: "/kokardki/kokarda_perla_butelkowa.jpg" },
+  { id: "kokarda_perla_winna", label: "Perła winna", image: "/kokardki/kokarda_perla_winna.jpg" },
+  { id: "kokarda_perlowy_szampan", label: "Perłowy szampan", image: "/kokardki/kokarda_perlowy_szampan.jpg" },
+]
+
 export const FLOWER_BASE_CATALOG: SingleBaseOption[] = [
   { id: "kwiat3", label: "Ecru", image: "/baza/kwiatecru.jpg" },
   { id: "kwiat4", label: "Kremowy", image: "/baza/kwiatkremowy.jpg" },
@@ -335,6 +345,7 @@ export const BASE_OPTIONS: CatalogOption[] = [
   ...SILVER_BASE_CATALOG.map(({ id, label }) => ({ id, label })),
   ...FLOWER_BASE_CATALOG.map(({ id, label }) => ({ id, label })),
   ...GLOW_BASE_CATALOG.map(({ id, label }) => ({ id, label })),
+  ...CHRISTMAS_BOW_COLOR_CATALOG.map(({ id, label }) => ({ id, label })),
 ]
 
 export type CharmCatalogItem = SingleBaseOption & {

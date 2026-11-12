@@ -30,11 +30,17 @@ import {
   stringSizeFromNeckCm,
   stringSizeLabel,
 } from "@/lib/pricing"
-import { classicTagCatalogBaseUnitPrice, OPRAWA_KWIAT_SURCHARGE_PLN, type TagModelBasePrices } from "@/lib/tag-model-pricing"
+import {
+  classicTagCatalogBaseUnitPrice,
+  OPRAWA_KWIAT_SURCHARGE_PLN,
+  tagModelBasePricesForProduct,
+  type TagModelBasePrices,
+} from "@/lib/tag-model-pricing"
 
 export type ClassicTagPricingContext = {
   charmPrices?: CharmUnitPrices
   tagModelBasePrices?: TagModelBasePrices
+  christmasBowBasePrices?: TagModelBasePrices
 }
 
 export type ClassicTagPricingInput = {
@@ -83,7 +89,11 @@ export const classicTagPriceBreakdown = (
       : classicTagCatalogBaseUnitPrice({
           tagModel: input.tagModel,
           ringColor: input.ringColor,
-          tagModelBasePrices: ctx.tagModelBasePrices,
+          tagModelBasePrices: tagModelBasePricesForProduct(
+            input.productSlug,
+            ctx.tagModelBasePrices,
+            ctx.christmasBowBasePrices,
+          ),
         })
 
   const baseLabel =

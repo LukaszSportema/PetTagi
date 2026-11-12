@@ -18,12 +18,15 @@ import {
   getExpressShippingEnabled,
   getPaymentRecipient,
   getCharmUnitPrices,
+  getChristmasBowBasePrices,
   getRogalikMountingBasePrices,
+  getTagModelBasePrices,
   setExpressShippingEnabled,
   setPaymentRecipient,
 } from './actions/settings';
 import { buildDefaultCharmUnitPrices, type CharmUnitPrices } from '@/lib/charm-unit-pricing';
 import { DEFAULT_ROGALIK_MOUNTING_BASE_PRICES } from '@/lib/rogalik-admin-pricing';
+import { DEFAULT_TAG_MODEL_BASE_PRICES, type TagModelBasePrices } from '@/lib/tag-model-pricing';
 import { generateShippingLabel } from './actions/shipping';
 import {
   canSetOrderStatusToPending,
@@ -33,6 +36,7 @@ import {
   formatOrderDateOnly,
   formatPrice,
   fulfillmentRangeLabel,
+  classicOrderItemPriceLines,
   formatRogalikPriceLineAmount,
   isRogalikOrderItem,
   orderItemOptions,
@@ -1663,14 +1667,25 @@ function OrderDetailView({
   const [rogalikMountingBasePrices, setRogalikMountingBasePrices] = useState(() =>
     DEFAULT_ROGALIK_MOUNTING_BASE_PRICES,
   );
+  const [tagModelBasePrices, setTagModelBasePrices] = useState<TagModelBasePrices>(
+    DEFAULT_TAG_MODEL_BASE_PRICES,
+  );
+  const [christmasBowBasePrices, setChristmasBowBasePrices] = useState<TagModelBasePrices>(
+    DEFAULT_TAG_MODEL_BASE_PRICES,
+  );
 
   useEffect(() => {
-    void Promise.all([getCharmUnitPrices(), getRogalikMountingBasePrices()]).then(
-      ([charmResult, rogalikMountingBaseResult]) => {
-        if (charmResult.ok) setCharmUnitPrices(charmResult.prices);
-        if (rogalikMountingBaseResult.ok) setRogalikMountingBasePrices(rogalikMountingBaseResult.prices);
-      },
-    );
+    void Promise.all([
+      getCharmUnitPrices(),
+      getRogalikMountingBasePrices(),
+      getTagModelBasePrices(),
+      getChristmasBowBasePrices(),
+    ]).then(([charmResult, rogalikMountingBaseResult, tagBaseResult, bowBaseResult]) => {
+      if (charmResult.ok) setCharmUnitPrices(charmResult.prices);
+      if (rogalikMountingBaseResult.ok) setRogalikMountingBasePrices(rogalikMountingBaseResult.prices);
+      if (tagBaseResult.ok) setTagModelBasePrices(tagBaseResult.prices);
+      if (bowBaseResult.ok) setChristmasBowBasePrices(bowBaseResult.prices);
+    });
   }, []);
 
   useEffect(() => {
@@ -1793,6 +1808,28 @@ function OrderDetailView({
                           </div>
                         ))}
                       </div>
+                      {!isRogalikOrderItem(item) && (
+                        <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
+                          {classicOrderItemPriceLines(item, {
+                            charmPrices: charmUnitPrices,
+                            tagModelBasePrices,
+                            christmasBowBasePrices,
+                          }).map((line) => (
+                            <li
+                              key={`${item.id}-price-${line.label}-${line.detail ?? ''}`}
+                              className="flex justify-between gap-2 text-xs text-[#7A736C]"
+                            >
+                              <span className="min-w-0 pl-3 italic">
+                                {line.label}
+                                {line.detail ? ` (${line.detail})` : ''}
+                              </span>
+                              <span className="shrink-0 tabular-nums text-[#161616]">
+                                {formatRogalikPriceLineAmount(line, item.quantity)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {isRogalikOrderItem(item) && (
                         <ul className="mt-3 pt-3 border-t border-[#D6C7AE]/70 space-y-1.5">
                           {rogalikOrderItemPriceLines(item, charmUnitPrices, {
