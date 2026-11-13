@@ -4699,16 +4699,18 @@ export default function Home() {
                                     : 'border-[#D6C7AE] bg-white hover:border-[#C4A574]'
                                 }`}
                               >
-                                <div className="relative w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] flex items-center justify-center">
-                                  <img src={item.image} alt={item.label} className="w-full h-full object-cover" />
-                                  <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[#9AAD92] px-4 py-1.5 font-serif text-sm md:text-base text-white whitespace-nowrap shadow-sm">
-                                    {tagModelStartPriceLabel(
-                                      (isChristmasBowConfigurator
-                                        ? christmasBowStartPrices
-                                        : tagModelStartPrices)[item.id],
-                                    )}
+                                {isChristmasBowConfigurator ? (
+                                  <span className="self-center mb-3 md:mb-4 rounded-full bg-[#9AAD92] px-4 py-1.5 font-serif text-sm md:text-base text-white whitespace-nowrap shadow-sm">
+                                    {tagModelStartPriceLabel(christmasBowStartPrices[item.id])}
                                   </span>
-                                </div>
+                                ) : (
+                                  <div className="relative w-full aspect-square bg-[#EFE8DC] mb-3 md:mb-4 overflow-hidden border border-[#D6C7AE] flex items-center justify-center">
+                                    <img src={item.image} alt={item.label} className="w-full h-full object-cover" />
+                                    <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[#9AAD92] px-4 py-1.5 font-serif text-sm md:text-base text-white whitespace-nowrap shadow-sm">
+                                      {tagModelStartPriceLabel(tagModelStartPrices[item.id])}
+                                    </span>
+                                  </div>
+                                )}
                                 <p className="text-center text-xs md:text-sm font-medium text-[#161616] leading-snug px-1">
                                   {item.label}
                                 </p>
@@ -4727,9 +4729,13 @@ export default function Home() {
                             ))}
                           </div>
                           <p className="text-center text-xs md:text-sm text-[#7A736C] leading-relaxed max-w-2xl mx-auto px-2">
-                            Zdjęcia przedstawiają przykładowy wygląd adresówek i sposób umieszczenie informacji - nie
-                            odnoszą się do konkretnych modeli. Na adresówce można umieścić imię pupila oraz numer
-                            telefonu właściciela.
+                            {!isChristmasBowConfigurator && (
+                              <>
+                                Zdjęcia przedstawiają przykładowy wygląd adresówek i sposób umieszczenie informacji - nie
+                                odnoszą się do konkretnych modeli.{' '}
+                              </>
+                            )}
+                            Na adresówce można umieścić imię pupila oraz numer telefonu właściciela.
                           </p>
                         </div>
                       )}
