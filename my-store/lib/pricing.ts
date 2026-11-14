@@ -246,7 +246,7 @@ export const itemRevenueParts = (
   const skipsSticker =
     product?.configuratorId === "glow-tag" ||
     ringColor === "kwiat" ||
-    productSkipsStickerAddons(item.productSlug)
+    productSkipsStickerAddons(productSlug)
 
   return {
     base: baseUnit * qty,
