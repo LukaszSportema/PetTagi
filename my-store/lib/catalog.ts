@@ -39,6 +39,10 @@ export const CHRISTMAS_BOW_PRODUCT: CatalogProduct = {
   gallery: [{ type: "image", src: "/produkty/glowne_kokarda.jpg" }],
 }
 
+/** Konfigurator kokardki — bez kroku naklejek / grafik. */
+export const productSkipsStickerAddons = (productSlug: string) =>
+  productSlug === CHRISTMAS_BOW_PRODUCT.slug
+
 export const LEGACY_CLASSIC_TAG_SLUG = "adresowka-klasyczna"
 export const LEGACY_CLASSIC_TAG_NAME = "Adresówka klasyczna"
 

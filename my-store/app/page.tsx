@@ -352,6 +352,8 @@ const formDataForProduct = (slug: string): FormDataState => {
       ringColor: 'złoty',
       baseOption: '',
       charmOption: '',
+      wantSticker: 'nie',
+      stickerOption: '',
     };
   }
   if (slug === ROGALIK_TAG_PRODUCT.slug) {
@@ -690,7 +692,8 @@ export default function Home() {
   const rogalikFlowStep = isRogalikTagConfigurator
     ? rogalikFlowStepAt(formData.rogalikMounting, currentStep)
     : null;
-  const skipsGraphicsStep = isGlowTagConfigurator || formData.ringColor === 'kwiat';
+  const skipsGraphicsStep =
+    isGlowTagConfigurator || formData.ringColor === 'kwiat' || isChristmasBowConfigurator;
   const selectedKarabinerIds = Object.entries(formData.karabinerQuantities)
     .filter(([, qty]) => qty > 0)
     .map(([id]) => id);
@@ -2390,6 +2393,7 @@ export default function Home() {
     if (isBeadNecklaceModel) {
       appendBeadNecklaceOrderedOptions(options, {
         ringColor: formData.ringColor,
+        productSlug: activeProduct.slug,
         sticker: stickerOptionBlock,
         beadNecklace: beadNecklaceOptionBlock,
         neckCircumference: neckCircumferenceOptionBlock,
@@ -2407,6 +2411,7 @@ export default function Home() {
     } else if (isTagOnlyWithKarabinerModel) {
       appendBeadNecklaceOrderedOptions(options, {
         ringColor: formData.ringColor,
+        productSlug: activeProduct.slug,
         sticker: stickerOptionBlock,
         beadNecklace: null,
         neckCircumference: null,
@@ -2421,6 +2426,7 @@ export default function Home() {
     } else if (isStringWithoutKarabinerModel) {
       appendBeadNecklaceOrderedOptions(options, {
         ringColor: formData.ringColor,
+        productSlug: activeProduct.slug,
         sticker: stickerOptionBlock,
         beadNecklace: null,
         neckCircumference: neckCircumferenceOptionBlock,
@@ -2437,6 +2443,7 @@ export default function Home() {
         configuratorId: activeProduct.configuratorId,
         ringColor: formData.ringColor,
         tagModel: formData.tagModel,
+        productSlug: activeProduct.slug,
         charms: charmsOptionBlock,
         karabiners: karabinersOptionBlock,
         sticker: stickerOptionBlock,
@@ -2847,10 +2854,11 @@ export default function Home() {
       ? classicConfiguratorSummaryAddonOrder({
           tagModel: formData.tagModel,
           configuratorId: activeProduct.configuratorId,
+          productSlug: activeProduct.slug,
         })
       : isTagOnlyWithKarabinerModel
-        ? tagOnlyWithKarabinerPaidAddonOrder(formData.ringColor)
-        : beadNecklacePaidAddonOrder(formData.ringColor);
+        ? tagOnlyWithKarabinerPaidAddonOrder(formData.ringColor, activeProduct.slug)
+        : beadNecklacePaidAddonOrder(formData.ringColor, activeProduct.slug);
 
   const showConfiguratorSummaryPrices =
     isRogalikTagConfigurator || !isClassicTagConfigurator || formData.tagModel.trim() !== '';
@@ -3197,6 +3205,7 @@ export default function Home() {
             configuratorId: activeProduct.configuratorId,
             ringColor: formData.ringColor,
             tagModel: formData.tagModel,
+            productSlug: activeProduct.slug,
           }).map((kind) => {
           if (!summaryAddonKindVisible(kind)) return null;
           if (kind === 'sticker') {

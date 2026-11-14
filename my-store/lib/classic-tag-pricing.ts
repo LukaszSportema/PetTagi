@@ -1,4 +1,4 @@
-import { getCatalogProduct } from "@/lib/catalog"
+import { getCatalogProduct, productSkipsStickerAddons } from "@/lib/catalog"
 import { beadNecklacePaidAddonOrder, stringWithoutKarabinerPaidAddonOrder, tagOnlyWithKarabinerPaidAddonOrder } from "@/lib/configurator-options-order"
 import {
   BEAD_NECKLACE_TAG_MODEL_ID,
@@ -113,7 +113,10 @@ export const classicTagPriceBreakdown = (
   const sizeText = stringSizeLabel(size)
   const isBead = input.tagModel === BEAD_NECKLACE_TAG_MODEL_ID
   const skipStringsStopperCharges = tagModelSkipsStringAndStopperAddonCharges(input.tagModel)
-  const skipsSticker = configuratorId === "glow-tag" || input.ringColor === "kwiat"
+  const skipsSticker =
+    configuratorId === "glow-tag" ||
+    input.ringColor === "kwiat" ||
+    productSkipsStickerAddons(input.productSlug)
   const ring = karabinerRingKey(input)
 
   const pushLine = (line: RogalikPriceLine | null) => {
@@ -199,7 +202,7 @@ export const classicTagPriceBreakdown = (
     : null
 
   if (isBead) {
-    for (const kind of beadNecklacePaidAddonOrder(input.ringColor)) {
+    for (const kind of beadNecklacePaidAddonOrder(input.ringColor, input.productSlug)) {
       switch (kind) {
         case "sticker":
           pushLine(stickerLine)
@@ -236,7 +239,7 @@ export const classicTagPriceBreakdown = (
   }
 
   if (isStringWithoutKarabinerTagModel(input.tagModel)) {
-    for (const kind of stringWithoutKarabinerPaidAddonOrder(input.ringColor)) {
+    for (const kind of stringWithoutKarabinerPaidAddonOrder(input.ringColor, input.productSlug)) {
       switch (kind) {
         case "sticker":
           pushLine(stickerLine)
@@ -270,7 +273,7 @@ export const classicTagPriceBreakdown = (
   }
 
   if (isTagOnlyWithKarabinerTagModel(input.tagModel)) {
-    for (const kind of tagOnlyWithKarabinerPaidAddonOrder(input.ringColor)) {
+    for (const kind of tagOnlyWithKarabinerPaidAddonOrder(input.ringColor, input.productSlug)) {
       switch (kind) {
         case "sticker":
           pushLine(stickerLine)
@@ -338,7 +341,10 @@ export const classicCartPriceBreakdown = (
         extraCarabiner: config.wantExtraKarabiners === "tak" ? config.extraKarabiners : [],
       }
 
-  const skipsSticker = product.configuratorId === "glow-tag" || config.ringColor === "kwiat"
+  const skipsSticker =
+    product.configuratorId === "glow-tag" ||
+    config.ringColor === "kwiat" ||
+    productSkipsStickerAddons(item.productSlug)
 
   return classicTagPriceBreakdown(
     {

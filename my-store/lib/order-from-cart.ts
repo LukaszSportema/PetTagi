@@ -1,7 +1,7 @@
 import { cartItemBaseUnitPrice } from "@/lib/cart-item-pricing"
 import type { RogalikMountingBasePrices } from "@/lib/rogalik-admin-pricing"
 import type { TagModelBasePrices } from "@/lib/tag-model-pricing"
-import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
+import { getCatalogProduct, productSkipsStickerAddons, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { rogalikMountingToTagModel } from "@/lib/rogalik-options"
 import { stringSizeFromNeckCm, stringSizeLabel } from "@/lib/pricing"
 import {
@@ -161,7 +161,10 @@ export const mapClassicCartItemToOrderItem = (
 ): CreateOrderItemInput => {
   const config = item.config
   const product = getCatalogProduct(item.productSlug)
-  const skipsSticker = product?.configuratorId === "glow-tag" || config.ringColor === "kwiat"
+  const skipsSticker =
+    product?.configuratorId === "glow-tag" ||
+    config.ringColor === "kwiat" ||
+    productSkipsStickerAddons(item.productSlug)
   const karabinerRing = karabinerCatalogRingKey({
     configuratorId: product?.configuratorId,
     ringColor: config.ringColor,

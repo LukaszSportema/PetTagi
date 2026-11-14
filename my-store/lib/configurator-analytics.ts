@@ -85,7 +85,8 @@ const CLASSIC_JEWELRY_STEP_KEY_ORDER = [
 
 export const visibleStepKeys = (productSlug: string, ringColor: string) => {
   const isGlow = productSlug.includes("glow")
-  const skipsGraphics = isGlow || ringColor === "kwiat"
+  const skipsGraphics =
+    isGlow || ringColor === "kwiat" || productSlug === CHRISTMAS_BOW_PRODUCT.slug
 
   if (isClassicJewelrySlug(productSlug)) {
     return CLASSIC_JEWELRY_STEP_KEY_ORDER.filter((key) => {

@@ -1,3 +1,4 @@
+import { productSkipsStickerAddons } from "@/lib/catalog"
 import {
   BEAD_NECKLACE_TAG_MODEL_ID,
   isStringWithoutKarabinerTagModel,
@@ -27,7 +28,10 @@ export type BeadNecklacePaidAddonKind =
   | "stopers"
   | "dialCode"
 
-export const beadNecklacePaidAddonOrder = (ringColor?: string): BeadNecklacePaidAddonKind[] => {
+export const beadNecklacePaidAddonOrder = (
+  ringColor?: string,
+  productSlug?: string,
+): BeadNecklacePaidAddonKind[] => {
   const order: BeadNecklacePaidAddonKind[] = [
     "sticker",
     "beadNecklace",
@@ -40,7 +44,7 @@ export const beadNecklacePaidAddonOrder = (ringColor?: string): BeadNecklacePaid
     "stopers",
     "dialCode",
   ]
-  if (ringColor?.trim() === "kwiat") {
+  if (ringColor?.trim() === "kwiat" || (productSlug && productSkipsStickerAddons(productSlug))) {
     return order.filter((kind) => kind !== "sticker")
   }
   return order
@@ -49,15 +53,17 @@ export const beadNecklacePaidAddonOrder = (ringColor?: string): BeadNecklacePaid
 /** Kolejność addonów — model „Na sznurku (bez karabińczyka)” (bez koralików). */
 export const stringWithoutKarabinerPaidAddonOrder = (
   ringColor?: string,
+  productSlug?: string,
 ): BeadNecklacePaidAddonKind[] =>
-  beadNecklacePaidAddonOrder(ringColor).filter((kind) => kind !== "beadNecklace")
+  beadNecklacePaidAddonOrder(ringColor, productSlug).filter((kind) => kind !== "beadNecklace")
 
 /** Kolejność addonów — model „Sama adresówka z karabińczykiem”. */
 export const tagOnlyWithKarabinerPaidAddonOrder = (
   ringColor?: string,
+  productSlug?: string,
 ): BeadNecklacePaidAddonKind[] => {
   const order: BeadNecklacePaidAddonKind[] = ["sticker", "karabiners", "charms", "dialCode"]
-  if (ringColor?.trim() === "kwiat") {
+  if (ringColor?.trim() === "kwiat" || (productSlug && productSkipsStickerAddons(productSlug))) {
     return order.filter((kind) => kind !== "sticker")
   }
   return order
@@ -103,12 +109,20 @@ export const jewelryConfiguratorAddonOrder = (input: {
   configuratorId?: string | null
   ringColor?: string
   tagModel?: string | null
+  productSlug?: string
 }): JewelryConfiguratorAddonKind[] => {
   if (isBeadNecklaceTagModel(input.tagModel)) {
-    return ["sticker", "charms", "karabiners"]
+    const kinds: JewelryConfiguratorAddonKind[] = ["sticker", "charms", "karabiners"]
+    if (input.productSlug && productSkipsStickerAddons(input.productSlug)) {
+      return kinds.filter((kind) => kind !== "sticker")
+    }
+    return kinds
   }
   const ring = input.ringColor?.trim() ?? ""
-  const withStickers = input.configuratorId === "classic-tag" && ring !== "kwiat"
+  const withStickers =
+    input.configuratorId === "classic-tag" &&
+    ring !== "kwiat" &&
+    !(input.productSlug && productSkipsStickerAddons(input.productSlug))
   if (withStickers) {
     return ["sticker", "karabiners", "charms"]
   }
@@ -119,6 +133,7 @@ export const appendBeadNecklaceOrderedOptions = (
   target: JewelryConfiguratorOptionBlock[],
   input: {
     ringColor: string
+    productSlug?: string
     sticker: JewelryConfiguratorOptionBlock | null
     beadNecklace: JewelryConfiguratorOptionBlock | null
     neckCircumference: JewelryConfiguratorOptionBlock | null
@@ -131,7 +146,7 @@ export const appendBeadNecklaceOrderedOptions = (
     dialCode: JewelryConfiguratorOptionBlock | null
   },
 ) => {
-  for (const kind of beadNecklacePaidAddonOrder(input.ringColor)) {
+  for (const kind of beadNecklacePaidAddonOrder(input.ringColor, input.productSlug)) {
     const block = input[kind]
     if (block) target.push(block)
   }
@@ -223,13 +238,16 @@ const classicConfiguratorContentStepOrder = (tagModel: string): number[] => {
 export const classicConfiguratorSummaryAddonOrder = (input: {
   tagModel?: string | null
   configuratorId?: string | null
+  productSlug?: string
 }): ConfiguratorSummaryAddonKind[] => {
   const tagModel = input.tagModel?.trim() ?? ""
   if (!tagModel) return []
   const isGlow = input.configuratorId === "glow-tag"
-  const stepOrder = isGlow
-    ? [13, 1, 12, 3, 5, 7, 10, 11]
-    : classicConfiguratorContentStepOrder(tagModel)
+  const skipSticker =
+    input.productSlug != null && productSkipsStickerAddons(input.productSlug)
+  const stepOrder = (
+    isGlow ? [13, 1, 12, 3, 5, 7, 10, 11] : classicConfiguratorContentStepOrder(tagModel)
+  ).filter((stepId) => !(skipSticker && stepId === 9))
   const kinds: ConfiguratorSummaryAddonKind[] = []
   for (const stepId of stepOrder) {
     kinds.push(
@@ -249,6 +267,7 @@ export const appendJewelryConfiguratorAddonOptions = (
     configuratorId?: string | null
     ringColor: string
     tagModel?: string | null
+    productSlug?: string
     charms: JewelryConfiguratorOptionBlock | null
     karabiners: JewelryConfiguratorOptionBlock | null
     sticker: JewelryConfiguratorOptionBlock | null
@@ -260,6 +279,7 @@ export const appendJewelryConfiguratorAddonOptions = (
     configuratorId: input.configuratorId,
     ringColor: input.ringColor,
     tagModel: input.tagModel,
+    productSlug: input.productSlug,
   })
 
   for (const kind of order) {

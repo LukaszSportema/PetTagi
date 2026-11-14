@@ -1,6 +1,6 @@
 import { charmsTotalPln } from "@/lib/charm-pricing"
 import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
-import { getCatalogProduct, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
+import { getCatalogProduct, productSkipsStickerAddons, ROGALIK_TAG_PRODUCT } from "@/lib/catalog"
 import { roundMoney } from "@/lib/cart-item-pricing"
 import {
   inferGlowTextColorFromKarabiners,
@@ -156,7 +156,10 @@ export const expectedOrderItemUnitPrice = (
       item.stringClassic.length * classicPrice +
       item.stringGlow.length * glowPrice
   const stoppers = skipStringsStopers ? 0 : item.stoppers ? STOPPER_PRICE : 0
-  const skipsSticker = product?.configuratorId === "glow-tag" || item.ringColor === "kwiat"
+  const skipsSticker =
+    product?.configuratorId === "glow-tag" ||
+    item.ringColor === "kwiat" ||
+    productSkipsStickerAddons(item.productSlug)
   const stickers = !skipsSticker && item.sticker ? stickerUnitPricePln(item.sticker) : 0
   const dialCode = item.dialCodeInfo ? DIAL_CODE_PRICE : 0
   const paidBeadColorCount =

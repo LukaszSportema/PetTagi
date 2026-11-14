@@ -1,5 +1,5 @@
 import type { CharmUnitPrices } from "@/lib/charm-unit-pricing"
-import { getCatalogProduct } from "@/lib/catalog"
+import { getCatalogProduct, productSkipsStickerAddons } from "@/lib/catalog"
 import { charmsTotalPln } from "@/lib/charm-pricing"
 import {
   BEAD_NECKLACE_TAG_MODEL_ID,
@@ -243,7 +243,10 @@ export const itemRevenueParts = (
       item.stringClassic.length * classicPrice +
       item.stringGlow.length * glowPrice
 
-  const skipsSticker = product?.configuratorId === "glow-tag" || ringColor === "kwiat"
+  const skipsSticker =
+    product?.configuratorId === "glow-tag" ||
+    ringColor === "kwiat" ||
+    productSkipsStickerAddons(item.productSlug)
 
   return {
     base: baseUnit * qty,
